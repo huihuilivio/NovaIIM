@@ -8,6 +8,7 @@
 namespace nova {
 
 // 连接抽象（对应架构文档 4.1 Gateway - Connection）
+// 纯接口，不依赖具体网络库，便于测试 mock
 class Connection {
 public:
     virtual ~Connection() = default;

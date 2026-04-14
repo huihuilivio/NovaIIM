@@ -12,6 +12,7 @@ namespace nova::log {
 static std::vector<spdlog::sink_ptr> g_sinks;
 static std::string g_pattern;
 static std::once_flag g_init_flag;
+static std::mutex g_get_mutex;
 
 void Init(const LogOptions& opts) {
     std::call_once(g_init_flag, [&] {
@@ -38,13 +39,21 @@ void Init(const LogOptions& opts) {
 }
 
 std::shared_ptr<spdlog::logger> Get(const std::string& name) {
-    // 先从 registry 查找
+    // 先从 registry 查找（spdlog::get 内部有锁，线程安全）
     auto logger = spdlog::get(name);
     if (logger) {
         return logger;
     }
 
-    // 首次调用：用共享 sinks 创建，继承默认 logger 的级别
+    // 首次创建需要加锁，防止两个线程同时为同一 name 创建
+    std::lock_guard<std::mutex> lock(g_get_mutex);
+
+    // double-check: 可能在等锁期间已被其他线程创建
+    logger = spdlog::get(name);
+    if (logger) {
+        return logger;
+    }
+
     logger = std::make_shared<spdlog::logger>(name, g_sinks.begin(), g_sinks.end());
     logger->set_level(spdlog::default_logger()->level());
     logger->set_pattern(g_pattern);
