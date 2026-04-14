@@ -1,0 +1,66 @@
+# ==== Build ====
+build/
+out/
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+compile_commands.json
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dylib
+*.dll
+*.exe
+
+# ==== IDE / Editor ====
+.vscode/*
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/tasks.json
+.vs/
+*.swp
+*.swo
+*~
+.idea/
+*.user
+*.suo
+*.ncb
+*.aps
+
+# ==== OS ====
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ==== Dependencies ====
+third_party/*
+!third_party/.gitkeep
+
+# ==== Logs ====
+*.log
+logs/
+
+# ==== Config (local overrides) ====
+configs/*.local.*
+configs/*.secret.*
+
+# ==== Qt ====
+*.pro.user
+moc_*
+ui_*
+qrc_*
+*.qmlc
+*.jsc
+
+# ==== Misc ====
+*.bak
+*.tmp
+*.swp
+*.orig
+.cache/
+.ccache/
+.conan/
