@@ -12,6 +12,7 @@ if(SERVER_SOURCES)
 
     add_library(im_server_lib STATIC ${SERVER_LIB_SOURCES})
     nova_set_compiler_options(im_server_lib)
+    nova_set_output_dirs(im_server_lib)
     target_include_directories(im_server_lib PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
     )
@@ -29,7 +30,8 @@ if(SERVER_SOURCES)
 
     add_executable(im_server main.cpp)
     nova_set_compiler_options(im_server)
-    target_link_libraries(im_server PRIVATE im_server_lib)
+    nova_set_output_dirs(im_server)
+    target_link_libraries(im_server PRIVATE im_server_lib CLI11::CLI11)
 else()
     message(STATUS "[NovaIIM] Server sources not yet added, skipping im_server target")
 endif()

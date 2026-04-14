@@ -4,6 +4,7 @@
 namespace nova {
 
 void UserService::HandleLogin(ConnectionPtr conn, Packet& pkt) {
+    (void)conn; (void)pkt;
     // TODO: 1. 解码 body → { uid, token }
     // TODO: 2. JWT 验证
     // TODO: 3. conn->set_user_id(...)
@@ -12,6 +13,7 @@ void UserService::HandleLogin(ConnectionPtr conn, Packet& pkt) {
 }
 
 void UserService::HandleLogout(ConnectionPtr conn, Packet& pkt) {
+    (void)conn; (void)pkt;
     // TODO: 1. ConnManager::Instance().Remove(user_id, conn.get())
     // TODO: 2. conn->Close()
 }

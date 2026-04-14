@@ -22,6 +22,7 @@ function(nova_add_test)
 
     add_executable(${ARG_NAME} ${ARG_SOURCES})
     nova_set_compiler_options(${ARG_NAME})
+    nova_set_output_dirs(${ARG_NAME} TEST)
 
     target_link_libraries(${ARG_NAME} PRIVATE
         GTest::gtest
@@ -33,6 +34,6 @@ function(nova_add_test)
     # 自动发现并注册测试用例
     include(GoogleTest)
     gtest_discover_tests(${ARG_NAME}
-        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+        WORKING_DIRECTORY ${NOVA_OUTPUT_DIR}/test
     )
 endfunction()

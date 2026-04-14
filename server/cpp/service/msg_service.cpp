@@ -4,6 +4,7 @@
 namespace nova {
 
 void MsgService::HandleSendMsg(ConnectionPtr conn, Packet& pkt) {
+    (void)conn; (void)pkt;
     // TODO: 1. 解码 body → Message
     // TODO: 2. int64_t seq = GenerateSeq(conversation_id);
     // TODO: 3. 写 DB (dao)
@@ -13,14 +14,17 @@ void MsgService::HandleSendMsg(ConnectionPtr conn, Packet& pkt) {
 }
 
 void MsgService::HandleDeliverAck(ConnectionPtr conn, Packet& pkt) {
+    (void)conn; (void)pkt;
     // TODO: 标记消息已送达
 }
 
 void MsgService::HandleReadAck(ConnectionPtr conn, Packet& pkt) {
+    (void)conn; (void)pkt;
     // TODO: 更新 conversation_members.last_read_seq
 }
 
 int64_t MsgService::GenerateSeq(int64_t conversation_id) {
+    (void)conversation_id;
     // TODO: UPDATE conversations SET max_seq = max_seq + 1 WHERE id = ?
     // TODO: 后续优化 → 内存缓存 + CAS 自增
     return 0;

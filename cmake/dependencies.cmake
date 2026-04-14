@@ -24,6 +24,7 @@ if(NOVA_USE_GITEE)
     set(NOVA_GIT_YALANTINGLIBS "https://gitee.com/alibaba/yalantinglibs.git")
     set(NOVA_GIT_ORMPP        "https://gitee.com/qicosmos/ormpp.git")
     set(NOVA_GIT_GTEST        "https://gitee.com/mirrors/googletest.git")
+    set(NOVA_GIT_CLI11        "https://gitee.com/mirrors/CLI11.git")
     message(STATUS "[NovaIIM] Using Gitee mirrors")
 else()
     set(NOVA_GIT_SPDLOG       "https://github.com/gabime/spdlog.git")
@@ -31,6 +32,7 @@ else()
     set(NOVA_GIT_YALANTINGLIBS "https://github.com/alibaba/yalantinglibs.git")
     set(NOVA_GIT_ORMPP        "https://github.com/qicosmos/ormpp.git")
     set(NOVA_GIT_GTEST        "https://github.com/google/googletest.git")
+    set(NOVA_GIT_CLI11        "https://github.com/CLIUtils/CLI11.git")
 endif()
 
 # ============================================================
@@ -40,6 +42,7 @@ set(NOVA_SPDLOG_VERSION       "v1.15.0")
 set(NOVA_LIBHV_VERSION        "v1.3.3")
 set(NOVA_YALANTINGLIBS_VERSION "0.3.9")
 set(NOVA_GTEST_VERSION        "v1.15.2")
+set(NOVA_CLI11_VERSION        "v2.4.2")
 
 # ============================================================
 # spdlog - 高性能日志
@@ -107,7 +110,7 @@ macro(nova_fetch_yalantinglibs)
         # 创建 INTERFACE 库
         if(NOT TARGET ylt)
             add_library(ylt INTERFACE)
-            target_include_directories(ylt INTERFACE
+            target_include_directories(ylt SYSTEM INTERFACE
                 ${yalantinglibs_SOURCE_DIR}/include
                 ${yalantinglibs_SOURCE_DIR}/include/ylt/thirdparty
                 ${yalantinglibs_SOURCE_DIR}/include/ylt/standalone
@@ -139,7 +142,7 @@ macro(nova_fetch_ormpp)
     # 创建 INTERFACE 库
     if(NOT TARGET ormpp)
         add_library(ormpp INTERFACE)
-        target_include_directories(ormpp INTERFACE ${ormpp_SOURCE_DIR}/include)
+        target_include_directories(ormpp SYSTEM INTERFACE ${ormpp_SOURCE_DIR}/include)
     endif()
 endmacro()
 
@@ -168,6 +171,28 @@ macro(nova_fetch_gtest)
 endmacro()
 
 # ============================================================
+# CLI11 - 命令行参数解析 (header-only)
+# https://github.com/CLIUtils/CLI11
+# ============================================================
+macro(nova_fetch_cli11)
+    find_package(CLI11 QUIET)
+    if(NOT CLI11_FOUND)
+        message(STATUS "[NovaIIM] Fetching CLI11 ${NOVA_CLI11_VERSION} ...")
+        FetchContent_Declare(cli11
+            GIT_REPOSITORY ${NOVA_GIT_CLI11}
+            GIT_TAG        ${NOVA_CLI11_VERSION}
+            GIT_SHALLOW    TRUE
+        )
+        set(CLI11_PRECOMPILED OFF CACHE BOOL "" FORCE)
+        set(CLI11_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+        set(CLI11_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+        FetchContent_MakeAvailable(cli11)
+    else()
+        message(STATUS "[NovaIIM] Found system CLI11")
+    endif()
+endmacro()
+
+# ============================================================
 # 一键拉取所有依赖
 # ============================================================
 macro(nova_fetch_all_dependencies)
@@ -178,6 +203,7 @@ macro(nova_fetch_all_dependencies)
     nova_fetch_libhv()
     nova_fetch_yalantinglibs()
     nova_fetch_ormpp()
+    nova_fetch_cli11()
 
     if(NOVA_BUILD_TESTS)
         nova_fetch_gtest()

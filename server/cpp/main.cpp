@@ -6,34 +6,26 @@
 #include "core/thread_pool.h"
 #include "core/logger.h"
 #include "core/config.h"
+#include "core/formatters.h"
 #include "model/packet.h"
 
-#include <cstdio>
-#include <cstring>
+#include <CLI/CLI.hpp>
+
 #include <string>
 
 using namespace nova;
 
-static void PrintUsage(const char* prog) {
-    std::fprintf(stderr, "Usage: %s -c <config.yaml>\n", prog);
-}
-
 int main(int argc, char* argv[]) {
-    // ---- 解析命令行参数 ----
+    // ---- 命令行参数 ----
+    CLI::App app{"NovaIIM Server - High-performance IM backend"};
+    app.set_version_flag("-v,--version", "0.1.0");
+
     std::string config_path;
-    for (int i = 1; i < argc; ++i) {
-        if ((std::strcmp(argv[i], "-c") == 0 || std::strcmp(argv[i], "--config") == 0)
-            && i + 1 < argc) {
-            config_path = argv[++i];
-        } else {
-            PrintUsage(argv[0]);
-            return 1;
-        }
-    }
-    if (config_path.empty()) {
-        PrintUsage(argv[0]);
-        return 1;
-    }
+    app.add_option("-c,--config", config_path, "Path to config YAML file")
+        ->required()
+        ->check(CLI::ExistingFile);
+
+    CLI11_PARSE(app, argc, argv);
 
     // ---- 加载配置 ----
     Config cfg;
@@ -42,17 +34,18 @@ int main(int argc, char* argv[]) {
     }
 
     // ---- 初始化日志（在配置加载之后）----
-    nova::log::LogOptions log_opts;
-    log_opts.level          = spdlog::level::from_str(cfg.log.level);
-    log_opts.flush_level    = spdlog::level::from_str(cfg.log.flush_level);
-    log_opts.pattern        = cfg.log.pattern;
-    log_opts.file           = cfg.log.file;
-    log_opts.max_size       = static_cast<std::size_t>(cfg.log.max_size) * 1024 * 1024;
-    log_opts.max_files      = static_cast<std::size_t>(cfg.log.max_files);
-    log_opts.rotate_on_open = cfg.log.rotate_on_open;
-    nova::log::Init(log_opts);
+    nova::log::Init({
+        .level          = spdlog::level::from_str(cfg.log.level),
+        .flush_level    = spdlog::level::from_str(cfg.log.flush_level),
+        .pattern        = cfg.log.pattern,
+        .file           = cfg.log.file,
+        .max_size       = static_cast<std::size_t>(cfg.log.max_size) * 1024 * 1024,
+        .max_files      = static_cast<std::size_t>(cfg.log.max_files),
+        .rotate_on_open = cfg.log.rotate_on_open,
+    });
     NOVA_LOG_INFO("NovaIIM Server starting...");
     NOVA_LOG_INFO("Config loaded from: {}", config_path);
+    NOVA_LOG_DEBUG("Config:\n{}", cfg);
 
     // 初始化服务
     UserService user_svc;

@@ -8,6 +8,7 @@ function(nova_set_compiler_options target)
             /W4
             /utf-8
             /permissive-
+            /external:W0      # 第三方 SYSTEM 头文件不产生警告
         )
     else()
         target_compile_options(${target} PRIVATE

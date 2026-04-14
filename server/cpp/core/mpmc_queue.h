@@ -75,8 +75,16 @@ private:
     std::vector<Cell> buffer_;
     size_t capacity_;
     size_t mask_;
+
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4324)  // 对齐填充是预期行为
+#endif
     alignas(64) std::atomic<size_t> head_;
     alignas(64) std::atomic<size_t> tail_;
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 };
 
 } // namespace nova
