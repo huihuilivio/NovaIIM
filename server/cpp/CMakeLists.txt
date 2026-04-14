@@ -10,9 +10,10 @@ if(SERVER_SOURCES)
     )
     target_link_libraries(im_server PRIVATE
         nova_protocol
-        # libhv
-        # spdlog
-        # ormpp
+        hv_static
+        spdlog::spdlog
+        ylt
+        ormpp
     )
 else()
     message(STATUS "[NovaIIM] Server sources not yet added, skipping im_server target")
