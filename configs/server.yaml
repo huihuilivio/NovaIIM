@@ -1,0 +1,23 @@
+# NovaIIM 服务端配置文件
+
+server:
+  port: 9090
+  worker_threads: 4
+  queue_capacity: 8192        # MPMC 队列容量，必须为 2 的幂
+
+log:
+  level: debug                # trace / debug / info / warn / error / critical
+  pattern: '[%Y-%m-%d %H:%M:%S.%e] [%^%l%$] [%n] [%s:%#] %v'
+  flush_level: warn           # 达到此级别自动刷盘
+  file: ""                    # 留空则仅输出到控制台，如 "logs/nova.log"
+  max_size: 10                # 单文件最大 MB
+  max_files: 3                # 保留文件数
+  rotate_on_open: false       # 启动时立即轮转
+
+db:
+  host: 127.0.0.1
+  port: 3306
+  user: root
+  password: ""
+  dbname: nova_im
+  pool_size: 4
