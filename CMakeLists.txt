@@ -4,19 +4,38 @@ project(NovaIIM
     LANGUAGES CXX
 )
 
+# ---- CMake 模块 ----
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
+include(compiler)
+include(options)
+include(utils)
+
+# ---- 全局设置 ----
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# Output directories
+# 输出目录
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
-# CMake modules
-list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
+# ---- 第三方依赖 ----
+# add_subdirectory(third_party/libhv)
+# add_subdirectory(third_party/spdlog)
+# add_subdirectory(third_party/yalantinglibs)
+# add_subdirectory(third_party/ormpp)
 
-# Sub-projects
-# add_subdirectory(protocol)
-# add_subdirectory(server/cpp)
-# add_subdirectory(client/cpp)
+# ---- 子项目 ----
+add_subdirectory(protocol)
+
+if(NOVA_BUILD_SERVER)
+    add_subdirectory(server/cpp)
+endif()
+
+if(NOVA_BUILD_CLIENT)
+    add_subdirectory(client/cpp)
+endif()
+
+# ---- 构建信息 ----
+nova_print_config()

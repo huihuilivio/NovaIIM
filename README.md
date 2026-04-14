@@ -70,7 +70,11 @@
 ```text
 NovaIIM/
 ├── CMakeLists.txt          # 顶层构建入口
-├── cmake/                  # CMake模块
+├── cmake/                  # CMake工具模块
+│   ├── compiler.cmake
+│   ├── options.cmake
+│   └── utils.cmake
+│
 │
 ├── configs/
 ├── docs/
@@ -93,8 +97,12 @@ NovaIIM/
 │       ├── core/
 │       └── ui/
 │
-├── admin/
-└── third_party/
+├── third_party/
+│   ├── spdlog/
+│   ├── ormpp/
+│   └── yalantinglibs/
+│   └── libhv/
+└── admin/
 ```
 
 ---

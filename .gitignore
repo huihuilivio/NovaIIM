@@ -37,8 +37,16 @@ Thumbs.db
 Desktop.ini
 
 # ==== Dependencies ====
-third_party/*
-!third_party/.gitkeep
+# third_party 下每个子目录内容由 git submodule 或手动管理
+# 只保留 .gitkeep 占位文件
+third_party/spdlog/*
+!third_party/spdlog/.gitkeep
+third_party/ormpp/*
+!third_party/ormpp/.gitkeep
+third_party/yalantinglibs/*
+!third_party/yalantinglibs/.gitkeep
+third_party/libhv/*
+!third_party/libhv/.gitkeep
 
 # ==== Logs ====
 *.log
