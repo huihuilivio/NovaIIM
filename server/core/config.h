@@ -30,12 +30,7 @@ struct LogConfig {
 };
 
 struct DatabaseConfig {
-    std::string host     = "127.0.0.1";
-    int         port     = 3306;
-    std::string user     = "root";
-    std::string password;
-    std::string dbname   = "nova_im";
-    int         pool_size = 4;
+    std::string path = "nova_im.db";    // SQLite3 数据库文件路径
 };
 
 struct AdminConfig {

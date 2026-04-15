@@ -15,12 +15,7 @@ log:
   rotate_on_open: false       # 启动时立即轮转
 
 db:
-  host: 127.0.0.1
-  port: 3306
-  user: root
-  password: ""
-  dbname: nova_im
-  pool_size: 4
+  path: nova_im.db                # SQLite3 数据库文件路径
 
 admin:
   enabled: true

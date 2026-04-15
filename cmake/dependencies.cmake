@@ -22,7 +22,6 @@ if(NOVA_USE_GITEE)
     set(NOVA_GIT_SPDLOG       "https://gitee.com/mirrors/spdlog.git")
     set(NOVA_GIT_LIBHV        "https://gitee.com/libhv/libhv.git")
     set(NOVA_GIT_YALANTINGLIBS "https://gitee.com/alibaba/yalantinglibs.git")
-    set(NOVA_GIT_ORMPP        "https://gitee.com/qicosmos/ormpp.git")
     set(NOVA_GIT_GTEST        "https://gitee.com/mirrors/googletest.git")
     set(NOVA_GIT_CLI11        "https://gitee.com/mirrors/CLI11.git")
     message(STATUS "[NovaIIM] Using Gitee mirrors")
@@ -30,7 +29,6 @@ else()
     set(NOVA_GIT_SPDLOG       "https://github.com/gabime/spdlog.git")
     set(NOVA_GIT_LIBHV        "https://github.com/ithewei/libhv.git")
     set(NOVA_GIT_YALANTINGLIBS "https://github.com/alibaba/yalantinglibs.git")
-    set(NOVA_GIT_ORMPP        "https://github.com/qicosmos/ormpp.git")
     set(NOVA_GIT_GTEST        "https://github.com/google/googletest.git")
     set(NOVA_GIT_CLI11        "https://github.com/CLIUtils/CLI11.git")
 endif()
@@ -130,25 +128,39 @@ macro(nova_fetch_yalantinglibs)
 endmacro()
 
 # ============================================================
-# ormpp - C++ ORM (header-only, 手动集成)
-# https://github.com/qicosmos/ormpp
-# NOTE: ormpp 无标准 CMake 构建，作为 INTERFACE 库引入
+# SQLite3 - 轻量嵌入式数据库 (第一版使用，后续可切 MySQL)
+# 源码编译，无外部依赖
+# 如果自动下载失败，手动下载 sqlite-amalgamation 并放到
+# third_party/sqlite3/ 目录 (sqlite3.c + sqlite3.h)
 # ============================================================
-macro(nova_fetch_ormpp)
-    message(STATUS "[NovaIIM] Fetching ormpp ...")
-    FetchContent_Declare(ormpp
-        GIT_REPOSITORY ${NOVA_GIT_ORMPP}
-        GIT_TAG        master
-        GIT_SHALLOW    TRUE
-    )
-    FetchContent_GetProperties(ormpp)
-    if(NOT ormpp_POPULATED)
-        FetchContent_Populate(ormpp)
+macro(nova_fetch_sqlite3)
+    # 优先检查本地 vendor 目录
+    set(_SQLITE3_LOCAL_DIR "${CMAKE_SOURCE_DIR}/third_party/sqlite3")
+    if(EXISTS "${_SQLITE3_LOCAL_DIR}/sqlite3.c")
+        message(STATUS "[NovaIIM] Using local sqlite3 from third_party/sqlite3/")
+        set(_SQLITE3_SRC_DIR ${_SQLITE3_LOCAL_DIR})
+    else()
+        message(STATUS "[NovaIIM] Fetching sqlite3 amalgamation ...")
+        FetchContent_Declare(sqlite3
+            URL https://www.sqlite.org/2024/sqlite-amalgamation-3460100.zip
+        )
+        FetchContent_GetProperties(sqlite3)
+        if(NOT sqlite3_POPULATED)
+            FetchContent_Populate(sqlite3)
+        endif()
+        set(_SQLITE3_SRC_DIR ${sqlite3_SOURCE_DIR})
     endif()
-    # 创建 INTERFACE 库
-    if(NOT TARGET ormpp)
-        add_library(ormpp INTERFACE)
-        target_include_directories(ormpp SYSTEM INTERFACE ${ormpp_SOURCE_DIR}/include)
+    if(NOT TARGET sqlite3)
+        add_library(sqlite3 STATIC ${_SQLITE3_SRC_DIR}/sqlite3.c)
+        target_include_directories(sqlite3 SYSTEM PUBLIC ${_SQLITE3_SRC_DIR})
+        target_compile_definitions(sqlite3 PRIVATE
+            SQLITE_THREADSAFE=1
+            SQLITE_ENABLE_FTS5
+            SQLITE_ENABLE_JSON1
+        )
+        if(WIN32)
+            target_compile_definitions(sqlite3 PRIVATE _CRT_SECURE_NO_WARNINGS)
+        endif()
     endif()
 endmacro()
 
@@ -199,6 +211,31 @@ macro(nova_fetch_cli11)
 endmacro()
 
 # ============================================================
+# l8w8jwt - 轻量 JWT 库 (纯 C, 内置 MbedTLS, 无 OpenSSL 依赖)
+# https://github.com/GlitchedPolygons/l8w8jwt
+# ============================================================
+set(NOVA_L8W8JWT_VERSION "2.5.0")
+
+macro(nova_fetch_l8w8jwt)
+    message(STATUS "[NovaIIM] Fetching l8w8jwt ${NOVA_L8W8JWT_VERSION} ...")
+    FetchContent_Declare(l8w8jwt
+        GIT_REPOSITORY https://github.com/GlitchedPolygons/l8w8jwt.git
+        GIT_TAG        ${NOVA_L8W8JWT_VERSION}
+    )
+    # 禁用 l8w8jwt 自带的测试和示例
+    set(L8W8JWT_ENABLE_TESTS OFF CACHE BOOL "" FORCE)
+    set(L8W8JWT_ENABLE_EXAMPLES OFF CACHE BOOL "" FORCE)
+    set(L8W8JWT_ENABLE_EDDSA OFF CACHE BOOL "" FORCE)
+    set(ENABLE_TESTING OFF CACHE BOOL "" FORCE)
+    set(ENABLE_PROGRAMS OFF CACHE BOOL "" FORCE)
+    FetchContent_MakeAvailable(l8w8jwt)
+    # 第三方头文件标记为 SYSTEM，抑制警告
+    target_include_directories(l8w8jwt SYSTEM INTERFACE
+        ${l8w8jwt_SOURCE_DIR}/include
+    )
+endmacro()
+
+# ============================================================
 # 一键拉取所有依赖
 # ============================================================
 macro(nova_fetch_all_dependencies)
@@ -208,8 +245,9 @@ macro(nova_fetch_all_dependencies)
     nova_fetch_spdlog()
     nova_fetch_libhv()
     nova_fetch_yalantinglibs()
-    nova_fetch_ormpp()
+    nova_fetch_sqlite3()
     nova_fetch_cli11()
+    nova_fetch_l8w8jwt()
 
     if(NOVA_BUILD_TESTS)
         nova_fetch_gtest()

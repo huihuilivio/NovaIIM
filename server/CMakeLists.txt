@@ -25,7 +25,8 @@ if(SERVER_SOURCES)
         hv_static
         spdlog::spdlog
         ylt
-        ormpp
+        sqlite3
+        l8w8jwt
     )
 
     add_executable(im_server main.cpp)
