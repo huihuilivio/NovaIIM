@@ -561,7 +561,367 @@ GET /audit-logs?page=1&page_size=50&admin_id=1&action=user.create&start_time=202
 
 ---
 
-## 8. 错误处理示例
+## 8. ⏳ 运维管理 (Operations Management — Phase 5 待实现)
+
+### GET /admins
+
+**功能：** 分页查询管理员列表
+
+**权限要求：** `admin.ops.view`
+
+**请求参数：**
+```
+GET /admins?page=1&page_size=20&keyword=admin&status=1
+```
+
+**成功响应 (200)：**
+```json
+{
+  "code": 0,
+  "data": {
+    "items": [
+      {
+        "admin_id": 1,
+        "uid": "admin",
+        "nickname": "系统管理员",
+        "status": 1,
+        "roles": ["super_admin"],
+        "last_login": "2026-04-15T14:30:00Z",
+        "created_at": "2026-04-10T10:00:00Z"
+      }
+    ],
+    "total": 5,
+    "page": 1,
+    "page_size": 20
+  }
+}
+```
+
+### POST /admins
+
+**功能：** 创建新管理员账户（初始无权限，后续绑定角色）
+
+**权限要求：** `admin.ops.create`
+
+**请求体：**
+```json
+{
+  "uid": "operator1",
+  "nickname": "运营人员1",
+  "password": "initial_password"
+}
+```
+
+**成功响应 (200)：**
+```json
+{
+  "code": 0,
+  "data": {
+    "admin_id": 6,
+    "uid": "operator1",
+    "nickname": "运营人员1",
+    "status": 1
+  }
+}
+```
+
+**审计记录：** action = "admin.create"
+
+### GET /admins/:id
+
+**功能：** 获取管理员详情 + 角色和权限列表
+
+**权限要求：** `admin.ops.view`
+
+**成功响应 (200)：**
+```json
+{
+  "code": 0,
+  "data": {
+    "admin_id": 1,
+    "uid": "admin",
+    "nickname": "系统管理员",
+    "status": 1,
+    "roles": [
+      {
+        "role_id": 1,
+        "code": "super_admin",
+        "name": "超级管理员"
+      }
+    ],
+    "permissions": [
+      "admin.login", "admin.dashboard", "admin.audit",
+      "admin.ops.view", "admin.ops.create", "admin.ops.edit", "admin.ops.delete",
+      "admin.roles.view", "admin.roles.create", "admin.roles.edit", "admin.roles.delete"
+    ],
+    "created_at": "2026-04-10T10:00:00Z",
+    "last_login": "2026-04-15T14:30:00Z"
+  }
+}
+```
+
+### POST /admins/:id/reset-password
+
+**功能：** 重置管理员密码
+
+**权限要求：** `admin.ops.edit`
+
+**请求体：**
+```json
+{
+  "new_password": "new_admin_password"
+}
+```
+
+**审计记录：** action = "admin.reset_password"
+
+### DELETE /admins/:id
+
+**功能：** 删除管理员（软删除 status=3）
+
+**权限要求：** `admin.ops.delete`
+
+**审计记录：** action = "admin.delete"
+
+### POST /admins/:id/enable
+
+**功能：** 启用管理员（status 1→1，允许登录）
+
+**权限要求：** `admin.ops.edit`
+
+**成功响应 (200)：**
+```json
+{
+  "code": 0,
+  "data": {}
+}
+```
+
+**审计记录：** action = "admin.enable"
+
+### POST /admins/:id/disable
+
+**功能：** 禁用管理员（status 1→2，禁止登录）
+
+**权限要求：** `admin.ops.edit`
+
+**审计记录：** action = "admin.disable"
+
+---
+
+## 9. ⏳ 角色管理 (Role Management — Phase 5 待实现)
+
+### GET /roles
+
+**功能：** 分页查询所有角色列表
+
+**权限要求：** `admin.roles.view`
+
+**请求参数：**
+```
+GET /roles?page=1&page_size=50
+```
+
+**成功响应 (200)：**
+```json
+{
+  "code": 0,
+  "data": {
+    "items": [
+      {
+        "role_id": 1,
+        "code": "super_admin",
+        "name": "超级管理员",
+        "description": "拥有所有权限",
+        "permission_count": 11,
+        "admin_count": 1
+      },
+      {
+        "role_id": 2,
+        "code": "operator",
+        "name": "运营",
+        "description": "用户管理 + 消息管理",
+        "permission_count": 6,
+        "admin_count": 2
+      }
+    ],
+    "total": 3,
+    "page": 1,
+    "page_size": 50
+  }
+}
+```
+
+### POST /roles
+
+**功能：** 创建新角色
+
+**权限要求：** `admin.roles.create`
+
+**请求体：**
+```json
+{
+  "code": "auditor",
+  "name": "审计员",
+  "description": "只读查看审计日志"
+}
+```
+
+**成功响应 (200)：**
+```json
+{
+  "code": 0,
+  "data": {
+    "role_id": 4,
+    "code": "auditor",
+    "name": "审计员"
+  }
+}
+```
+
+**审计记录：** action = "role.create"
+
+### GET /roles/:id
+
+**功能：** 获取角色详情 + 绑定的权限列表
+
+**权限要求：** `admin.roles.view`
+
+**成功响应 (200)：**
+```json
+{
+  "code": 0,
+  "data": {
+    "role_id": 1,
+    "code": "super_admin",
+    "name": "超级管理员",
+    "description": "拥有所有权限",
+    "permissions": [
+      { "permission_id": 1, "code": "admin.login", "name": "管理员登录" },
+      { "permission_id": 2, "code": "admin.dashboard", "name": "查看仪表盘" },
+      { "permission_id": 3, "code": "admin.audit", "name": "查看审计日志" },
+      { "permission_id": 4, "code": "user.view", "name": "查看用户" },
+      { "permission_id": 5, "code": "user.create", "name": "创建用户" },
+      { "permission_id": 6, "code": "user.edit", "name": "编辑用户" },
+      { "permission_id": 7, "code": "user.delete", "name": "删除用户" },
+      { "permission_id": 8, "code": "user.ban", "name": "禁用用户" },
+      { "permission_id": 9, "code": "msg.view", "name": "查看消息" },
+      { "permission_id": 10, "code": "msg.recall", "name": "撤回消息" },
+      { "permission_id": 11, "code": "admin.ops.view", "name": "查看管理员" }
+    ]
+  }
+}
+```
+
+### PUT /roles/:id
+
+**功能：** 编辑角色信息（name/description）
+
+**权限要求：** `admin.roles.edit`
+
+**请求体：**
+```json
+{
+  "name": "操作员",
+  "description": "用户/消息管理"
+}
+```
+
+**审计记录：** action = "role.update"
+
+### DELETE /roles/:id
+
+**功能：** 删除角色（需约束检查：admin_roles 表无引用）
+
+**权限要求：** `admin.roles.delete`
+
+**失败响应 (400) — 角色被使用时：**
+```json
+{
+  "code": 1,
+  "msg": "Cannot delete role: 3 admins are using this role"
+}
+```
+
+**审计记录：** action = "role.delete"
+
+### POST /roles/:id/permissions
+
+**功能：** 配置角色的权限列表（全量覆盖）
+
+**权限要求：** `admin.roles.edit`
+
+**请求体：**
+```json
+{
+  "permission_ids": [1, 2, 4, 9]  // super_admin 的 4 个权限
+}
+```
+
+**成功响应 (200)：**
+```json
+{
+  "code": 0,
+  "data": {
+    "role_id": 1,
+    "added": 0,
+    "removed": 0,
+    "current_permissions": 4
+  }
+}
+```
+
+**审计记录：** action = "role.permissions_update", detail = {"from": [1,2,3,...], "to": [1,2,4,9]}
+
+### GET /permissions
+
+**功能：** 列出所有权限（按功能模块分组显示）
+
+**权限要求：** `admin.roles.view`
+
+**请求参数：** 无
+
+**成功响应 (200)：**
+```json
+{
+  "code": 0,
+  "data": {
+    "groups": [
+      {
+        "group": "admin.*",
+        "name": "管理后台权限",
+        "permissions": [
+          { "permission_id": 1, "code": "admin.login", "name": "管理员登录" },
+          { "permission_id": 2, "code": "admin.dashboard", "name": "查看仪表盘" },
+          { "permission_id": 3, "code": "admin.audit", "name": "查看审计日志" }
+        ]
+      },
+      {
+        "group": "user.*",
+        "name": "用户管理权限",
+        "permissions": [
+          { "permission_id": 4, "code": "user.view", "name": "查看用户" },
+          { "permission_id": 5, "code": "user.create", "name": "创建用户" },
+          { "permission_id": 6, "code": "user.edit", "name": "编辑用户" },
+          { "permission_id": 7, "code": "user.delete", "name": "删除用户" },
+          { "permission_id": 8, "code": "user.ban", "name": "禁用用户" }
+        ]
+      },
+      {
+        "group": "msg.*",
+        "name": "消息管理权限",
+        "permissions": [
+          { "permission_id": 9, "code": "msg.view", "name": "查看消息" },
+          { "permission_id": 10, "code": "msg.recall", "name": "撤回消息" }
+        ]
+      }
+    ],
+    "total_permissions": 11
+  }
+}
+```
+
+---
 
 ### 未登录错误
 

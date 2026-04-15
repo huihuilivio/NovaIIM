@@ -195,6 +195,36 @@ Phase 0 (基础工具)              ← ✅ 完成
 
 ---
 
+## ⏳ Phase 5 — 运维管理 + 角色管理（待实现）
+
+**前置依赖：** Phase 4 (单元测试通过)
+
+### 5A — 运维管理 (Operations Management)
+
+| # | 任务 | 说明 | 权限 | 状态 |
+|---|------|------|------|------|
+| 5.1 | GET /admins | AdminAccountDao::ListAdmins + 分页 + keyword/status 筛选 | `admin.ops.view` | ⏳ 待实现 |
+| 5.2 | POST /admins | 创建管理员(uid/password) + 默认无权限 + 后续绑定角色 | `admin.ops.create` | ⏳ 待实现 |
+| 5.3 | GET /admins/:id | 管理员详情 + 绑定的角色列表 + 权限列表 | `admin.ops.view` | ⏳ 待实现 |
+| 5.4 | POST /admins/:id/reset-password | 重置管理员密码 | `admin.ops.edit` | ⏳ 待实现 |
+| 5.5 | DELETE /admins/:id | 删除管理员(软删除 status=3) | `admin.ops.delete` | ⏳ 待实现 |
+| 5.6 | POST /admins/:id/enable | 启用管理员(status=1) | `admin.ops.edit` | ⏳ 待实现 |
+| 5.7 | POST /admins/:id/disable | 禁用管理员(status=2) | `admin.ops.edit` | ⏳ 待实现 |
+
+### 5B — 角色管理 (Role Management)
+
+| # | 任务 | 说明 | 权限 | 状态 |
+|---|------|------|------|------|
+| 5.8 | GET /roles | RbacDao::ListRoles + 分页 | `admin.roles.view` | ⏳ 待实现 |
+| 5.9 | POST /roles | 创建新角色(name/code/description) | `admin.roles.create` | ⏳ 待实现 |
+| 5.10 | GET /roles/:id | 角色详情 + 绑定的权限列表(10个) | `admin.roles.view` | ⏳ 待实现 |
+| 5.11 | PUT /roles/:id | 编辑角色(name/description) | `admin.roles.edit` | ⏳ 待实现 |
+| 5.12 | DELETE /roles/:id | 删除角色 (约束检查：admin_roles无引用) | `admin.roles.delete` | ⏳ 待实现 |
+| 5.13 | POST /roles/:id/permissions | 配置角色权限(permission_ids=[1,2,3,...]) | `admin.roles.edit` | ⏳ 待实现 |
+| 5.14 | GET /permissions | 列出所有权限(分组显示：admin.*/user.*/msg.*) | `admin.roles.view` | ⏳ 待实现 |
+
+---
+
 ## 文件结构（当前实际）
 
 ```
@@ -288,13 +318,15 @@ cmake/
 5. ~~**Phase 3** (3.1–3.11) — 业务 API~~ ✅ 2024-Q2
 6. ~~**Phase 3.5** (3.5.1–3.5.14) — Admin/User 表分离~~ ✅ 2026-04-15
 7. **Phase 4** (4.1–4.10) — 单元测试 + ConversationDao ← **当前** (📍 进行中)
+8. **Phase 5** (5.1–5.14) — **运维管理 + 角色管理** ← 📋 待实现 (估计 25h)
 
 **关键里程碑：**
 - ✅ M1: DbManager + UserDao 具体实现 → 能执行 SQL
 - ✅ M2: JWT 中间件 + /auth/login → 能登录获取 token
-- ✅ M3: 全部 P0 API 可用 → 可交付前端对接
+- ✅ M3: 全部 P0 API 可用 → 可交付前端对接 (Phase 3 完成)
 - ✅ M4: Admin/User 分离 → 权限模型清晰化 (2026-04-15)
-- 📍 M5: 单元测试覆盖 JWT / DAO / Handler — **下一阶段**
+- 📍 M5: 单元测试覆盖 JWT / DAO / Handler — 下一阶段 (Phase 4)
+- 📋 M6: 运维/角色管理完整 — 后续阶段 (Phase 5)
 
 ---
 
@@ -302,12 +334,12 @@ cmake/
 
 | 指标 | 数据 | 备注 |
 |------|------|------|
-| 总计划任务 | 74 个 | Phase 0–4 |
-| 已完成任务 | 60 个 | 81% 完成度 |
+| 总计划任务 | 98 个 | Phase 0–5 |
+| 已完成任务 | 60 个 | 61% 完成度 |
 | 进行中任务 | 1 个 | Phase 4 (单元测试/ConversationDao) |
-| 待补任务 | 13 个 | 主要为测试和可选功能 |
+| 待补任务 | 37 个 | Phase 4 (9) + Phase 5 (14) + IM 服务 (14) |
 | 代码行数 | ~12,000 loc | IM 服务 + Admin 面板 |
 | 数据库表数 | 11 个 | users/admins/messages/... |
-| HTTP API 端点 | 13 个 | 已全部实现 |
+| HTTP API 端点 | 30+ 个 | 已实现 13 + 待实现 14 + IM 侧 3 |
 | 编译状态 | ✅ 0 errors | 最后验证: 2026-04-15 |
 | Git 提交数 | 30+ commits | 包括本次 refactor 3 次提交 |
