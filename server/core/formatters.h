@@ -5,7 +5,7 @@
 // spdlog 使用 bundled fmt，自定义类型通过特化 fmt::formatter 实现格式化输出。
 // 所有业务结构体的 formatter 统一放在此文件，便于扩展。
 
-#include "core/config.h"
+#include "core/app_config.h"
 
 #include <spdlog/fmt/fmt.h>
 #include <ylt/struct_yaml/yaml_writer.h>
@@ -13,11 +13,11 @@
 #include <string>
 #include <string_view>
 
-// ---- Config ----
+// ---- AppConfig ----
 template <>
-struct fmt::formatter<nova::Config> : fmt::formatter<std::string_view> {
+struct fmt::formatter<nova::AppConfig> : fmt::formatter<std::string_view> {
     template <typename FormatContext>
-    auto format(const nova::Config& cfg, FormatContext& ctx) const {
+    auto format(const nova::AppConfig& cfg, FormatContext& ctx) const {
         std::string yaml;
         iguana::to_yaml(cfg, yaml);
         // 去掉末尾多余换行

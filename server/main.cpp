@@ -5,12 +5,12 @@
 #include "service/sync_service.h"
 #include "core/thread_pool.h"
 #include "core/logger.h"
-#include "core/config.h"
+#include "core/app_config.h"
 #include "core/server_context.h"
 #include "core/formatters.h"
 #include "model/packet.h"
 #include "admin/admin_server.h"
-#include "dao/db_manager.h"
+#include "dao/dao_factory.h"
 
 #include <CLI/CLI.hpp>
 
@@ -45,7 +45,7 @@ int main(int argc, char* argv[]) {
     CLI11_PARSE(app, argc, argv);
 
     // ---- 加载配置 ----
-    Config cfg;
+    AppConfig cfg;
     if (!LoadConfig(cfg, config_path)) {
         return 1;
     }
@@ -61,20 +61,18 @@ int main(int argc, char* argv[]) {
         .rotate_on_open = cfg.log.rotate_on_open,
     });
     NOVA_LOG_INFO("NovaIIM Server starting...");
-    NOVA_LOG_INFO("Config loaded from: {}", config_path);
-    NOVA_LOG_DEBUG("Config:\n{}", cfg);
+    NOVA_LOG_INFO("AppConfig loaded from: {}", config_path);
+    NOVA_LOG_DEBUG("AppConfig:\n{}", cfg);
 
-    // 初始化数据库
-    DbManager db;
-    if (!db.Open(cfg.db.path)) {
-        NOVA_LOG_ERROR("Failed to open database: {}", cfg.db.path);
+    // 初始化数据库（根据配置创建对应后端的 DaoFactory）
+    std::unique_ptr<DaoFactory> dao;
+    try {
+        dao = CreateDaoFactory(cfg.db);
+    } catch (const std::exception& e) {
+        NOVA_LOG_ERROR("Failed to initialize database: {}", e.what());
         return 1;
     }
-    if (!db.InitSchema()) {
-        NOVA_LOG_ERROR("Failed to initialize database schema");
-        return 1;
-    }
-    NOVA_LOG_INFO("Database initialized: {}", cfg.db.path);
+    NOVA_LOG_INFO("Database initialized ({}): {}", cfg.db.type, cfg.db.path);
 
     // 校验 JWT 密钥
     if (cfg.admin.enabled && !cfg.admin.jwt_secret.empty()) {
@@ -134,7 +132,7 @@ int main(int argc, char* argv[]) {
     // 启动 Admin HTTP 管理面板
     std::unique_ptr<AdminServer> admin;
     if (cfg.admin.enabled) {
-        admin = std::make_unique<AdminServer>(ctx, db);
+        admin = std::make_unique<AdminServer>(ctx, *dao);
         AdminServer::Options admin_opts;
         admin_opts.port        = cfg.admin.port;
         admin_opts.jwt_secret  = cfg.admin.jwt_secret;
@@ -154,7 +152,7 @@ int main(int argc, char* argv[]) {
     if (admin) admin->Stop();
     gateway.Stop();
     worker_pool.Stop();
-    db.Close();
+    dao.reset();  // 关闭数据库连接
     NOVA_LOG_INFO("NovaIIM Server stopped");
     return 0;
 }

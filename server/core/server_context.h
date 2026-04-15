@@ -2,7 +2,7 @@
 
 #include <atomic>
 #include <chrono>
-#include "config.h"
+#include "app_config.h"
 
 namespace nova {
 
@@ -11,12 +11,12 @@ namespace nova {
 // 所有计数器使用 atomic，可从任意线程安全读写
 class ServerContext {
 public:
-    explicit ServerContext(const Config& cfg)
+    explicit ServerContext(const AppConfig& cfg)
         : config_(cfg)
         , start_time_(std::chrono::steady_clock::now()) {}
 
     // --- 配置（只读）---
-    const Config& config() const { return config_; }
+    const AppConfig& config() const { return config_; }
 
     // --- 连接指标 ---
     int  connection_count() const { return conn_count_.load(std::memory_order_relaxed); }
@@ -46,7 +46,7 @@ public:
     }
 
 private:
-    Config config_;
+    AppConfig config_;
     std::chrono::steady_clock::time_point start_time_;
 
     std::atomic<int>     conn_count_{0};

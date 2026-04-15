@@ -1,4 +1,4 @@
-#include "core/config.h"
+#include "core/app_config.h"
 
 #include <ylt/struct_yaml/yaml_reader.h>
 
@@ -9,9 +9,9 @@
 
 namespace nova {
 
-bool LoadConfig(Config& cfg, const std::string& path) {
+bool LoadConfig(AppConfig& cfg, const std::string& path) {
     if (!std::filesystem::exists(path)) {
-        std::fprintf(stderr, "Config file not found: %s\n", path.c_str());
+        std::fprintf(stderr, "AppConfig file not found: %s\n", path.c_str());
         return false;
     }
 

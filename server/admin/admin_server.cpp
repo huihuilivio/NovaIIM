@@ -5,12 +5,12 @@
 #include "../core/server_context.h"
 #include "../net/conn_manager.h"
 #include "../core/logger.h"
-#include "../dao/db_manager.h"
-#include "../dao/user_dao_impl.h"
-#include "../dao/audit_log_dao_impl.h"
-#include "../dao/admin_session_dao_impl.h"
-#include "../dao/rbac_dao_impl.h"
-#include "../dao/message_dao_impl.h"
+#include "../dao/dao_factory.h"
+#include "../dao/user_dao.h"
+#include "../dao/message_dao.h"
+#include "../dao/audit_log_dao.h"
+#include "../dao/admin_session_dao.h"
+#include "../dao/rbac_dao.h"
 
 #include <hv/json.hpp>
 
@@ -45,8 +45,8 @@ static std::optional<hv::Json> ParseJsonBody(HttpRequest* req) {
     return j;
 }
 
-AdminServer::AdminServer(ServerContext& ctx, DbManager& db)
-    : ctx_(ctx), db_(db) {}
+AdminServer::AdminServer(ServerContext& ctx, DaoFactory& dao)
+    : ctx_(ctx), dao_(dao) {}
 
 AdminServer::~AdminServer() {
     Stop();
@@ -162,9 +162,8 @@ int AdminServer::AuthMiddleware(HttpRequest* req, HttpResponse* resp) {
     }
 
     // 查 admin_sessions 黑名单
-    AdminSessionDaoImpl session_dao(db_);
     std::string token_hash = Sha256Hex(token_sv);
-    if (session_dao.IsRevoked(token_hash)) {
+    if (dao_.AdminSession().IsRevoked(token_hash)) {
         JsonError(resp, ApiCode::kUnauthorized, "token has been revoked", 401);
         return 401;
     }
@@ -173,8 +172,7 @@ int AdminServer::AuthMiddleware(HttpRequest* req, HttpResponse* resp) {
     req->SetHeader("X-Nova-User-Id", std::to_string(claims->user_id));
 
     // 注入 permissions（逗号分隔）
-    RbacDaoImpl rbac_dao(db_);
-    auto perms = rbac_dao.GetUserPermissions(claims->user_id);
+    auto perms = dao_.Rbac().GetUserPermissions(claims->user_id);
     std::string perms_str;
     for (size_t i = 0; i < perms.size(); ++i) {
         if (i > 0) perms_str += ',';
@@ -204,7 +202,6 @@ std::string AdminServer::GetClientIp(HttpRequest* req) {
 void AdminServer::WriteAuditLog(int64_t user_id, const std::string& action,
                                 const std::string& target_type, int64_t target_id,
                                 const std::string& detail, const std::string& ip) {
-    AuditLogDaoImpl dao(db_);
     AuditLog log;
     log.user_id     = user_id;
     log.action      = action;
@@ -212,7 +209,7 @@ void AdminServer::WriteAuditLog(int64_t user_id, const std::string& action,
     log.target_id   = target_id;
     log.detail      = detail;
     log.ip          = ip;
-    if (!dao.Insert(log)) {
+    if (!dao_.AuditLog().Insert(log)) {
         NOVA_NLOG_WARN(kLogTag, "failed to write audit log: action={}", action);
     }
 }
@@ -241,8 +238,7 @@ int AdminServer::HandleLogin(HttpRequest* req, HttpResponse* resp) {
     std::string uid = body["uid"].get<std::string>();
     std::string password = body["password"].get<std::string>();
 
-    UserDaoImpl user_dao(db_);
-    auto user = user_dao.FindByUid(uid);
+    auto user = dao_.User().FindByUid(uid);
     if (!user) {
         return JsonError(resp, ApiCode::kUnauthorized, "invalid credentials", 401);
     }
@@ -256,8 +252,7 @@ int AdminServer::HandleLogin(HttpRequest* req, HttpResponse* resp) {
     }
 
     // 检查是否有 admin.login 权限
-    RbacDaoImpl rbac_dao(db_);
-    if (!rbac_dao.HasPermission(user->id, "admin.login")) {
+    if (!dao_.Rbac().HasPermission(user->id, "admin.login")) {
         return JsonError(resp, ApiCode::kForbidden, "no admin access", 403);
     }
 
@@ -268,7 +263,6 @@ int AdminServer::HandleLogin(HttpRequest* req, HttpResponse* resp) {
     }
 
     // 记录 session（用于黑名单管理）
-    AdminSessionDaoImpl session_dao(db_);
     AdminSession session;
     session.user_id    = user->id;
     session.token_hash = Sha256Hex(token);
@@ -280,7 +274,7 @@ int AdminServer::HandleLogin(HttpRequest* req, HttpResponse* resp) {
     gmtime_s(&tm_buf, &exp);  // MSVC thread-safe variant
     std::strftime(exp_buf, sizeof(exp_buf), "%Y-%m-%d %H:%M:%S", &tm_buf);
     session.expires_at = exp_buf;
-    session_dao.Insert(session);
+    dao_.AdminSession().Insert(session);
 
     // 审计
     WriteAuditLog(user->id, "admin.login", "user", user->id, "{}", GetClientIp(req));
@@ -300,8 +294,7 @@ int AdminServer::HandleLogout(HttpRequest* req, HttpResponse* resp) {
     auto token_sv = std::string_view(auth).substr(kBearer.size());
     std::string token_hash = Sha256Hex(token_sv);
 
-    AdminSessionDaoImpl session_dao(db_);
-    session_dao.RevokeByTokenHash(token_hash);
+    dao_.AdminSession().RevokeByTokenHash(token_hash);
 
     WriteAuditLog(user_id, "admin.logout", "user", user_id, "{}", GetClientIp(req));
 
@@ -314,14 +307,12 @@ int AdminServer::HandleMe(HttpRequest* req, HttpResponse* resp) {
         return JsonError(resp, ApiCode::kUnauthorized, "not authenticated", 401);
     }
 
-    UserDaoImpl user_dao(db_);
-    auto user = user_dao.FindById(user_id);
+    auto user = dao_.User().FindById(user_id);
     if (!user) {
         return JsonError(resp, ApiCode::kNotFound, "user not found");
     }
 
-    RbacDaoImpl rbac_dao(db_);
-    auto perms = rbac_dao.GetUserPermissions(user_id);
+    auto perms = dao_.Rbac().GetUserPermissions(user_id);
 
     nlohmann::json data;
     data["user_id"]     = user->id;
@@ -367,8 +358,7 @@ int AdminServer::HandleListUsers(HttpRequest* req, HttpResponse* resp) {
         if (val > 0) status = val;  // 0 = all (same as no filter per API doc)
     }
 
-    UserDaoImpl user_dao(db_);
-    auto result = user_dao.ListUsers(keyword, status, pg.page, pg.page_size);
+    auto result = dao_.User().ListUsers(keyword, status, pg.page, pg.page_size);
 
     nlohmann::json items = nlohmann::json::array();
     for (auto& u : result.items) {
@@ -405,8 +395,7 @@ int AdminServer::HandleCreateUser(HttpRequest* req, HttpResponse* resp) {
     }
 
     // 检查 uid 是否已存在
-    UserDaoImpl user_dao(db_);
-    if (user_dao.FindByUid(uid)) {
+    if (dao_.User().FindByUid(uid)) {
         return JsonError(resp, ApiCode::kParamError, "uid already exists");
     }
 
@@ -420,7 +409,7 @@ int AdminServer::HandleCreateUser(HttpRequest* req, HttpResponse* resp) {
     user.password_hash = hash;
     user.nickname      = nickname;
 
-    if (!user_dao.Insert(user)) {
+    if (!dao_.User().Insert(user)) {
         return JsonError(resp, ApiCode::kInternal, "failed to create user");
     }
 
@@ -441,8 +430,7 @@ int AdminServer::HandleGetUser(HttpRequest* req, HttpResponse* resp) {
         return JsonError(resp, ApiCode::kParamError, "invalid user id");
     }
 
-    UserDaoImpl user_dao(db_);
-    auto user = user_dao.FindById(id);
+    auto user = dao_.User().FindById(id);
     if (!user) {
         return JsonError(resp, ApiCode::kNotFound, "user not found");
     }
@@ -456,7 +444,7 @@ int AdminServer::HandleGetUser(HttpRequest* req, HttpResponse* resp) {
     data["is_online"]  = ConnManager::Instance().IsOnline(user->id);
     data["created_at"] = user->created_at;
     // devices: 查 user_devices 表
-    auto devices = db_.DB().query_s<UserDevice>("user_id=?", id);
+    auto devices = dao_.User().ListDevicesByUser(id);
     nlohmann::json dev_arr = nlohmann::json::array();
     for (auto& d : devices) {
         dev_arr.push_back({
@@ -480,12 +468,11 @@ int AdminServer::HandleDeleteUser(HttpRequest* req, HttpResponse* resp) {
         return JsonError(resp, ApiCode::kParamError, "invalid user id");
     }
 
-    UserDaoImpl user_dao(db_);
-    if (!user_dao.FindById(id)) {
+    if (!dao_.User().FindById(id)) {
         return JsonError(resp, ApiCode::kNotFound, "user not found");
     }
 
-    user_dao.SoftDelete(id);
+    dao_.User().SoftDelete(id);
 
     // 踢下线
     auto conns = ConnManager::Instance().GetConns(id);
@@ -522,8 +509,7 @@ int AdminServer::HandleResetPassword(HttpRequest* req, HttpResponse* resp) {
         return JsonError(resp, ApiCode::kInternal, "failed to hash password");
     }
 
-    UserDaoImpl user_dao(db_);
-    if (!user_dao.UpdatePassword(id, hash)) {
+    if (!dao_.User().UpdatePassword(id, hash)) {
         return JsonError(resp, ApiCode::kNotFound, "user not found");
     }
 
@@ -546,8 +532,7 @@ int AdminServer::HandleBanUser(HttpRequest* req, HttpResponse* resp) {
     auto body_opt = ParseJsonBody(req);
     std::string reason = body_opt ? body_opt->value("reason", "") : "";
 
-    UserDaoImpl user_dao(db_);
-    if (!user_dao.UpdateStatus(id, 2)) {
+    if (!dao_.User().UpdateStatus(id, 2)) {
         return JsonError(resp, ApiCode::kNotFound, "user not found");
     }
 
@@ -572,8 +557,7 @@ int AdminServer::HandleUnbanUser(HttpRequest* req, HttpResponse* resp) {
         return JsonError(resp, ApiCode::kParamError, "invalid user id");
     }
 
-    UserDaoImpl user_dao(db_);
-    if (!user_dao.UpdateStatus(id, 1)) {
+    if (!dao_.User().UpdateStatus(id, 1)) {
         return JsonError(resp, ApiCode::kNotFound, "user not found");
     }
 
@@ -623,16 +607,14 @@ int AdminServer::HandleListMessages(HttpRequest* req, HttpResponse* resp) {
     std::string start_time = req->GetParam("start_time");
     std::string end_time   = req->GetParam("end_time");
 
-    MessageDaoImpl msg_dao(db_);
-    auto result = msg_dao.ListMessages(conversation_id, start_time, end_time, pg.page, pg.page_size);
+    auto result = dao_.Message().ListMessages(conversation_id, start_time, end_time, pg.page, pg.page_size);
 
     // sender_uid 缓存，避免 N+1 查询
-    UserDaoImpl user_dao(db_);
     std::unordered_map<int64_t, std::string> uid_cache;
     auto resolve_uid = [&](int64_t id) -> const std::string& {
         auto [it, inserted] = uid_cache.try_emplace(id);
         if (inserted) {
-            auto u = user_dao.FindById(id);
+            auto u = dao_.User().FindById(id);
             it->second = u ? u->uid : "";
         }
         return it->second;
@@ -669,13 +651,12 @@ int AdminServer::HandleRecallMessage(HttpRequest* req, HttpResponse* resp) {
     auto body_opt = ParseJsonBody(req);
     std::string reason = body_opt ? body_opt->value("reason", "") : "";
 
-    MessageDaoImpl msg_dao(db_);
-    auto msg = msg_dao.FindById(id);
+    auto msg = dao_.Message().FindById(id);
     if (!msg) {
         return JsonError(resp, ApiCode::kNotFound, "message not found");
     }
 
-    if (!msg_dao.UpdateStatus(id, 1)) {
+    if (!dao_.Message().UpdateStatus(id, 1)) {
         return JsonError(resp, ApiCode::kInternal, "failed to recall message");
     }
 
@@ -704,16 +685,14 @@ int AdminServer::HandleListAuditLogs(HttpRequest* req, HttpResponse* resp) {
     std::string start_time = req->GetParam("start_time");
     std::string end_time   = req->GetParam("end_time");
 
-    AuditLogDaoImpl audit_dao(db_);
-    auto result = audit_dao.List(user_id, action, start_time, end_time, pg.page, pg.page_size);
+    auto result = dao_.AuditLog().List(user_id, action, start_time, end_time, pg.page, pg.page_size);
 
     // operator_uid 缓存，避免 N+1 查询
-    UserDaoImpl user_dao(db_);
     std::unordered_map<int64_t, std::string> uid_cache;
     auto resolve_uid = [&](int64_t id) -> const std::string& {
         auto [it, inserted] = uid_cache.try_emplace(id);
         if (inserted) {
-            auto u = user_dao.FindById(id);
+            auto u = dao_.User().FindById(id);
             it->second = u ? u->uid : "";
         }
         return it->second;

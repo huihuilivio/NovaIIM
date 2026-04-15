@@ -5,7 +5,7 @@
 // C++20 聚合类型自动反射，无需 YLT_REFL 宏
 //
 // 用法:
-//   Config cfg;
+//   AppConfig cfg;
 //   if (!LoadConfig(cfg, "server.yaml")) { return 1; }
 //   int port = cfg.server.port;
 
@@ -30,7 +30,16 @@ struct LogConfig {
 };
 
 struct DatabaseConfig {
+    std::string type = "sqlite";        // "sqlite" or "mysql"
+    // SQLite
     std::string path = "nova_im.db";    // SQLite3 数据库文件路径
+    // MySQL (当 type == "mysql" 时生效)
+    std::string host      = "127.0.0.1";
+    int         port      = 3306;
+    std::string user      = "root";
+    std::string password;
+    std::string database  = "nova_im";
+    int         pool_size = 4;          // MySQL 连接池大小
 };
 
 struct AdminConfig {
@@ -40,7 +49,7 @@ struct AdminConfig {
     int         jwt_expires = 86400;   // JWT 有效期（秒），默认 24h
 };
 
-struct Config {
+struct AppConfig {
     ServerConfig   server;
     LogConfig      log;
     DatabaseConfig db;
@@ -48,6 +57,6 @@ struct Config {
 };
 
 // 从 YAML 文件加载配置，成功返回 true
-bool LoadConfig(Config& cfg, const std::string& path);
+bool LoadConfig(AppConfig& cfg, const std::string& path);
 
 }  // namespace nova

@@ -165,9 +165,84 @@ macro(nova_fetch_sqlite3)
 endmacro()
 
 # ============================================================
+# MySQL 客户端库 (预编译下载)
+# 仅在 NOVA_ENABLE_MYSQL=ON 时启用
+# 策略：
+#   1) 通过 Python 脚本检测系统已安装的 MySQL / MariaDB 客户端
+#   2) 未找到则自动下载当前系统对应的 MySQL 预编译包，提取 include/ 和 lib/
+#   可通过 -DNOVA_MYSQL_VERSION=X.Y.Z 指定下载版本
+# ============================================================
+set(NOVA_MYSQL_VERSION "8.0.41" CACHE STRING "MySQL version to download if not found")
+set(NOVA_MYSQL_MAJOR   "8.0"    CACHE STRING "MySQL major version series")
+
+macro(nova_fetch_mysql_client)
+    if(NOT TARGET mysql_client)
+        find_package(Python3 COMPONENTS Interpreter QUIET)
+        if(NOT Python3_FOUND)
+            message(FATAL_ERROR "[NovaIIM] Python3 is required to detect/download MySQL client library")
+        endif()
+
+        set(_MYSQL_INSTALL_DIR "${CMAKE_BINARY_DIR}/_mysql_client")
+
+        message(STATUS "[NovaIIM] Running fetch_mysql_client.py ...")
+        execute_process(
+            COMMAND ${Python3_EXECUTABLE}
+                    ${CMAKE_SOURCE_DIR}/cmake/fetch_mysql_client.py
+                    ${_MYSQL_INSTALL_DIR}
+                    --version ${NOVA_MYSQL_VERSION}
+                    --major   ${NOVA_MYSQL_MAJOR}
+            OUTPUT_VARIABLE _MYSQL_JSON
+            ERROR_VARIABLE  _MYSQL_LOG
+            RESULT_VARIABLE _MYSQL_RC
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+        )
+        # 打印脚本日志 (stderr)
+        if(_MYSQL_LOG)
+            message(STATUS ${_MYSQL_LOG})
+        endif()
+        if(NOT _MYSQL_RC EQUAL 0)
+            message(FATAL_ERROR "[NovaIIM] fetch_mysql_client.py failed (rc=${_MYSQL_RC})")
+        endif()
+
+        # 解析 JSON 输出
+        string(JSON _MYSQL_INC GET ${_MYSQL_JSON} "include_dir")
+        string(JSON _MYSQL_LIBDIR GET ${_MYSQL_JSON} "lib_dir")
+
+        message(STATUS "[NovaIIM] MySQL client include: ${_MYSQL_INC}")
+        message(STATUS "[NovaIIM] MySQL client lib dir: ${_MYSQL_LIBDIR}")
+
+        # 自动查找 lib 文件
+        file(GLOB _MYSQL_LIBS
+            "${_MYSQL_LIBDIR}/libmysql.lib"
+            "${_MYSQL_LIBDIR}/mysqlclient.lib"
+            "${_MYSQL_LIBDIR}/libmysqlclient.a"
+            "${_MYSQL_LIBDIR}/libmysqlclient.so"
+            "${_MYSQL_LIBDIR}/libmysqlclient.dylib"
+        )
+        if(NOT _MYSQL_LIBS)
+            message(FATAL_ERROR "[NovaIIM] No MySQL client library found in ${_MYSQL_LIBDIR}")
+        endif()
+        list(GET _MYSQL_LIBS 0 _MYSQL_LIB)
+        message(STATUS "[NovaIIM] MySQL client library: ${_MYSQL_LIB}")
+
+        add_library(mysql_client INTERFACE)
+        target_include_directories(mysql_client SYSTEM INTERFACE ${_MYSQL_INC})
+        target_link_libraries(mysql_client INTERFACE ${_MYSQL_LIB})
+        if(WIN32)
+            target_link_libraries(mysql_client INTERFACE ws2_32 shlwapi)
+            # 把 DLL 拷贝到输出目录
+            file(GLOB _MYSQL_DLLS "${_MYSQL_LIBDIR}/*.dll")
+            if(_MYSQL_DLLS)
+                file(COPY ${_MYSQL_DLLS} DESTINATION ${NOVA_OUTPUT_DIR}/bin)
+            endif()
+        endif()
+    endif()
+endmacro()
+
+# ============================================================
 # ormpp - C++20 ORM (header-only, 内置 iguana 反射)
 # https://github.com/qicosmos/ormpp
-# 本项目仅使用 SQLite3 后端
+# SQLite3 默认启用；MySQL 通过 -DNOVA_ENABLE_MYSQL=ON 启用
 # ============================================================
 macro(nova_fetch_ormpp)
     message(STATUS "[NovaIIM] Fetching ormpp ...")
@@ -191,6 +266,12 @@ macro(nova_fetch_ormpp)
             ${ormpp_SOURCE_DIR}/frozen/include
         )
         target_link_libraries(ormpp INTERFACE sqlite3)
+
+        # MySQL 支持（可选，mysql_client 由 nova_fetch_mysql_client 提供）
+        if(NOVA_ENABLE_MYSQL)
+            target_compile_definitions(ormpp INTERFACE ORMPP_ENABLE_MYSQL)
+            target_link_libraries(ormpp INTERFACE mysql_client)
+        endif()
     endif()
 endmacro()
 
@@ -277,6 +358,9 @@ macro(nova_fetch_all_dependencies)
     nova_fetch_libhv()
     nova_fetch_yalantinglibs()
     nova_fetch_sqlite3()
+    if(NOVA_ENABLE_MYSQL)
+        nova_fetch_mysql_client()
+    endif()
     nova_fetch_ormpp()
     nova_fetch_cli11()
     nova_fetch_l8w8jwt()

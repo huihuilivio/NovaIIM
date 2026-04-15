@@ -29,6 +29,9 @@ public:
     virtual bool UpdateStatus(int64_t id, int8_t status) = 0;
     virtual bool UpdatePassword(int64_t id, const std::string& password_hash) = 0;
     virtual bool SoftDelete(int64_t id) = 0;  // status → 3
+
+    // 查询用户设备列表
+    virtual std::vector<UserDevice> ListDevicesByUser(int64_t user_id) = 0;
 };
 
 } // namespace nova

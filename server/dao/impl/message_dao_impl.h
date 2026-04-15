@@ -1,13 +1,15 @@
 #pragma once
 
-#include "message_dao.h"
-#include "db_manager.h"
+#include "../message_dao.h"
 
 namespace nova {
 
-class MessageDaoImpl : public MessageDao {
+class SqliteDbManager;  // forward
+
+template <typename DbMgr>
+class MessageDaoImplT : public MessageDao {
 public:
-    explicit MessageDaoImpl(DbManager& db) : db_(db) {}
+    explicit MessageDaoImplT(DbMgr& db) : db_(db) {}
 
     bool Insert(const Message& msg) override;
     std::vector<Message> GetAfterSeq(int64_t conversation_id, int64_t after_seq, int limit) override;
@@ -19,7 +21,7 @@ public:
     std::optional<Message> FindById(int64_t id) override;
 
 private:
-    DbManager& db_;
+    DbMgr& db_;
 };
 
 } // namespace nova

@@ -1,20 +1,24 @@
 #include "audit_log_dao_impl.h"
+#include "../sqlite3/sqlite_db_manager.h"
+#ifdef ORMPP_ENABLE_MYSQL
+#include "../mysql/mysql_db_manager.h"
+#endif
 
 namespace nova {
 
-bool AuditLogDaoImpl::Insert(const AuditLog& log) {
+template <typename DbMgr>
+bool AuditLogDaoImplT<DbMgr>::Insert(const AuditLog& log) {
     return db_.DB().insert(log) == 1;
 }
 
-AuditLogListResult AuditLogDaoImpl::List(int64_t user_id, const std::string& action,
+template <typename DbMgr>
+AuditLogListResult AuditLogDaoImplT<DbMgr>::List(int64_t user_id, const std::string& action,
                                           const std::string& start_time,
                                           const std::string& end_time,
                                           int page, int page_size) {
     AuditLogListResult result;
     int offset = (page - 1) * page_size;
 
-    // 使用 SQLite 参数化恒等式：(? = 0 OR field = ?)
-    // 当参数为默认值时条件恒真，否则进行实际过滤
     static constexpr auto kCountSql =
         "SELECT count(*) FROM audit_logs WHERE "
         "(? = 0 OR user_id = ?) AND "
@@ -47,5 +51,11 @@ AuditLogListResult AuditLogDaoImpl::List(int64_t user_id, const std::string& act
 
     return result;
 }
+
+// 显式实例化
+template class AuditLogDaoImplT<SqliteDbManager>;
+#ifdef ORMPP_ENABLE_MYSQL
+template class AuditLogDaoImplT<MysqlDbManager>;
+#endif
 
 } // namespace nova

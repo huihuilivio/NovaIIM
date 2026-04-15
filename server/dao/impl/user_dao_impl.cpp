@@ -1,20 +1,27 @@
 #include "user_dao_impl.h"
+#include "../sqlite3/sqlite_db_manager.h"
+#ifdef ORMPP_ENABLE_MYSQL
+#include "../mysql/mysql_db_manager.h"
+#endif
 
 namespace nova {
 
-std::optional<User> UserDaoImpl::FindByUid(const std::string& uid) {
+template <typename DbMgr>
+std::optional<User> UserDaoImplT<DbMgr>::FindByUid(const std::string& uid) {
     auto res = db_.DB().query_s<User>("uid=? AND status!=3", uid);
     if (res.empty()) return std::nullopt;
     return res[0];
 }
 
-std::optional<User> UserDaoImpl::FindById(int64_t id) {
+template <typename DbMgr>
+std::optional<User> UserDaoImplT<DbMgr>::FindById(int64_t id) {
     auto res = db_.DB().query_s<User>("id=? AND status!=3", id);
     if (res.empty()) return std::nullopt;
     return res[0];
 }
 
-UserListResult UserDaoImpl::ListUsers(const std::string& keyword, int status,
+template <typename DbMgr>
+UserListResult UserDaoImplT<DbMgr>::ListUsers(const std::string& keyword, int status,
                                        int page, int page_size) {
     UserListResult result;
     int offset = (page - 1) * page_size;
@@ -55,30 +62,44 @@ UserListResult UserDaoImpl::ListUsers(const std::string& keyword, int status,
     return result;
 }
 
-bool UserDaoImpl::Insert(User& user) {
+template <typename DbMgr>
+bool UserDaoImplT<DbMgr>::Insert(User& user) {
     auto id = db_.DB().get_insert_id_after_insert(user);
     if (id == 0) return false;
     user.id = static_cast<int64_t>(id);
     return true;
 }
 
-bool UserDaoImpl::UpdateStatus(int64_t id, int8_t status) {
-    // 查出完整对象，修改字段，通过 update_some 安全更新（内部用 prepared statement）
+template <typename DbMgr>
+bool UserDaoImplT<DbMgr>::UpdateStatus(int64_t id, int8_t status) {
     auto res = db_.DB().query_s<User>("id=?", id);
     if (res.empty()) return false;
     res[0].status = status;
     return db_.DB().update_some<&User::status>(res[0]) == 1;
 }
 
-bool UserDaoImpl::UpdatePassword(int64_t id, const std::string& password_hash) {
+template <typename DbMgr>
+bool UserDaoImplT<DbMgr>::UpdatePassword(int64_t id, const std::string& password_hash) {
     auto res = db_.DB().query_s<User>("id=?", id);
     if (res.empty()) return false;
     res[0].password_hash = password_hash;
     return db_.DB().update_some<&User::password_hash>(res[0]) == 1;
 }
 
-bool UserDaoImpl::SoftDelete(int64_t id) {
+template <typename DbMgr>
+bool UserDaoImplT<DbMgr>::SoftDelete(int64_t id) {
     return UpdateStatus(id, 3);
 }
+
+template <typename DbMgr>
+std::vector<UserDevice> UserDaoImplT<DbMgr>::ListDevicesByUser(int64_t user_id) {
+    return db_.DB().query_s<UserDevice>("user_id=?", user_id);
+}
+
+// 显式实例化
+template class UserDaoImplT<SqliteDbManager>;
+#ifdef ORMPP_ENABLE_MYSQL
+template class UserDaoImplT<MysqlDbManager>;
+#endif
 
 } // namespace nova

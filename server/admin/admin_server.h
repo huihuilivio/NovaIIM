@@ -9,7 +9,7 @@
 namespace nova {
 
 class ServerContext;
-class DbManager;
+class DaoFactory;
 
 // Admin HTTP 管理面板（独立端口，不走 Gateway TCP 协议）
 class AdminServer {
@@ -20,7 +20,7 @@ public:
         int         jwt_expires = 86400;
     };
 
-    AdminServer(ServerContext& ctx, DbManager& db);
+    AdminServer(ServerContext& ctx, DaoFactory& dao);
     ~AdminServer();
 
     AdminServer(const AdminServer&) = delete;
@@ -70,7 +70,7 @@ private:
     static std::string GetClientIp(HttpRequest* req);
 
     ServerContext& ctx_;
-    DbManager& db_;
+    DaoFactory& dao_;
     Options opts_;
     hv::HttpService service_;
     std::unique_ptr<hv::HttpServer> server_;

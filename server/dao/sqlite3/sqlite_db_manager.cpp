@@ -1,10 +1,10 @@
-#include "db_manager.h"
+#include "sqlite_db_manager.h"
 
 #include <spdlog/spdlog.h>
 
 namespace nova {
 
-bool DbManager::Open(const std::string& path) {
+bool SqliteDbManager::Open(const std::string& path) {
     if (!db_.connect(path)) {
         SPDLOG_ERROR("Failed to open database: {}", path);
         return false;
@@ -25,13 +25,12 @@ bool DbManager::Open(const std::string& path) {
     return true;
 }
 
-void DbManager::Close() {
+void SqliteDbManager::Close() {
     db_.disconnect();
     SPDLOG_INFO("Database closed");
 }
 
-bool DbManager::InitSchema() {
-    // ormpp create_datatable 自动生成 CREATE TABLE IF NOT EXISTS
+bool SqliteDbManager::InitSchema() {
     bool ok = true;
 
     ok = ok && db_.create_datatable<User>(ormpp_auto_key{"id"},
@@ -53,7 +52,6 @@ bool DbManager::InitSchema() {
     ok = ok && db_.create_datatable<UserRole>(ormpp_auto_key{"id"},
                 ormpp_unique{{"user_id", "role_id"}});
 
-    // ormpp 不直接支持 CREATE INDEX，手动补充
     db_.execute("CREATE INDEX IF NOT EXISTS idx_msg_conv_time ON messages(conversation_id, created_at)");
     db_.execute("CREATE INDEX IF NOT EXISTS idx_msg_sender ON messages(sender_id)");
     db_.execute("CREATE INDEX IF NOT EXISTS idx_audit_user_action ON audit_logs(user_id, action)");

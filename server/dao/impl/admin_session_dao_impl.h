@@ -1,13 +1,15 @@
 #pragma once
 
-#include "admin_session_dao.h"
-#include "db_manager.h"
+#include "../admin_session_dao.h"
 
 namespace nova {
 
-class AdminSessionDaoImpl : public AdminSessionDao {
+class SqliteDbManager;  // forward
+
+template <typename DbMgr>
+class AdminSessionDaoImplT : public AdminSessionDao {
 public:
-    explicit AdminSessionDaoImpl(DbManager& db) : db_(db) {}
+    explicit AdminSessionDaoImplT(DbMgr& db) : db_(db) {}
 
     bool Insert(const AdminSession& session) override;
     bool IsRevoked(const std::string& token_hash) override;
@@ -15,7 +17,7 @@ public:
     bool RevokeByTokenHash(const std::string& token_hash) override;
 
 private:
-    DbManager& db_;
+    DbMgr& db_;
 };
 
 } // namespace nova

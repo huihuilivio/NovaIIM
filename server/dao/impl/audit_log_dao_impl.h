@@ -1,13 +1,15 @@
 #pragma once
 
-#include "audit_log_dao.h"
-#include "db_manager.h"
+#include "../audit_log_dao.h"
 
 namespace nova {
 
-class AuditLogDaoImpl : public AuditLogDao {
+class SqliteDbManager;  // forward
+
+template <typename DbMgr>
+class AuditLogDaoImplT : public AuditLogDao {
 public:
-    explicit AuditLogDaoImpl(DbManager& db) : db_(db) {}
+    explicit AuditLogDaoImplT(DbMgr& db) : db_(db) {}
 
     bool Insert(const AuditLog& log) override;
     AuditLogListResult List(int64_t user_id, const std::string& action,
@@ -16,7 +18,7 @@ public:
                             int page, int page_size) override;
 
 private:
-    DbManager& db_;
+    DbMgr& db_;
 };
 
 } // namespace nova
