@@ -6,8 +6,10 @@
 #include "core/thread_pool.h"
 #include "core/logger.h"
 #include "core/config.h"
+#include "core/server_context.h"
 #include "core/formatters.h"
 #include "model/packet.h"
+#include "admin/admin_server.h"
 
 #include <CLI/CLI.hpp>
 
@@ -61,6 +63,9 @@ int main(int argc, char* argv[]) {
     NOVA_LOG_INFO("Config loaded from: {}", config_path);
     NOVA_LOG_DEBUG("Config:\n{}", cfg);
 
+    // 初始化服务上下文（线程安全的运行时指标中心）
+    ServerContext ctx(cfg);
+
     // 初始化服务
     UserService user_svc;
     MsgService  msg_svc;
@@ -80,7 +85,7 @@ int main(int argc, char* argv[]) {
     router.Register(Cmd::kSyncUnread, [&](ConnectionPtr c, Packet& p) { sync_svc.HandleSyncUnread(c, p); });
 
     // 启动 Gateway
-    Gateway gateway;
+    Gateway gateway(ctx);
     gateway.SetWorkerThreads(cfg.server.worker_threads);
     gateway.SetPacketHandler([&](ConnectionPtr conn, Packet& pkt) {
         router.Dispatch(std::move(conn), pkt);
@@ -94,6 +99,19 @@ int main(int argc, char* argv[]) {
 
     NOVA_LOG_INFO("NovaIIM Server listening on port {}", port);
 
+    // 启动 Admin HTTP 管理面板
+    std::unique_ptr<AdminServer> admin;
+    if (cfg.admin.enabled) {
+        admin = std::make_unique<AdminServer>(ctx);
+        AdminServer::Options admin_opts;
+        admin_opts.port  = cfg.admin.port;
+        admin_opts.token = cfg.admin.token;
+        if (admin->Start(admin_opts) != 0) {
+            NOVA_LOG_WARN("Admin server failed to start, continuing without it");
+            admin.reset();
+        }
+    }
+
     // 阻塞等待 SIGINT / SIGTERM
     std::signal(SIGINT,  SignalHandler);
     std::signal(SIGTERM, SignalHandler);
@@ -102,6 +120,7 @@ int main(int argc, char* argv[]) {
     }
 
     NOVA_LOG_INFO("Received signal {}, shutting down...", g_signal.load());
+    if (admin) admin->Stop();
     gateway.Stop();
     NOVA_LOG_INFO("NovaIIM Server stopped");
     return 0;

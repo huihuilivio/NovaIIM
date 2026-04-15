@@ -21,3 +21,8 @@ db:
   password: ""
   dbname: nova_im
   pool_size: 4
+
+admin:
+  enabled: true
+  port: 9091
+  token: ""                      # Bearer token for admin API auth, empty = no auth

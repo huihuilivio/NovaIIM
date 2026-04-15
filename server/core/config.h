@@ -38,10 +38,17 @@ struct DatabaseConfig {
     int         pool_size = 4;
 };
 
+struct AdminConfig {
+    bool        enabled  = false;
+    int         port     = 9091;
+    std::string token;             // 简单 Bearer token 鉴权，空则不启用鉴权
+};
+
 struct Config {
     ServerConfig   server;
     LogConfig      log;
     DatabaseConfig db;
+    AdminConfig    admin;
 };
 
 // 从 YAML 文件加载配置，成功返回 true

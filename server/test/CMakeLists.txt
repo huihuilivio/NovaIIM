@@ -1,4 +1,4 @@
-# server/cpp/test - 服务端单元测试
+# server/test - 服务端单元测试
 
 # ---- ConnManager 测试 ----
 nova_add_test(

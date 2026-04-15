@@ -9,16 +9,22 @@
 
 namespace nova {
 
+class ServerContext;
+
 // Gateway 网关（对应架构文档 4.1）
 // 职责：管理 TCP 连接、协议拆包、心跳超时
 class Gateway {
 public:
     using PacketHandler = std::function<void(ConnectionPtr, Packet&)>;
 
-    Gateway() = default;
+    explicit Gateway(ServerContext& ctx);
     ~Gateway();
 
-    // 设置数据包处理回调（由 Router 注册）
+    // 禁止拷贝/移动（回调中捕获了 this）
+    Gateway(const Gateway&) = delete;
+    Gateway& operator=(const Gateway&) = delete;
+
+    // 设置数据包处理回调（由 Router 注册，必须在 Start 之前调用）
     void SetPacketHandler(PacketHandler handler) { handler_ = std::move(handler); }
 
     // 配置参数（在 Start 之前调用）
@@ -37,7 +43,7 @@ private:
 
     PacketHandler handler_;
     std::unique_ptr<hv::TcpServer> server_;
-    unpack_setting_t unpack_setting_{};
+    ServerContext& ctx_;
     int  worker_threads_ = 4;
     int  heartbeat_ms_   = 30000;  // 30s 心跳超时
 };

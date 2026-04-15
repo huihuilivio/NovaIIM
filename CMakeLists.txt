@@ -26,7 +26,7 @@ nova_fetch_all_dependencies()
 add_subdirectory(protocol)
 
 if(NOVA_BUILD_SERVER)
-    add_subdirectory(server/cpp)
+    add_subdirectory(server)
 endif()
 
 if(NOVA_BUILD_CLIENT)
@@ -37,7 +37,7 @@ endif()
 if(NOVA_BUILD_TESTS)
     enable_testing()
     include(testing)
-    add_subdirectory(server/cpp/test)
+    add_subdirectory(server/test)
 endif()
 
 # ---- 构建信息 ----
