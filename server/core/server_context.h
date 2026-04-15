@@ -46,7 +46,7 @@ public:
     }
 
 private:
-    const Config& config_;
+    Config config_;
     std::chrono::steady_clock::time_point start_time_;
 
     std::atomic<int>     conn_count_{0};

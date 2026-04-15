@@ -15,8 +15,9 @@ class ServerContext;
 class AdminServer {
 public:
     struct Options {
-        int         port  = 9091;
-        std::string token;      // Bearer token，空则不鉴权
+        int         port        = 9091;
+        std::string jwt_secret;     // JWT HMAC 密钥，空则不鉴权
+        int         jwt_expires = 86400;
     };
 
     explicit AdminServer(ServerContext& ctx);
@@ -31,8 +32,8 @@ public:
 private:
     void RegisterRoutes(const Options& opts);
 
-    // 鉴权中间件
-    static int AuthMiddleware(HttpRequest* req, HttpResponse* resp, const std::string& token);
+    // 鉴权中间件（JWT）
+    static int AuthMiddleware(HttpRequest* req, HttpResponse* resp, const std::string& secret);
 
     // --- handler ---
     int HandleHealthz(HttpRequest* req, HttpResponse* resp);
@@ -40,6 +41,7 @@ private:
     int HandleKickUser(HttpRequest* req, HttpResponse* resp);
 
     ServerContext& ctx_;
+    Options opts_;
     hv::HttpService service_;
     std::unique_ptr<hv::HttpServer> server_;
 };

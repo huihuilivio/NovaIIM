@@ -26,6 +26,7 @@ if(SERVER_SOURCES)
         spdlog::spdlog
         ylt
         sqlite3
+        ormpp
         l8w8jwt
     )
 

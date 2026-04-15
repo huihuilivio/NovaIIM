@@ -165,6 +165,36 @@ macro(nova_fetch_sqlite3)
 endmacro()
 
 # ============================================================
+# ormpp - C++20 ORM (header-only, 内置 iguana 反射)
+# https://github.com/qicosmos/ormpp
+# 本项目仅使用 SQLite3 后端
+# ============================================================
+macro(nova_fetch_ormpp)
+    message(STATUS "[NovaIIM] Fetching ormpp ...")
+    FetchContent_Declare(ormpp
+        GIT_REPOSITORY https://github.com/qicosmos/ormpp.git
+        GIT_TAG        master
+        GIT_SHALLOW    TRUE
+    )
+    FetchContent_GetProperties(ormpp)
+    if(NOT ormpp_POPULATED)
+        FetchContent_Populate(ormpp)
+    endif()
+
+    if(NOT TARGET ormpp)
+        add_library(ormpp INTERFACE)
+        target_compile_definitions(ormpp INTERFACE ORMPP_ENABLE_SQLITE3)
+        target_include_directories(ormpp SYSTEM INTERFACE
+            ${ormpp_SOURCE_DIR}
+            ${ormpp_SOURCE_DIR}/ormpp
+            ${ormpp_SOURCE_DIR}/iguana
+            ${ormpp_SOURCE_DIR}/frozen/include
+        )
+        target_link_libraries(ormpp INTERFACE sqlite3)
+    endif()
+endmacro()
+
+# ============================================================
 # GoogleTest - 单元测试框架
 # https://github.com/google/googletest
 # 仅在 NOVA_BUILD_TESTS=ON 时拉取
@@ -232,6 +262,7 @@ macro(nova_fetch_l8w8jwt)
     # 第三方头文件标记为 SYSTEM，抑制警告
     target_include_directories(l8w8jwt SYSTEM INTERFACE
         ${l8w8jwt_SOURCE_DIR}/include
+        ${l8w8jwt_SOURCE_DIR}/lib/mbedtls/include
     )
 endmacro()
 
@@ -246,6 +277,7 @@ macro(nova_fetch_all_dependencies)
     nova_fetch_libhv()
     nova_fetch_yalantinglibs()
     nova_fetch_sqlite3()
+    nova_fetch_ormpp()
     nova_fetch_cli11()
     nova_fetch_l8w8jwt()
 

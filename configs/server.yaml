@@ -20,4 +20,5 @@ db:
 admin:
   enabled: true
   port: 9091
-  token: ""                      # Bearer token for admin API auth, empty = no auth
+  jwt_secret: "change-me-in-production"   # JWT HMAC 密钥
+  jwt_expires: 86400                       # JWT 有效期（秒）

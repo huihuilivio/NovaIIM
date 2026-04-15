@@ -37,7 +37,7 @@ public:
     }
 
     void Stop() {
-        stop_ = true;
+        if (stop_.exchange(true)) return;  // 重入安全
         cv_.notify_all();
         for (auto& t : workers_) {
             if (t.joinable()) t.join();

@@ -1,7 +1,9 @@
 #pragma once
 
+#include <atomic>
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <string>
 #include "../model/packet.h"
 
@@ -13,13 +15,19 @@ class Connection {
 public:
     virtual ~Connection() = default;
 
-    int64_t user_id() const { return user_id_; }
-    void set_user_id(int64_t uid) { user_id_ = uid; }
+    int64_t user_id() const { return user_id_.load(std::memory_order_acquire); }
+    void set_user_id(int64_t uid) { user_id_.store(uid, std::memory_order_release); }
 
-    const std::string& device_id() const { return device_id_; }
-    void set_device_id(const std::string& did) { device_id_ = did; }
+    std::string device_id() const {
+        std::lock_guard<std::mutex> lock(device_mutex_);
+        return device_id_;
+    }
+    void set_device_id(const std::string& did) {
+        std::lock_guard<std::mutex> lock(device_mutex_);
+        device_id_ = did;
+    }
 
-    bool is_authenticated() const { return user_id_ != 0; }
+    bool is_authenticated() const { return user_id() != 0; }
 
     // 发送数据包
     virtual void Send(const Packet& pkt) = 0;
@@ -28,8 +36,9 @@ public:
     virtual void Close() = 0;
 
 private:
-    int64_t     user_id_ = 0;
-    std::string device_id_;
+    std::atomic<int64_t>  user_id_{0};
+    mutable std::mutex    device_mutex_;
+    std::string           device_id_;
 };
 
 using ConnectionPtr = std::shared_ptr<Connection>;

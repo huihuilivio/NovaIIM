@@ -19,10 +19,11 @@ void UserService::HandleLogout(ConnectionPtr conn, Packet& pkt) {
 }
 
 void UserService::HandleHeartbeat(ConnectionPtr conn, Packet& pkt) {
-    // 回复心跳 ACK
+    (void)pkt;
+    // 回复心跳 ACK，使用服务端认证后的 user_id 而非客户端声称的 uid
     Packet ack;
     ack.cmd = static_cast<uint16_t>(Cmd::kHeartbeatAck);
-    ack.uid = pkt.uid;
+    ack.uid = conn->user_id();
     conn->Send(ack);
 }
 

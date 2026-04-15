@@ -10,6 +10,7 @@
 #include "core/formatters.h"
 #include "model/packet.h"
 #include "admin/admin_server.h"
+#include "dao/db_manager.h"
 
 #include <CLI/CLI.hpp>
 
@@ -63,6 +64,28 @@ int main(int argc, char* argv[]) {
     NOVA_LOG_INFO("Config loaded from: {}", config_path);
     NOVA_LOG_DEBUG("Config:\n{}", cfg);
 
+    // 初始化数据库
+    DbManager db;
+    if (!db.Open(cfg.db.path)) {
+        NOVA_LOG_ERROR("Failed to open database: {}", cfg.db.path);
+        return 1;
+    }
+    if (!db.InitSchema()) {
+        NOVA_LOG_ERROR("Failed to initialize database schema");
+        return 1;
+    }
+    NOVA_LOG_INFO("Database initialized: {}", cfg.db.path);
+
+    // 校验 JWT 密钥
+    if (cfg.admin.enabled && !cfg.admin.jwt_secret.empty()) {
+        if (cfg.admin.jwt_secret == "change-me-in-production") {
+            NOVA_LOG_WARN("!!! JWT secret is still the default value. Change it in production !!!");
+        }
+        if (cfg.admin.jwt_secret.size() < 16) {
+            NOVA_LOG_WARN("JWT secret is shorter than 16 chars, consider using a stronger secret");
+        }
+    }
+
     // 初始化服务上下文（线程安全的运行时指标中心）
     ServerContext ctx(cfg);
 
@@ -84,11 +107,20 @@ int main(int argc, char* argv[]) {
     router.Register(Cmd::kSyncMsg,    [&](ConnectionPtr c, Packet& p) { sync_svc.HandleSyncMsg(c, p); });
     router.Register(Cmd::kSyncUnread, [&](ConnectionPtr c, Packet& p) { sync_svc.HandleSyncUnread(c, p); });
 
+    // 注册信号处理（在 Gateway 启动前，避免信号丢失）
+    std::signal(SIGINT,  SignalHandler);
+    std::signal(SIGTERM, SignalHandler);
+
+    // 启动 Worker 线程池
+    ThreadPool worker_pool(cfg.server.worker_threads, cfg.server.queue_capacity);
+
     // 启动 Gateway
     Gateway gateway(ctx);
     gateway.SetWorkerThreads(cfg.server.worker_threads);
     gateway.SetPacketHandler([&](ConnectionPtr conn, Packet& pkt) {
-        router.Dispatch(std::move(conn), pkt);
+        worker_pool.Submit([&router, conn = std::move(conn), pkt]() mutable {
+            router.Dispatch(std::move(conn), pkt);
+        });
     });
 
     int port = cfg.server.port;
@@ -104,8 +136,9 @@ int main(int argc, char* argv[]) {
     if (cfg.admin.enabled) {
         admin = std::make_unique<AdminServer>(ctx);
         AdminServer::Options admin_opts;
-        admin_opts.port  = cfg.admin.port;
-        admin_opts.token = cfg.admin.token;
+        admin_opts.port        = cfg.admin.port;
+        admin_opts.jwt_secret  = cfg.admin.jwt_secret;
+        admin_opts.jwt_expires = cfg.admin.jwt_expires;
         if (admin->Start(admin_opts) != 0) {
             NOVA_LOG_WARN("Admin server failed to start, continuing without it");
             admin.reset();
@@ -113,8 +146,6 @@ int main(int argc, char* argv[]) {
     }
 
     // 阻塞等待 SIGINT / SIGTERM
-    std::signal(SIGINT,  SignalHandler);
-    std::signal(SIGTERM, SignalHandler);
     while (g_running.load(std::memory_order_relaxed)) {
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
     }
@@ -122,6 +153,8 @@ int main(int argc, char* argv[]) {
     NOVA_LOG_INFO("Received signal {}, shutting down...", g_signal.load());
     if (admin) admin->Stop();
     gateway.Stop();
+    worker_pool.Stop();
+    db.Close();
     NOVA_LOG_INFO("NovaIIM Server stopped");
     return 0;
 }

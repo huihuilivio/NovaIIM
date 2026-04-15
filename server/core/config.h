@@ -34,9 +34,10 @@ struct DatabaseConfig {
 };
 
 struct AdminConfig {
-    bool        enabled  = false;
-    int         port     = 9091;
-    std::string token;             // 简单 Bearer token 鉴权，空则不启用鉴权
+    bool        enabled     = false;
+    int         port        = 9091;
+    std::string jwt_secret;            // JWT HMAC 密钥，空则不启用鉴权
+    int         jwt_expires = 86400;   // JWT 有效期（秒），默认 24h
 };
 
 struct Config {

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <cassert>
 #include <vector>
 
 namespace nova {
@@ -12,7 +13,8 @@ class MPMCQueue {
 public:
     explicit MPMCQueue(size_t capacity)
         : buffer_(capacity), capacity_(capacity), mask_(capacity - 1) {
-        // capacity 必须是 2 的幂
+        assert(capacity >= 2 && (capacity & (capacity - 1)) == 0
+               && "MPMCQueue capacity must be a power of 2");
         for (size_t i = 0; i < capacity; ++i) {
             buffer_[i].seq.store(i, std::memory_order_relaxed);
         }
@@ -20,27 +22,14 @@ public:
         tail_.store(0, std::memory_order_relaxed);
     }
 
-    // 非阻塞入队，成功返回 true
+    // 非阻塞入队（拷贝），成功返回 true
     bool Push(const T& item) {
-        Cell* cell;
-        size_t pos = head_.load(std::memory_order_relaxed);
-        for (;;) {
-            cell = &buffer_[pos & mask_];
-            size_t seq = cell->seq.load(std::memory_order_acquire);
-            intptr_t diff = static_cast<intptr_t>(seq) - static_cast<intptr_t>(pos);
-            if (diff == 0) {
-                if (head_.compare_exchange_weak(pos, pos + 1, std::memory_order_relaxed)) {
-                    break;
-                }
-            } else if (diff < 0) {
-                return false; // 队列满
-            } else {
-                pos = head_.load(std::memory_order_relaxed);
-            }
-        }
-        cell->data = item;
-        cell->seq.store(pos + 1, std::memory_order_release);
-        return true;
+        return PushImpl(item);
+    }
+
+    // 非阻塞入队（移动），成功返回 true
+    bool Push(T&& item) {
+        return PushImpl(std::move(item));
     }
 
     // 非阻塞出队，成功返回 true
@@ -67,6 +56,29 @@ public:
     }
 
 private:
+    template <typename U>
+    bool PushImpl(U&& item) {
+        Cell* cell;
+        size_t pos = head_.load(std::memory_order_relaxed);
+        for (;;) {
+            cell = &buffer_[pos & mask_];
+            size_t seq = cell->seq.load(std::memory_order_acquire);
+            intptr_t diff = static_cast<intptr_t>(seq) - static_cast<intptr_t>(pos);
+            if (diff == 0) {
+                if (head_.compare_exchange_weak(pos, pos + 1, std::memory_order_relaxed)) {
+                    break;
+                }
+            } else if (diff < 0) {
+                return false; // 队列满
+            } else {
+                pos = head_.load(std::memory_order_relaxed);
+            }
+        }
+        cell->data = std::forward<U>(item);
+        cell->seq.store(pos + 1, std::memory_order_release);
+        return true;
+    }
+
     struct Cell {
         std::atomic<size_t> seq;
         T data;
