@@ -7,18 +7,22 @@
 | l8w8jwt 库集成 | ✅ 完成 | FetchContent, HS256/384/512 |
 | JwtUtils | ✅ 完成 | Sign / Verify, 可选算法 |
 | AdminServer 框架 | ✅ 完成 | libhv HttpServer, JWT 中间件, X-Nova-* 防伪造 |
-| ServerContext | ✅ 完成 | 原子计数器, Config 按值存储(防悬垂引用) |
+| ServerContext | ✅ 完成 | 原子计数器, AppConfig 按值存储(防悬垂引用) |
 | http_helper | ✅ 完成 | JsonOk/JsonError, Pagination(int64_t Offset), HasPermission(精确分割匹配) |
 | PasswordUtils | ✅ 完成 | PBKDF2-SHA256 (MbedTLS), 100k iterations, 全部 mbedtls 返回值检查 |
-| DbManager (ormpp+SQLite3) | ✅ 完成 | WAL + FK + busy_timeout, PRAGMA 返回值检查 |
+| DaoFactory 抽象工厂 | ✅ 完成 | 统一 DAO 访问入口，支持 SQLite/MySQL 后端切换 |
+| SqliteDbManager (ormpp+SQLite3) | ✅ 完成 | WAL + FK + busy_timeout, PRAGMA 返回值检查 |
+| MysqlDbManager (ormpp+MySQL) | ✅ 完成 | 连接池 + ConnGuard RAII, ping 健康检查, 自动重连 |
+| MySQL 客户端库下载 | ✅ 完成 | Python 脚本自动检测/下载, cdn.mysql.com 多镜像回退 |
 | Model 补全 | ✅ 完成 | User/UserDevice/Message/Conversation/ConversationMember/AuditLog/AdminSession/Role/Permission/RolePermission/UserRole, ormpp ADL 别名 |
-| DAO 全部实现 | ✅ 完成 | UserDao/AuditLogDao/AdminSessionDao/RbacDao, 全参数化查询(防SQL注入), LIKE 通配符转义 |
-| main.cpp 集成 | ✅ 完成 | DbManager + ThreadPool 接入, 信号注册前置, JWT 密钥校验 |
+| DAO 全部实现 | ✅ 完成 | UserDao/MessageDao/AuditLogDao/AdminSessionDao/RbacDao, 模板化支持双后端, 全参数化查询(防SQL注入), LIKE 通配符转义 |
+| main.cpp 集成 | ✅ 完成 | CreateDaoFactory + ThreadPool 接入, 信号注册前置, JWT 密钥校验 |
 | 线程安全 | ✅ 完成 | Connection::user_id_ atomic, device_id_ mutex, MPMCQueue move Push + 容量 assert, ThreadPool 重入安全 |
 | AdminConfig | ✅ 完成 | jwt_secret + jwt_expires, server.yaml 已更新 |
-| 鉴权中间件 | ⚠️ 部分 | JWT 验签 + X-Nova-* 清除已完成; Phase 2 需补: 黑名单查询 + permissions 注入 |
-| Handler 层 | ❌ | 无 auth/user/message/audit handler |
-| 审计日志写入 | ❌ | DAO 已就绪，handler 层尚未集成写入逻辑 |
+| 鉴权中间件 | ✅ 完成 | JWT 验签 + X-Nova-* 清除 + 黑名单查询 + permissions 注入 |
+| Handler 层 | ✅ 完成 | auth/dashboard/user/message/audit 全部 handler 已实现 |
+| 审计日志写入 | ✅ 完成 | 全部写操作 handler 均集成 WriteAuditLog |
+| DAO 目录重构 | ✅ 完成 | 公共接口 dao/, 模板实现 dao/impl/, 后端 dao/sqlite3/ + dao/mysql/ |
 
 ---
 
@@ -27,9 +31,9 @@
 ```
 Phase 0 (基础工具)          ← ✅ 已完成
   └─ Phase 1 (DAO 层)       ← ✅ 已完成
-       └─ Phase 2 (认证 + 鉴权)
-            └─ Phase 3 (业务 API)
-                 └─ Phase 4 (审计 + 测试)
+       └─ Phase 2 (认证 + 鉴权) ← ✅ 已完成
+            └─ Phase 3 (业务 API) ← ✅ 已完成
+                 └─ Phase 4 (审计 + 测试) ← ⚠️ 审计已完成, 测试待补
 ```
 
 ---
@@ -41,7 +45,7 @@ Phase 0 (基础工具)          ← ✅ 已完成
 | 0.1 | 统一 JSON 响应助手 | `server/admin/http_helper.h` | ✅ JsonOk / JsonError / ApiCode |
 | 0.2 | 分页请求解析 | `server/admin/http_helper.h` | ✅ ParsePagination, int64_t Offset() |
 | 0.3 | 密码哈希工具 | `server/admin/password_utils.h/cpp` | ✅ PBKDF2-SHA256, mbedtls 返回值全检查 |
-| 0.4 | AdminConfig 扩展 | `server/core/config.h` | ✅ jwt_secret + jwt_expires |
+| 0.4 | AdminConfig 扩展 | `server/core/app_config.h` | ✅ jwt_secret + jwt_expires (Config→AppConfig 已重命名) |
 | 0.5 | server.yaml 更新 | `configs/server.yaml` | ✅ jwt_secret / jwt_expires |
 
 ---
@@ -61,62 +65,71 @@ Phase 0 (基础工具)          ← ✅ 已完成
 ### 1B — DAO 实现 ✅
 
 > **技术选型变更：** 原计划使用 sqlite3 C API，改为 **ormpp** (header-only C++20 ORM, iguana 反射)，内部用 prepared statement 防注入。
+> **架构升级：** DAO 实现改为模板化 `XxxDaoImplT<DbMgr>`，通过 DaoFactory 抽象工厂统一访问，支持 SQLite/MySQL 双后端切换。
 
 | # | 任务 | 文件 | 状态 |
 |---|------|------|------|
-| 1.6 | DbManager (ormpp+SQLite3) | `server/dao/db_manager.h/cpp` | ✅ WAL + FK + ormpp_auto_key + create_datatable |
-| 1.7 | UserDaoImpl | `server/dao/user_dao_impl.h/cpp` | ✅ FindByUid / FindById / ListUsers / Insert / UpdateStatus / UpdatePassword / SoftDelete |
-| 1.8 | AuditLogDaoImpl | `server/dao/audit_log_dao_impl.h/cpp` | ✅ Insert / List (参数化, 多条件组合) |
-| 1.9 | AdminSessionDaoImpl | `server/dao/admin_session_dao_impl.h/cpp` | ✅ Insert / IsRevoked / RevokeByUser / RevokeByTokenHash |
-| 1.10 | RbacDaoImpl | `server/dao/rbac_dao_impl.h/cpp` | ✅ GetUserPermissions (3表JOIN参数化查询) |
-| 1.11 | main.cpp 集成 | `server/main.cpp` | ✅ Open → InitSchema → Close |
+| 1.6 | DaoFactory 抽象工厂 | `server/dao/dao_factory.h/cpp` | ✅ CreateDaoFactory 根据配置创建对应后端 |
+| 1.7 | SqliteDbManager (ormpp+SQLite3) | `server/dao/sqlite3/sqlite_db_manager.h/cpp` | ✅ WAL + FK + ormpp_auto_key + create_datatable |
+| 1.8 | MysqlDbManager (ormpp+MySQL) | `server/dao/mysql/mysql_db_manager.h/cpp` | ✅ 连接池 + ConnGuard RAII + ping 健康检查 |
+| 1.9 | SqliteDaoFactory | `server/dao/sqlite3/sqlite_dao_factory.h/cpp` | ✅ Pimpl 模式, 持有所有 DAO 实例 |
+| 1.10 | MysqlDaoFactory | `server/dao/mysql/mysql_dao_factory.h/cpp` | ✅ Pimpl 模式, 持有所有 DAO 实例 |
+| 1.11 | UserDaoImplT | `server/dao/impl/user_dao_impl.h/cpp` | ✅ FindByUid / FindById / ListUsers / Insert / UpdateStatus / UpdatePassword / SoftDelete / ListDevicesByUser |
+| 1.12 | MessageDaoImplT | `server/dao/impl/message_dao_impl.h/cpp` | ✅ Insert / GetAfterSeq / UpdateStatus / ListMessages / FindById |
+| 1.13 | AuditLogDaoImplT | `server/dao/impl/audit_log_dao_impl.h/cpp` | ✅ Insert / List (参数化, 多条件组合) |
+| 1.14 | AdminSessionDaoImplT | `server/dao/impl/admin_session_dao_impl.h/cpp` | ✅ Insert / IsRevoked / RevokeByUser / RevokeByTokenHash |
+| 1.15 | RbacDaoImplT | `server/dao/impl/rbac_dao_impl.h/cpp` | ✅ GetUserPermissions / HasPermission (3表JOIN参数化查询) |
+| 1.16 | MySQL 客户端库下载 | `cmake/fetch_mysql_client.py` | ✅ Python 脚本, 系统检测 + cdn.mysql.com 多镜像回退 |
+| 1.17 | main.cpp 集成 | `server/main.cpp` | ✅ CreateDaoFactory → DaoFactory 生命周期管理 |
 
 ---
 
-## Phase 2 — 认证 + 鉴权 ← **下一步**
+## Phase 2 — 认证 + 鉴权 ✅
 
 **前置依赖：** ✅ Phase 0 + Phase 1 已完成
 
 | # | 任务 | 文件 | 说明 | 状态 |
 |---|------|------|------|------|
 | 2.1 | JWT 工具 | `server/admin/jwt_utils.h/cpp` | Sign / Verify (HS256) | ✅ 完成 |
-| 2.2 | AuthMiddleware 补全 | `server/admin/admin_server.cpp` | 查 admin_sessions 黑名单 → 注入 permissions 到 X-Nova-Permissions | ❌ |
+| 2.2 | AuthMiddleware 补全 | `server/admin/admin_server.cpp` | 查 admin_sessions 黑名单 → 注入 permissions 到 X-Nova-Permissions | ✅ 完成 |
 | 2.3 | PermissionGuard | `server/admin/http_helper.h` | RequirePermission(req, perm) → 403 | ✅ 完成 |
-| 2.4 | POST /auth/login | `server/admin/handlers/auth_handler.h/cpp` | 校验密码 → 检查权限 → 签发JWT → 写session → 审计 | ❌ |
-| 2.5 | POST /auth/logout | 同上 | 吊销token → 审计 | ❌ |
-| 2.6 | GET /auth/me | 同上 | user_id → UserDao + RbacDao | ❌ |
+| 2.4 | POST /auth/login | `server/admin/admin_server.cpp` | 校验密码 → HasPermission("admin.login") → 签发JWT → 写session → 审计 | ✅ 完成 |
+| 2.5 | POST /auth/logout | 同上 | 吊销token → 审计 | ✅ 完成 |
+| 2.6 | GET /auth/me | 同上 | user_id → UserDao + RbacDao → 返回用户信息 + 权限列表 | ✅ 完成 |
 
 ---
 
-## Phase 3 — 业务 API
+## Phase 3 — 业务 API ✅
 
-**前置依赖：** Phase 2 (鉴权中间件)
+**前置依赖：** Phase 2 (鉴权中间件) ✅
 
-### 3A — 仪表盘
+> **架构变更：** 未使用独立 handlers/ 目录，所有 handler 直接作为 AdminServer 成员函数实现于 `admin_server.cpp`，结构更紧凑。
 
-| # | 任务 | 说明 | 状态 |
-|---|------|------|------|
-| 3.1 | GET /dashboard/stats | 已有逻辑，需权限 `admin.dashboard` | ⚠️ 逻辑存在，需加权限检查 |
-
-### 3B — 用户管理
+### 3A — 仪表盘 ✅
 
 | # | 任务 | 说明 | 状态 |
 |---|------|------|------|
-| 3.2 | GET /users | UserDao::ListUsers | ❌ |
-| 3.3 | POST /users | UserDao::Insert + PasswordUtils::Hash | ❌ |
-| 3.4 | GET /users/:id | UserDao::FindById + 在线状态 + 设备 | ❌ |
-| 3.5 | DELETE /users/:id | SoftDelete → kick → 审计 | ❌ |
-| 3.6 | POST /users/:id/reset-password | UpdatePassword → 审计 | ❌ |
-| 3.7 | POST /users/:id/ban | UpdateStatus(2) → kick → 审计 | ❌ |
-| 3.8 | POST /users/:id/unban | UpdateStatus(1) → 审计 | ❌ |
-| 3.9 | POST /users/:id/kick | ConnManager → Close → 审计 | ⚠️ 逻辑存在，需补权限+审计 |
+| 3.1 | GET /dashboard/stats | 权限 `admin.dashboard`, 返回连接数/在线/消息/uptime | ✅ 完成 |
 
-### 3C — 消息管理
+### 3B — 用户管理 ✅
 
 | # | 任务 | 说明 | 状态 |
 |---|------|------|------|
-| 3.10 | GET /messages | MessageDao::ListMessages | ❌ |
-| 3.11 | POST /messages/:id/recall | UpdateStatus(1) → 审计 | ❌ |
+| 3.2 | GET /users | UserDao::ListUsers + 分页 + keyword/status 筛选 + is_online | ✅ 完成 |
+| 3.3 | POST /users | UserDao::Insert + PasswordUtils::Hash + uid 去重 + 审计 | ✅ 完成 |
+| 3.4 | GET /users/:id | UserDao::FindById + 在线状态 + ListDevicesByUser | ✅ 完成 |
+| 3.5 | DELETE /users/:id | SoftDelete → kick → 审计 | ✅ 完成 |
+| 3.6 | POST /users/:id/reset-password | UpdatePassword → 审计 | ✅ 完成 |
+| 3.7 | POST /users/:id/ban | UpdateStatus(2) → kick → 审计 | ✅ 完成 |
+| 3.8 | POST /users/:id/unban | UpdateStatus(1) → 审计 | ✅ 完成 |
+| 3.9 | POST /users/:id/kick | ConnManager → Close → 审计 | ✅ 完成 |
+
+### 3C — 消息管理 ✅
+
+| # | 任务 | 说明 | 状态 |
+|---|------|------|------|
+| 3.10 | GET /messages | MessageDao::ListMessages + 分页 + conversation_id/时间范围 + sender_uid 缓存 | ✅ 完成 |
+| 3.11 | POST /messages/:id/recall | UpdateStatus(1) → 审计(含 reason + conversation_id) | ✅ 完成 |
 
 ---
 
@@ -124,14 +137,16 @@ Phase 0 (基础工具)          ← ✅ 已完成
 
 | # | 任务 | 说明 | 状态 |
 |---|------|------|------|
-| 4.1 | GET /audit-logs | AuditLogDao::List | ❌ |
-| 4.2 | 路由注册重构 | RegisterRoutes 注册全部路由，注入 DAO | ❌ |
-| 4.3 | AdminServer 注入 DAO | 构造函数接收 DbManager/DAO 依赖 | ❌ |
-| 4.4 | main.cpp 完整集成 | DAO → AdminServer 注入 | ❌ |
+| 4.1 | GET /audit-logs | AuditLogDao::List + 分页 + user_id/action/时间筛选 + operator_uid 缓存 | ✅ 完成 |
+| 4.2 | 路由注册重构 | RegisterRoutes 注册全部路由(auth/dashboard/user/message/audit) | ✅ 完成 |
+| 4.3 | AdminServer 注入 DAO | 构造函数接收 DaoFactory& 依赖 | ✅ 完成 |
+| 4.4 | main.cpp 完整集成 | CreateDaoFactory → AdminServer 注入 | ✅ 完成 |
 | 4.5 | JWT 单元测试 | Sign → Verify 往返 / 过期 / 篡改 | ❌ |
 | 4.6 | 密码哈希测试 | Hash → Verify / 错误密码 | ❌ |
-| 4.7 | Handler 测试 | mock DAO → 验证 HTTP 请求/响应 | ❌ |
-| 4.8 | 集成测试 | login → 调用各 API → 验证审计 | ❌ |
+| 4.7 | DAO 单元测试 | 各 DAO 操作验证(SQLite 后端) | ❌ |
+| 4.8 | Handler 测试 | mock DAO → 验证 HTTP 请求/响应 | ❌ |
+| 4.9 | 集成测试 | login → 调用各 API → 验证审计 | ❌ |
+| 4.10 | ConversationDao 实现 | 接口已定义, 需补模板实现 + 接入 DaoFactory | ❌ |
 
 ---
 
@@ -139,38 +154,40 @@ Phase 0 (基础工具)          ← ✅ 已完成
 
 ```
 server/
-  main.cpp                          ← ✅ 入口: config → db → gateway → threadpool → admin
+  main.cpp                          ← ✅ 入口: config → CreateDaoFactory → gateway → threadpool → admin
   CMakeLists.txt
   admin/
-    admin_server.h / .cpp           ← ✅ 路由注册 + JWT中间件 + X-Nova-* 防伪造
+    admin_server.h / .cpp           ← ✅ 路由注册 + JWT中间件(黑名单+RBAC) + 全部Handler + 审计写入
     jwt_utils.h / .cpp              ← ✅ JWT 签发/验证 (l8w8jwt)
     password_utils.h / .cpp         ← ✅ PBKDF2-SHA256 (MbedTLS, 返回值全检查)
     http_helper.h                   ← ✅ JSON 响应 + 分页(int64_t) + 权限检查(精确匹配)
-    handlers/                       ← ❌ 待创建
-      auth_handler.h / .cpp
-      dashboard_handler.h / .cpp
-      user_handler.h / .cpp
-      message_handler.h / .cpp
-      audit_handler.h / .cpp
   core/
-    config.h / .cpp                 ← ✅ YAML 配置 (ylt struct_yaml)
-    server_context.h                ← ✅ 原子指标中心 (Config 按值存储)
+    app_config.h / .cpp             ← ✅ YAML 配置 (ylt struct_yaml), Config→AppConfig 已重命名
+    server_context.h                ← ✅ 原子指标中心 (AppConfig 按值存储)
     logger.h / .cpp                 ← ✅ spdlog 封装
     formatters.h                    ← ✅ spdlog 自定义 formatter
     thread_pool.h                   ← ✅ Worker 线程池 (重入安全Stop, atomic exchange)
     mpmc_queue.h                    ← ✅ Vyukov MPMC (move Push, 容量 assert)
   dao/
-    db_manager.h / .cpp             ← ✅ ormpp + SQLite3 (WAL + FK + PRAGMA 检查)
+    dao_factory.h / .cpp            ← ✅ DaoFactory 抽象工厂 + CreateDaoFactory 调度
     user_dao.h                      ← ✅ 抽象接口
-    user_dao_impl.h / .cpp          ← ✅ ormpp 实现 (参数化, LIKE 转义)
+    message_dao.h                   ← ✅ 抽象接口
     audit_log_dao.h                 ← ✅ 抽象接口
-    audit_log_dao_impl.h / .cpp     ← ✅ ormpp 实现 (多条件参数化)
     admin_session_dao.h             ← ✅ 抽象接口
-    admin_session_dao_impl.h / .cpp ← ✅ ormpp 实现 (update_some prepared stmt)
     rbac_dao.h                      ← ✅ 抽象接口
-    rbac_dao_impl.h / .cpp          ← ✅ ormpp 实现 (3表JOIN参数化)
-    conversation_dao.h              ← ⚠️ 接口存在，无实现
-    message_dao.h                   ← ⚠️ 接口存在，无实现
+    conversation_dao.h              ← ⚠️ 接口已定义, 无模板实现, 未接入 DaoFactory
+    impl/
+      user_dao_impl.h / .cpp        ← ✅ 模板 XxxDaoImplT<DbMgr>, 双后端显式实例化
+      message_dao_impl.h / .cpp     ← ✅ 同上
+      audit_log_dao_impl.h / .cpp   ← ✅ 同上
+      admin_session_dao_impl.h / .cpp ← ✅ 同上
+      rbac_dao_impl.h / .cpp        ← ✅ 同上
+    sqlite3/
+      sqlite_db_manager.h / .cpp    ← ✅ ormpp + SQLite3 (WAL + FK + PRAGMA 检查)
+      sqlite_dao_factory.h / .cpp   ← ✅ SqliteDaoFactory (Pimpl, 持有所有 DAO)
+    mysql/
+      mysql_db_manager.h / .cpp     ← ✅ ormpp + MySQL (连接池 + ConnGuard + 自动重连)
+      mysql_dao_factory.h / .cpp    ← ✅ MysqlDaoFactory (Pimpl, 持有所有 DAO)
   model/
     types.h                         ← ✅ 全部 model + ormpp ADL 别名
     packet.h                        ← ✅ 二进制帧编解码
@@ -184,6 +201,13 @@ server/
     user_service.h / .cpp           ← ⚠️ Login/Logout 存根, Heartbeat 使用 conn->user_id()
     msg_service.h / .cpp            ← ⚠️ 存根
     sync_service.h / .cpp           ← ⚠️ 存根
+  test/
+    test_conn_manager.cpp           ← ✅ 连接管理器测试
+    test_mpmc_queue.cpp             ← ✅ MPMC 队列测试
+    test_router.cpp                 ← ✅ 路由测试
+cmake/
+  fetch_mysql_client.py             ← ✅ MySQL 客户端库 检测/下载 脚本
+  dependencies.cmake                ← ✅ FetchContent 依赖管理 (含 MySQL 客户端宏)
 ```
 
 ---

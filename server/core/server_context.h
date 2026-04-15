@@ -2,9 +2,12 @@
 
 #include <atomic>
 #include <chrono>
+#include <memory>
 #include "app_config.h"
 
 namespace nova {
+
+class DaoFactory;
 
 // 服务上下文 —— 线程安全的运行时状态中心
 // 各模块通过接口读写共享指标，不持有对方指针/引用
@@ -17,6 +20,10 @@ public:
 
     // --- 配置（只读）---
     const AppConfig& config() const { return config_; }
+
+    // --- DAO 工厂（全局唯一）---
+    void set_dao(std::unique_ptr<DaoFactory> dao) { dao_ = std::move(dao); }
+    DaoFactory& dao() const { return *dao_; }
 
     // --- 连接指标 ---
     int  connection_count() const { return conn_count_.load(std::memory_order_relaxed); }
@@ -47,6 +54,7 @@ public:
 
 private:
     AppConfig config_;
+    std::unique_ptr<DaoFactory> dao_;
     std::chrono::steady_clock::time_point start_time_;
 
     std::atomic<int>     conn_count_{0};

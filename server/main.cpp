@@ -64,10 +64,12 @@ int main(int argc, char* argv[]) {
     NOVA_LOG_INFO("AppConfig loaded from: {}", config_path);
     NOVA_LOG_DEBUG("AppConfig:\n{}", cfg);
 
+    // 初始化服务上下文（线程安全的运行时指标中心）
+    ServerContext ctx(cfg);
+
     // 初始化数据库（根据配置创建对应后端的 DaoFactory）
-    std::unique_ptr<DaoFactory> dao;
     try {
-        dao = CreateDaoFactory(cfg.db);
+        ctx.set_dao(CreateDaoFactory(cfg.db));
     } catch (const std::exception& e) {
         NOVA_LOG_ERROR("Failed to initialize database: {}", e.what());
         return 1;
@@ -83,9 +85,6 @@ int main(int argc, char* argv[]) {
             NOVA_LOG_WARN("JWT secret is shorter than 16 chars, consider using a stronger secret");
         }
     }
-
-    // 初始化服务上下文（线程安全的运行时指标中心）
-    ServerContext ctx(cfg);
 
     // 初始化服务
     UserService user_svc;
@@ -132,7 +131,7 @@ int main(int argc, char* argv[]) {
     // 启动 Admin HTTP 管理面板
     std::unique_ptr<AdminServer> admin;
     if (cfg.admin.enabled) {
-        admin = std::make_unique<AdminServer>(ctx, *dao);
+        admin = std::make_unique<AdminServer>(ctx);
         AdminServer::Options admin_opts;
         admin_opts.port        = cfg.admin.port;
         admin_opts.jwt_secret  = cfg.admin.jwt_secret;
@@ -152,7 +151,6 @@ int main(int argc, char* argv[]) {
     if (admin) admin->Stop();
     gateway.Stop();
     worker_pool.Stop();
-    dao.reset();  // 关闭数据库连接
     NOVA_LOG_INFO("NovaIIM Server stopped");
     return 0;
 }

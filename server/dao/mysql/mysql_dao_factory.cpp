@@ -7,6 +7,7 @@
 #include "../impl/audit_log_dao_impl.h"
 #include "../impl/admin_session_dao_impl.h"
 #include "../impl/rbac_dao_impl.h"
+#include "../seed.h"
 #include "../../core/app_config.h"
 
 #include <spdlog/spdlog.h>
@@ -31,6 +32,7 @@ struct MysqlDaoFactory::Impl {
         if (!db.InitSchema()) {
             throw std::runtime_error("failed to initialize MySQL schema");
         }
+        SeedSuperAdmin(db);
         SPDLOG_INFO("MySQL DaoFactory initialized: {}:{}/{}",
                      config.host, config.port, config.database);
     }

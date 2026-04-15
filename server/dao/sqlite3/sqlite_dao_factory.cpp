@@ -5,6 +5,7 @@
 #include "../impl/audit_log_dao_impl.h"
 #include "../impl/admin_session_dao_impl.h"
 #include "../impl/rbac_dao_impl.h"
+#include "../seed.h"
 
 #include <spdlog/spdlog.h>
 #include <stdexcept>
@@ -28,6 +29,7 @@ struct SqliteDaoFactory::Impl {
         if (!db.InitSchema()) {
             throw std::runtime_error("failed to initialize database schema");
         }
+        SeedSuperAdmin(db);
         SPDLOG_INFO("SQLite DaoFactory initialized: {}", path);
     }
 
