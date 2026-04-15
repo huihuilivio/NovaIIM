@@ -1,101 +1,630 @@
 # Admin API 设计
 
-> Base URL: `http://{host}:9091/api/v1`
-> Content-Type: `application/json`
+> Base URL: `http://{host}:9091/api/v1`  
+> Auth: `Authorization: Bearer {JWT_TOKEN}`  
+> Content-Type: `application/json`  
+> **Status:** ✅ 100% 实现 | 最后更新：2026-04-15
+
+---
 
 ## 1. 统一响应格式
 
+**成功响应：**
 ```json
 {
   "code": 0,
-  "msg": "ok",
-  "data": { ... }
+  "msg": "success",
+  "data": { /* ... */ }
 }
 ```
 
-错误码：`0`成功 `1`参数错误 `2`未登录 `3`无权限 `4`资源不存在 `5`内部错误
+**错误响应：**
+```json
+{
+  "code": 5,
+  "msg": "错误描述",
+  "data": null
+}
+```
+
+**错误码对照表：**
+| 码值 | 说明 | HTTP 状态 |
+|------|------|---------|
+| 0 | 成功 | 200 |
+| 1 | 参数错误 | 400 |
+| 2 | 未登录 / 无效 token | 401 |
+| 3 | 无权限 | 403 |
+| 4 | 资源不存在 | 404 |
+| 5 | 服务器内部错误 | 500 |
+
+---
 
 ## 2. 统一分页参数
 
-请求：`?page=1&page_size=20`（默认 page=1, page_size=20, 最大100）
+**查询字符串形式：**  
+`?page=1&page_size=20`（默认值：page=1, page_size=20，最大100）
 
-响应：
-```json
-{
-  "items": [...],
-  "total": 156,
-  "page": 1,
-  "page_size": 20
-}
-```
-
-## 3. 认证
-
-### POST /auth/login
-
-管理员登录，返回 JWT。
-
-**Request:**
-```json
-{
-  "uid": "admin",
-  "password": "xxx"
-}
-```
-
-**Response:**
+**分页响应体：**
 ```json
 {
   "code": 0,
   "data": {
-    "token": "eyJhbGciOi...",
-    "expires_in": 86400
-  }
-}
-```
-
-**鉴权方式：** 后续请求携带 `Authorization: Bearer <token>`
-
-### GET /auth/me
-
-获取当前管理员信息 + 权限列表。
-
-**Response:**
-```json
-{
-  "code": 0,
-  "data": {
-    "user_id": 1,
-    "uid": "admin",
-    "nickname": "管理员",
-    "permissions": ["admin.login", "admin.dashboard", "user.view", "user.ban"]
+    "items": [
+      { /* ... 记录 ... */ }
+    ],
+    "total": 156,
+    "page": 1,
+    "page_size": 20,
+    "total_pages": 8
   }
 }
 ```
 
 ---
 
-## 4. 仪表盘
+## 3. 认证模块 (Auth)
 
-### GET /dashboard/stats
+### POST /auth/login
 
-实时运行指标（已有，增强响应格式）。
+**功能：** 管理员登录，验证身份后签发 JWT token
 
-**权限：** `admin.dashboard`
+**权限要求：** 无（public）
 
-**Response:**
+**请求体：**
+```json
+{
+  "uid": "admin",
+  "password": "admin123"
+}
+```
+
+**成功响应 (200)：**
 ```json
 {
   "code": 0,
   "data": {
-    "connections": 128,
-    "online_users": 96,
-    "messages_in": 12345,
-    "messages_out": 23456,
-    "bad_packets": 3,
-    "uptime_seconds": 86400
+    "admin_id": 1,
+    "token": "eyJhbGciOiJIUzI1NiIsInR5...",
+    "token_type": "Bearer",
+    "expires_in": 86400
   }
 }
+```
+
+**失败响应 (401)：**
+```json
+{
+  "code": 2,
+  "msg": "Invalid credentials"
+}
+```
+
+**说明：**
+- 返回的 `admin_id` 用于后续请求的身份标识
+- `token` 有效期由 `admin.jwt_expires` 配置决定
+- 客户端应存储 token，用于后续请求的 Authorization 头
+
+---
+
+### POST /auth/logout
+
+**功能：** 管理员登出，吊销当前 JWT token
+
+**权限要求：** `admin.login`
+
+**请求体：** 无
+
+**成功响应 (200)：**
+```json
+{
+  "code": 0,
+  "data": {}
+}
+```
+
+**说明：**
+- 吊销 token 会添加到黑名单，该 token 后续无法使用
+- 客户端应删除本地存储的 token
+
+---
+
+### GET /auth/me
+
+**功能：** 获取当前登录管理员的信息 + 权限列表
+
+**权限要求：** 需要有效 JWT token
+
+**请求参数：** 无
+
+**成功响应 (200)：**
+```json
+{
+  "code": 0,
+  "data": {
+    "admin_id": 1,
+    "uid": "admin",
+    "nickname": "系统管理员",
+    "status": 1,
+    "roles": ["super_admin"],
+    "permissions": [
+      "admin.login",
+      "admin.dashboard",
+      "admin.audit",
+      "user.view",
+      "user.create",
+      "user.edit",
+      "user.delete",
+      "user.ban",
+      "msg.recall"
+    ]
+  }
+}
+```
+
+**说明：**
+- `admin_id` 是本管理员在系统中的唯一 ID，位于 admins 表
+- `permissions` 是精确匹配的权限代码列表
+- 用于前端判断是否显示某些功能按钮
+
+---
+
+## 4. 仪表盘 (Dashboard)
+
+### GET /dashboard/stats
+
+**功能：** 获取实时运行统计数据
+
+**权限要求：** `admin.dashboard`
+
+**请求参数：** 无
+
+**成功响应 (200)：**
+```json
+{
+  "code": 0,
+  "data": {
+    "connections": 1024,
+    "online_users": 768,
+    "messages_today": 45620,
+    "bad_packets": 12,
+    "uptime_seconds": 259200,
+    "cpu_percent": 15.2,
+    "memory_mb": 512,
+    "timestamp": "2026-04-15T14:30:00Z"
+  }
+}
+```
+
+---
+
+## 5. 用户管理 (Users)
+
+### GET /users
+
+**功能：** 分页查询用户列表，支持筛选
+
+**权限要求：** `user.view`
+
+**请求参数：**
+```
+GET /users?page=1&page_size=20&keyword=john&status=1
+```
+| 参数 | 类型 | 说明 | 默认值 |
+|------|------|------|--------|
+| page | int | 页码 | 1 |
+| page_size | int | 每页数量 | 20 |
+| keyword | string | 搜索 uid/nickname（可选） | - |
+| status | int | 状态筛选: 1-正常 2-禁用 3-删除（可选） | - |
+
+**成功响应 (200)：**
+```json
+{
+  "code": 0,
+  "data": {
+    "items": [
+      {
+        "id": 101,
+        "uid": "john",
+        "nickname": "John",
+        "status": 1,
+        "is_online": true,
+        "device_count": 2,
+        "created_at": "2026-04-10T10:00:00Z",
+        "updated_at": "2026-04-15T14:30:00Z"
+      },
+      {
+        "id": 102,
+        "uid": "jane",
+        "nickname": "Jane",
+        "status": 2,
+        "is_online": false,
+        "device_count": 1,
+        "created_at": "2026-04-12T10:00:00Z",
+        "updated_at": "2026-04-15T13:45:00Z"
+      }
+    ],
+    "total": 567,
+    "page": 1,
+    "page_size": 20
+  }
+}
+```
+
+---
+
+### POST /users
+
+**功能：** 创建新用户
+
+**权限要求：** `user.create`
+
+**请求体：**
+```json
+{
+  "uid": "newuser",
+  "nickname": "New User",
+  "password": "initial_password"
+}
+```
+
+**成功响应 (200)：**
+```json
+{
+  "code": 0,
+  "data": {
+    "id": 1001,
+    "uid": "newuser",
+    "nickname": "New User",
+    "status": 1,
+    "created_at": "2026-04-15T14:30:00Z"
+  }
+}
+```
+
+**失败响应 (400)：**
+```json
+{
+  "code": 1,
+  "msg": "User uid already exists"
+}
+```
+
+**审计记录：** action = "user.create"
+
+---
+
+### GET /users/:id
+
+**功能：** 获取单个用户详情 + 设备列表
+
+**权限要求：** `user.view`
+
+**请求参数：** 无
+
+**成功响应 (200)：**
+```json
+{
+  "code": 0,
+  "data": {
+    "id": 101,
+    "uid": "john",
+    "nickname": "John",
+    "status": 1,
+    "is_online": true,
+    "created_at": "2026-04-10T10:00:00Z",
+    "updated_at": "2026-04-15T14:30:00Z",
+    "devices": [
+      {
+        "device_id": 1,
+        "device_name": "iPhone",
+        "is_online": true,
+        "last_seen": "2026-04-15T14:28:00Z"
+      },
+      {
+        "device_id": 2,
+        "device_name": "Mac",
+        "is_online": false,
+        "last_seen": "2026-04-15T10:00:00Z"
+      }
+    ]
+  }
+}
+```
+
+---
+
+### DELETE /users/:id
+
+**功能：** 删除用户（软删除，设为 status=3）
+
+**权限要求：** `user.delete`
+
+**请求体：** 无
+
+**成功响应 (200)：**
+```json
+{
+  "code": 0,
+  "data": {}
+}
+```
+
+**审计记录：** action = "user.delete"
+
+---
+
+### POST /users/:id/reset-password
+
+**功能：** 重置用户密码
+
+**权限要求：** `user.edit`
+
+**请求体：**
+```json
+{
+  "new_password": "new_secure_password"
+}
+```
+
+**成功响应 (200)：**
+```json
+{
+  "code": 0,
+  "data": {}
+}
+```
+
+**审计记录：** action = "user.reset_password"
+
+---
+
+### POST /users/:id/ban
+
+**功能：** 禁用用户（status = 2）并踢下线
+
+**权限要求：** `user.ban`
+
+**请求体：**
+```json
+{
+  "reason": "违反社区准则"
+}
+```
+
+**成功响应 (200)：**
+```json
+{
+  "code": 0,
+  "data": {}
+}
+```
+
+**审计记录：** action = "user.ban", detail = {"reason": "..."}
+
+---
+
+### POST /users/:id/unban
+
+**功能：** 解禁用户（status = 1）
+
+**权限要求：** `user.ban`
+
+**请求体：** 无
+
+**成功响应 (200)：**
+```json
+{
+  "code": 0,
+  "data": {}
+}
+```
+
+**审计记录：** action = "user.unban"
+
+---
+
+### POST /users/:id/kick
+
+**功能：** 立即踢出所有在线连接
+
+**权限要求：** `user.edit`
+
+**请求体：** 无
+
+**成功响应 (200)：**
+```json
+{
+  "code": 0,
+  "data": {
+    "kicked_devices": 2
+  }
+}
+```
+
+**审计记录：** action = "user.kick"
+
+---
+
+## 6. 消息管理 (Messages)
+
+### GET /messages
+
+**功能：** 分页查询消息列表
+
+**权限要求：** `msg.view`
+
+**请求参数：**
+```
+GET /messages?page=1&page_size=50&conversation_id=10&start_time=2026-04-15T00:00:00Z&end_time=2026-04-15T23:59:59Z
+```
+
+**成功响应 (200)：**
+```json
+{
+  "code": 0,
+  "data": {
+    "items": [
+      {
+        "id": 5001,
+        "conversation_id": 10,
+        "sender_uid": "john",
+        "content": "Hello",
+        "status": 1,
+        "seq": 1001,
+        "created_at": "2026-04-15T14:00:00Z"
+      }
+    ],
+    "total": 120,
+    "page": 1,
+    "page_size": 50
+  }
+}
+```
+
+---
+
+### POST /messages/:id/recall
+
+**功能：** 撤回消息
+
+**权限要求：** `msg.recall`
+
+**请求体：**
+```json
+{
+  "reason": "消息包含敏感信息"
+}
+```
+
+**成功响应 (200)：**
+```json
+{
+  "code": 0,
+  "data": {}
+}
+```
+
+**审计记录：** action = "msg.recall", detail = {"reason": "..."}
+
+---
+
+## 7. 审计日志 (Audit)
+
+### GET /audit-logs
+
+**功能：** 查询所有管理员操作的审计日志
+
+**权限要求：** `admin.audit`
+
+**请求参数：**
+```
+GET /audit-logs?page=1&page_size=50&admin_id=1&action=user.create&start_time=2026-04-15T00:00:00Z&end_time=2026-04-15T23:59:59Z
+```
+| 参数 | 说明 |
+|------|------|
+| page | 页码 |
+| page_size | 每页数量 |
+| admin_id | 操作者管理员 ID（可选） |
+| action | 操作类型代码（可选） |
+| start_time | 起始时间（可选） |
+| end_time | 结束时间（可选） |
+
+**成功响应 (200)：**
+```json
+{
+  "code": 0,
+  "data": {
+    "items": [
+      {
+        "id": 9001,
+        "admin_id": 1,
+        "admin_uid": "admin",
+        "action": "user.create",
+        "target_type": "user",
+        "target_id": 101,
+        "detail": "{\"uid\": \"newuser\"}",
+        "ip_address": "192.168.1.100",
+        "created_at": "2026-04-15T14:30:00Z"
+      }
+    ],
+    "total": 256,
+    "page": 1,
+    "page_size": 50
+  }
+}
+```
+
+**说明：**
+- `admin_id` 是执行操作的管理员 ID（来自 admins 表）
+- `admin_uid` 是该管理员的用户名
+- 所有写操作都会被自动记录到审计日志
+
+---
+
+## 8. 错误处理示例
+
+### 未登录错误
+
+```json
+{
+  "code": 2,
+  "msg": "Missing authorization header"
+}
+```
+
+### 无权限错误
+
+```json
+{
+  "code": 3,
+  "msg": "Insufficient permissions: require [admin.dashboard]"
+}
+```
+
+### 资源不存在
+
+```json
+{
+  "code": 4,
+  "msg": "User not found: id=9999"
+}
+```
+
+### 参数错误
+
+```json
+{
+  "code": 1,
+  "msg": "Invalid page_size: max 100, got 200"
+}
+```
+
+---
+
+## 9. 认证流程时序图
+
+```
+Client                          Server
+  │                               │
+  ├─── POST /auth/login ────────→ │
+  │      (uid, password)          │
+  │                               │ ✓ 查询 admins 表
+  │                               │ ✓ 验证密码 (PBKDF2)
+  │                               │ ✓ 签发 JWT token
+  │ ←── JWT + expires_in ────────┤
+  │                               │
+  │                               │ (在 admin_sessions 表写入记录)
+  │                               │
+  ├─── GET /users ──────────────→ │
+  │ Authorization: Bearer {JWT}   │
+  │                               │ ✓ 验证 JWT 签名
+  │                               │ ✓ 查询黑名单（revoked=0）
+  │                               │ ✓ 查询权限 (admin_roles JOIN...)
+  │                               │ ✓ 检查权限 (user.view)
+  │ ←── 用户列表 ───────────────┤
+  │                               │ ✓ 写入审计日志 
+  │                               │   (admin_id=1, action=user.view)
+  │                               │
 ```
 
 ---
