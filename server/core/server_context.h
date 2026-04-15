@@ -4,10 +4,9 @@
 #include <chrono>
 #include <memory>
 #include "app_config.h"
+#include "../dao/dao_factory.h"
 
 namespace nova {
-
-class DaoFactory;
 
 // 服务上下文 —— 线程安全的运行时状态中心
 // 各模块通过接口读写共享指标，不持有对方指针/引用

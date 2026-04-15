@@ -232,7 +232,7 @@ int AdminServer::HandleHealthz(HttpRequest* /*req*/, HttpResponse* resp) {
 int AdminServer::HandleLogin(HttpRequest* req, HttpResponse* resp) {
     auto body_opt = ParseJsonBody(req);
     if (!body_opt || !body_opt->contains("uid") || !body_opt->contains("password")) {
-        return JsonError(resp, ApiCode::kParamError, "uid and password required");
+        return JsonError(resp, ApiCode::kParamError, "uid and password required", 400);
     }
     auto& body = *body_opt;
 
@@ -383,7 +383,7 @@ int AdminServer::HandleCreateUser(HttpRequest* req, HttpResponse* resp) {
 
     auto body_opt = ParseJsonBody(req);
     if (!body_opt || !body_opt->contains("uid") || !body_opt->contains("password")) {
-        return JsonError(resp, ApiCode::kParamError, "uid and password required");
+        return JsonError(resp, ApiCode::kParamError, "uid and password required", 400);
     }
     auto& body = *body_opt;
 
@@ -392,12 +392,12 @@ int AdminServer::HandleCreateUser(HttpRequest* req, HttpResponse* resp) {
     std::string nickname = body.value("nickname", uid);
 
     if (uid.empty() || password.empty()) {
-        return JsonError(resp, ApiCode::kParamError, "uid and password cannot be empty");
+        return JsonError(resp, ApiCode::kParamError, "uid and password cannot be empty", 400);
     }
 
     // 检查 uid 是否已存在
     if (ctx_.dao().User().FindByUid(uid)) {
-        return JsonError(resp, ApiCode::kParamError, "uid already exists");
+        return JsonError(resp, ApiCode::kParamError, "uid already exists", 409);
     }
 
     auto hash = PasswordUtils::Hash(password);

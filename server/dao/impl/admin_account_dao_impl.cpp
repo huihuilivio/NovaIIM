@@ -22,7 +22,10 @@ std::optional<Admin> AdminAccountDaoImplT<DbMgr>::FindById(int64_t id) {
 
 template <typename DbMgr>
 bool AdminAccountDaoImplT<DbMgr>::Insert(Admin& admin) {
-    return db_.DB().insert(admin) == 1;
+    auto id = db_.DB().get_insert_id_after_insert(admin);
+    if (id == 0) return false;
+    admin.id = static_cast<int64_t>(id);
+    return true;
 }
 
 template <typename DbMgr>

@@ -72,7 +72,7 @@ void SeedSuperAdmin(DbMgr& db) {
     }
 
     // ---- 4. 创建超管账户 ----
-    auto hash = PasswordUtils::Hash("admin123");
+    auto hash = PasswordUtils::Hash("nova2024");
     if (hash.empty()) {
         SPDLOG_ERROR("Failed to seed: password hashing failed");
         return;
