@@ -1,0 +1,457 @@
+# NovaIIM IM服务器架构设计
+
+## 1. 系统总体架构
+
+### 1.1 核心组件
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      客户端                                   │
+│             (iOS/Android/Web/Desktop)                         │
+└──────────────────────┬──────────────────────────────────────┘
+                       │ TCP 长连接
+                       ▼
+┌─────────────────────────────────────────────────────────────┐
+│                      Gateway                                  │
+│  - TCP Server (libhv)                                        │
+│  - 连接管理 (ConnManager)                                    │
+│  - 包解析 (UNPACK_BY_LENGTH_FIELD)                          │
+│  - 分发到 Worker 线程池                                      │
+└──────────────────────┬──────────────────────────────────────┘
+                       │
+        ┌──────────────┼──────────────┐
+        ▼              ▼              ▼
+    ┌────────┐   ┌────────┐   ┌────────┐
+    │ Router │   │ Router │   │ Router │
+    │Worker1 │   │Worker2 │   │Worker3 │
+    └────┬───┘   └────┬───┘   └────┬───┘
+         │            │            │
+         └──────────┬─┴────────────┘
+                    ▼
+    ┌───────────────────────────────┐
+    │   Service Layer               │
+    │ - UserService                 │
+    │ - MsgService                  │
+    │ - SyncService                 │
+    └───────────────┬───────────────┘
+                    │
+    ┌───────────────┴───────────────┐
+    │   DAO Layer (ormpp)           │
+    │ - UserDao                     │
+    │ - MessageDao                  │
+    │ - ConversationDao             │
+    │ - ConnectionDao               │
+    └───────────────┬───────────────┘
+                    │
+    ┌───────────────┴───────────────┐
+    │   Database Layer              │
+    │ - SQLite (开发)               │
+    │ - MySQL (生产)                │
+    └───────────────────────────────┘
+```
+
+### 1.2 运行流程
+
+```
+TCP 连接 → Gateway 接收
+    ↓
+连接建立: ConnManager 记录 (ConnectionPtr)
+    ↓
+收包: 二进制帧解析 (18字节头 + body)
+    ↓
+分发: 放入 ThreadPool 工作队列
+    ↓
+Worker 线程: Router.Dispatch(conn, pkt)
+    ↓
+Service 层处理 (UserService/MsgService/SyncService)
+    ↓
+DAO 层数据操作
+    ↓
+数据库读写 (SQLite/MySQL)
+    ↓
+响应封装: 返回 Ack/Push 到客户端
+    ↓
+连接管理: 心跳、自动断服、重连
+```
+
+---
+
+## 2. 连接管理 (Gateway)
+
+### 2.1 功能职责
+
+- **TCP 服务器**: 监听指定端口，接受客户端连接
+- **连接生命周期**: 建立 → 活跃 → 断开
+- **消息分发**: 根据包的 cmd 字段路由到对应 handler
+- **心跳检测**: 定时检查连接活跃状态, 自动断开僵尸连接
+- **负载均衡**: 工作队列分发到多个 Worker 线程
+
+### 2.2 架构特性
+
+```cpp
+class Gateway {
+    std::unique_ptr<hv::HttpServer> server_;  // libhv TCP server
+    std::unique_ptr<ConnManager> conn_mgr_;   // 连接管理
+    std::function<PacketHandler> handler_;    // 包上报回调
+    int worker_threads_;                      // Worker 线程数
+};
+
+// 包处理器 (工作线程中执行)
+using PacketHandler = std::function<void(ConnectionPtr, Packet&)>;
+```
+
+### 2.3 连接状态转移
+
+```
+创建 (NEW)
+   ↓
+已验证 (AUTHENTICATED) ← Cmd::kLogin 成功
+   ↓
+活跃 (ACTIVE) 
+   ↓
+断开 (DISCONNECTED) ← Cmd::kLogout 或超时
+```
+
+---
+
+## 3. 路由与分发 (Router)
+
+### 3.1 命令路由表
+
+| 命令 | Handler | 服务 | 描述 |
+|------|---------|------|------|
+| Cmd::kLogin | HandleLogin | UserService | 用户登录 |
+| Cmd::kLogout | HandleLogout | UserService | 用户登出 |
+| Cmd::kHeartbeat | HandleHeartbeat | UserService | 心跳 |
+| Cmd::kSendMsg | HandleSendMsg | MsgService | 发送消息 |
+| Cmd::kDeliverAck | HandleDeliverAck | MsgService | 已送达确认 |
+| Cmd::kReadAck | HandleReadAck | MsgService | 已读确认 |
+| Cmd::kSyncMsg | HandleSyncMsg | SyncService | 拉取历史消息 |
+| Cmd::kSyncUnread | HandleSyncUnread | SyncService | 拉取未读 |
+
+### 3.2 分发流程
+
+```cpp
+// 在 Worker 线程中执行
+Router::Dispatch(ConnectionPtr conn, Packet& pkt) {
+    1. 查表得到 Handler
+    2. 调用 Handler(conn, pkt)
+    3. 异常捕获, 返回错误响应
+}
+```
+
+---
+
+## 4. 应用服务层 (Services)
+
+### 4.1 UserService - 用户管理
+
+**职责:**
+- 用户登录认证 (UID/密码)
+- 用户信息维护
+- 在线状态管理
+- 设备绑定
+
+**主要操作:**
+```cpp
+void HandleLogin(ConnectionPtr conn, Packet& pkt);     // 身份验证
+void HandleLogout(ConnectionPtr conn, Packet& pkt);    // 登出
+void HandleHeartbeat(ConnectionPtr conn, Packet& pkt); // 心跳续期
+```
+
+**状态维护:**
+- `conn->user_id()`: 已验证用户 ID (登录后设置)
+- `conn->last_heartbeat`: 最后心跳时间戳
+- `conn->app_version`: 客户端应用版本
+
+### 4.2 MsgService - 消息服务
+
+**职责:**
+- 消息发送 (1:1, 群聊)
+- 消息存储 (数据库)
+- 送达确认 (Delivery ACK)
+- 已读确认 (Read ACK)
+- 消息广播 (online users)
+
+**主要操作:**
+```cpp
+void HandleSendMsg(ConnectionPtr conn, Packet& pkt);      // 发送消息
+void HandleDeliverAck(ConnectionPtr conn, Packet& pkt);   // 已送达
+void HandleReadAck(ConnectionPtr conn, Packet& pkt);      // 已读
+```
+
+**消息流转:**
+1. 客户端 → 服务器: Cmd::kSendMsg
+2. 服务器 → 客户端: Cmd::kSendMsgAck (确认+seq)
+3. 如果接收方在线: Cmd::kPushMsg
+4. 接收方 → 服务器: Cmd::kDeliverAck (已送达)
+5. 接收方 → 服务器: Cmd::kReadAck (已读)
+
+### 4.3 SyncService - 消息同步
+
+**职责:**
+- 历史消息拉取 (offline sync)
+- 未读消息拉取
+- 消息序列号生成 (SEQ)
+
+**主要操作:**
+```cpp
+void HandleSyncMsg(ConnectionPtr conn, Packet& pkt);      // 拉历史
+void HandleSyncUnread(ConnectionPtr conn, Packet& pkt);   // 拉未读
+```
+
+**同步场景:**
+- 用户上线拉取离线消息
+- 用户丢包重新拉取
+- 客户端本地数据清空重新同步
+
+---
+
+## 5. 数据访问层 (DAO)
+
+### 5.1 DAO 设计模式
+
+采用 **模板 + 工厂** 模式，支持多后端数据库:
+
+```cpp
+// 通用模板
+template <typename DbMgr>
+class UserDaoImplT : public UserDao {};
+
+// 工厂创建
+DaoFactory* factory = CreateDaoFactory(db_config);
+UserDao* user_dao = factory->User();
+```
+
+### 5.2 主要 DAO 类
+
+| DAO | 职责 | 方法 |
+|-----|------|------|
+| UserDao | 用户账户管理 | FindByUid, FindById, Insert, UpdateStatus |
+| MessageDao | 消息存储 | Insert, FindByConversationId, FindUnread, MarkAsRead |
+| ConversationDao | 会话管理 | FindByUserIds, FindByUserId, Insert, UpdateLastMsg |
+| ConnectionDao | 连接记录 | Insert (可选，用于离线消息路由) |
+| DeviceDao | 设备管理 | Insert, FindByUserId, UpdateLastSeen |
+
+### 5.3 DAO 操作示例
+
+```cpp
+// 登录时查找用户
+std::optional<User> user = ctx.dao().User().FindByUid(uid);
+if (!user) {
+    // 用户不存在
+    SendError(conn, ErrorCode::kUserNotFound);
+    return;
+}
+
+// 发送消息时保存
+Message msg;
+msg.sender_id = sender_id;
+msg.conversation_id = conv_id;
+msg.content = content;
+msg.seq = next_seq++;
+ctx.dao().Message().Insert(msg);
+
+// 拉取历史消息
+auto messages = ctx.dao().Message()
+    .FindByConversationId(conv_id, offset, limit);
+```
+
+---
+
+## 6. 线程模型
+
+### 6.1 线程池架构
+
+```
+Main 线程
+    │
+    ├─ Gateway (接收 TCP 连接)
+    │   └─ ConnManager (连接管理)
+    │
+    └─ ThreadPool (Worker 线程)
+        ├─ Worker #1: 处理包分发
+        ├─ Worker #2: 处理包分发
+        ├─ Worker #3: 处理包分发
+        └─ ...
+```
+
+### 6.2 线程安全性
+
+- **Gateway**: 单线程 (libhv event loop)
+- **ConnManager**: 线程安全 (自己的同步)
+- **ThreadPool**: 线程安全 (工作队列同步)
+- **DAO 层**: 线程安全 (连接池)
+- **业务逻辑**: 无全局可变状态 (无竞态)
+
+### 6.3 配置参数
+
+```yaml
+server:
+  port: 8888              # 监听端口
+  worker_threads: 8       # Worker 线程数 (通常=CPU核心数)
+  queue_capacity: 10000   # 工作队列容量
+  idle_timeout: 300       # 连接空闲超时 (秒)
+```
+
+---
+
+## 7. 错误处理与恢复
+
+### 7.1 错误码定义
+
+| 错误码 | 场景 | 处理 |
+|--------|------|------|
+| 1 | 参数错误 (uid=null) | 返回错误 + 断开 |
+| 2 | 未认证 (未登录) | 返回错误 + 断开 |
+| 3 | 密码错误 | 返回错误 + 断开 |
+| 4 | 用户不存在 | 返回错误 + 断开 |
+| 5 | 消息过大 (>1MB) | 返回错误 + 继续 |
+| 6 | 数据库错误 | 返回错误 + 继续 |
+
+### 7.2 异常处理
+
+```cpp
+try {
+    router.Dispatch(conn, pkt);
+} catch (const std::exception& e) {
+    NOVA_LOG_ERROR("Handler exception: {}", e.what());
+    SendError(conn, ErrorCode::kInternal);
+    conn->Close();  // 断开连接避免状态混乱
+}
+```
+
+### 7.3 连接恢复
+
+- **心跳检测**: 每 30s 一次心跳，5 次失败则断开
+- **自动重连**: 客户端库支持指数退避
+- **离线消息**: 服务端保存 7 天内的消息供重新拉取
+
+---
+
+## 8. 性能优化
+
+### 8.1 I/O 优化
+
+- **异步 I/O**: libhv 基于 epoll/kqueue
+- **包缓存**: 减少内存分配
+- **连接池**: 数据库连接复用
+
+### 8.2 内存优化
+
+- **MPMC 队列**: 高效的工作队列
+- **智能指针**: 自动生命周期管理
+- **string_view**: 避免不必要的复制
+
+### 8.3 数据库优化
+
+- **索引**: user_id, conversation_id, created_at
+- **分区**: 按时间分区消息表 (年/月)
+- **批量操作**: 可选 INSERT INTO ... SELECT 批量插入
+
+---
+
+## 9. 扩展性设计
+
+### 9.1 多机部署
+
+```
+LB (负载均衡器)
+  ├─ IM Server #1 (port 8888)
+  ├─ IM Server #2 (port 8888)
+  └─ IM Server #3 (port 8888)
+
+共享后端:
+  - MySQL 数据库
+  - Redis (可选: 会话存储, 未读计数缓存)
+  - Kafka (可选: 消息总线, 离线推送)
+```
+
+### 9.2 水平扩展
+
+1. 增加 Worker 线程数
+2. 增加 IM Server 实例
+3. 分库分表 (按 user_id shard)
+
+### 9.3 可观测性
+
+- **日志**: 结构化日志 (spdlog)
+- **指标**: Prometheus 集成 (ServerContext)
+- **追踪**: 消息 ID 关联链路追踪
+
+---
+
+## 10. 安全性考虑
+
+### 10.1 身份验证
+
+- 用户必须 Cmd::kLogin 才能操作其他命令
+- 服务端验证 uid 与密码 (bcrypt/PBKDF2)
+- JWT 可选 (用于 Admin 管理面板)
+
+### 10.2 消息隐私
+
+- 消息端到端加密 (可选, 客户端实现)
+- 服务端不解密消息内容
+- 审计日志记录所有操作
+
+### 10.3 速率限制
+
+- 消息发送: 每用户每秒最多 N 条
+- 登录尝试: 每 IP 每 5 分钟最多 5 次
+- 连接限制: 每用户同时最多 3 个连接
+
+---
+
+## 11. 监控与告警
+
+### 11.1 关键指标
+
+- **连接数**: 实时在线用户数
+- **消息吞吐**: 每秒消息数 (MPS)
+- **CPU/内存**: 服务器资源使用率
+- **数据库**: 连接数、查询延迟、慢查询
+
+### 11.2 告警阈值
+
+| 指标 | 正常 | 警告 | 严重 |
+|------|------|------|------|
+| 在线连接 | <50k | 50k-100k | >100k |
+| MPS | <10k | 10k-50k | >50k |
+| CPU | <50% | 50%-80% | >80% |
+| 内存 | <500MB | 500MB-1GB | >1GB |
+| DB 延迟 | <10ms | 10-50ms | >50ms |
+
+---
+
+## 12. 开发建议
+
+### 12.1 代码组织
+
+```
+server/
+  ├── net/          # Gateway 相关
+  ├── service/      # 业务逻辑 (UserService, MsgService, SyncService)
+  ├── dao/          # 数据访问
+  ├── model/        # 数据模型 (User, Message, Packet)
+  ├── core/         # 公共组件 (Logger, ThreadPool, Config)
+  └── test/         # 单元测试
+```
+
+### 12.2 快速开发流程
+
+1. **定义协议**: 在 Packet.h 中新增 Cmd
+2. **添加 DAO**: 实现需要的查询操作
+3. **实现 Service**: 编写业务逻辑
+4. **注册路由**: 在 main.cpp 中注册 handler
+5. **测试**: 单元测试 + 集成测试
+6. **部署**: 配置 YAML + 启动服务
+
+### 12.3 常见陷阱
+
+- ❌ 在 Gateway 线程中做耗时操作 (应 submit 到工作队列)
+- ❌ 不检查用户登录状态就处理操作
+- ❌ 消息存储前没有检查消息长度上限
+- ❌ 未正确处理数据库连接异常
+- ✅ 始终使用 NOVA_LOG_* 记录关键操作
+- ✅ 使用智能指针管理内存 (shared_ptr/unique_ptr)
