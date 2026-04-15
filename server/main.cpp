@@ -134,7 +134,7 @@ int main(int argc, char* argv[]) {
     // 启动 Admin HTTP 管理面板
     std::unique_ptr<AdminServer> admin;
     if (cfg.admin.enabled) {
-        admin = std::make_unique<AdminServer>(ctx);
+        admin = std::make_unique<AdminServer>(ctx, db);
         AdminServer::Options admin_opts;
         admin_opts.port        = cfg.admin.port;
         admin_opts.jwt_secret  = cfg.admin.jwt_secret;

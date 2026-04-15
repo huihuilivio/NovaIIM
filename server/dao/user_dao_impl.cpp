@@ -19,45 +19,38 @@ UserListResult UserDaoImpl::ListUsers(const std::string& keyword, int status,
     UserListResult result;
     int offset = (page - 1) * page_size;
 
-    // 构建 WHERE 子句
-    std::string where = "status!=3";
-    if (status >= 0) {
-        where += " AND status=" + std::to_string(status);
-    }
-
-    if (keyword.empty()) {
-        // 无关键词: 简单查询
-        auto count_res = db_.DB().query_s<std::tuple<int64_t>>(
-            "SELECT count(*) FROM users WHERE " + where);
-        if (!count_res.empty()) {
-            result.total = std::get<0>(count_res[0]);
-        }
-
-        auto items = db_.DB().query_s<User>(
-            where + " ORDER BY id DESC LIMIT ? OFFSET ?", page_size, offset);
-        result.items = std::move(items);
-    } else {
-        // 有关键词: 带 LIKE 查询，转义 % 和 _ 通配符
-        std::string escaped;
+    // 使用参数化恒等式避免字符串拼接
+    // status < 0 时 (? < 0) 恒真，跳过过滤；否则精确匹配 status
+    // keyword 为空时 (? = '') 恒真，跳过 LIKE 过滤
+    std::string escaped;
+    if (!keyword.empty()) {
         escaped.reserve(keyword.size());
         for (char c : keyword) {
             if (c == '%' || c == '_' || c == '\\') escaped += '\\';
             escaped += c;
         }
-        std::string like = "%" + escaped + "%";
-        std::string full_where = where + " AND (uid LIKE ? ESCAPE '\\' OR nickname LIKE ? ESCAPE '\\')";
-
-        auto count_res = db_.DB().query_s<std::tuple<int64_t>>(
-            "SELECT count(*) FROM users WHERE " + full_where, like, like);
-        if (!count_res.empty()) {
-            result.total = std::get<0>(count_res[0]);
-        }
-
-        auto items = db_.DB().query_s<User>(
-            full_where + " ORDER BY id DESC LIMIT ? OFFSET ?",
-            like, like, page_size, offset);
-        result.items = std::move(items);
     }
+    std::string like = keyword.empty() ? "" : "%" + escaped + "%";
+
+    static constexpr auto kCountSql =
+        "SELECT count(*) FROM users WHERE status!=3 "
+        "AND (? < 0 OR status = ?) "
+        "AND (? = '' OR uid LIKE ? ESCAPE '\\' OR nickname LIKE ? ESCAPE '\\')";
+
+    static constexpr auto kWhere =
+        "status!=3 "
+        "AND (? < 0 OR status = ?) "
+        "AND (? = '' OR uid LIKE ? ESCAPE '\\' OR nickname LIKE ? ESCAPE '\\') "
+        "ORDER BY id DESC LIMIT ? OFFSET ?";
+
+    auto count_res = db_.DB().query_s<std::tuple<int64_t>>(
+        kCountSql, status, status, like, like, like);
+    if (!count_res.empty()) {
+        result.total = std::get<0>(count_res[0]);
+    }
+
+    result.items = db_.DB().query_s<User>(
+        kWhere, status, status, like, like, like, page_size, offset);
 
     return result;
 }

@@ -1,11 +1,17 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <vector>
 #include "../model/types.h"
 
 namespace nova {
+
+struct MessageListResult {
+    std::vector<Message> items;
+    int64_t total = 0;
+};
 
 // 消息 DAO（对应架构文档 DB Layer）
 class MessageDao {
@@ -20,6 +26,15 @@ public:
 
     // 更新消息状态（撤回/删除）
     virtual bool UpdateStatus(int64_t msg_id, int8_t status) = 0;
+
+    // 按会话 + 时间范围分页查询（admin 用）
+    virtual MessageListResult ListMessages(int64_t conversation_id,
+                                           const std::string& start_time,
+                                           const std::string& end_time,
+                                           int page, int page_size) = 0;
+
+    // 根据 ID 查找
+    virtual std::optional<Message> FindById(int64_t id) = 0;
 };
 
 } // namespace nova

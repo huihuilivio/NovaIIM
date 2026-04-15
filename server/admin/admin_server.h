@@ -9,9 +9,9 @@
 namespace nova {
 
 class ServerContext;
+class DbManager;
 
 // Admin HTTP 管理面板（独立端口，不走 Gateway TCP 协议）
-// 职责：健康检查、运行时指标、连接管理
 class AdminServer {
 public:
     struct Options {
@@ -20,7 +20,7 @@ public:
         int         jwt_expires = 86400;
     };
 
-    explicit AdminServer(ServerContext& ctx);
+    AdminServer(ServerContext& ctx, DbManager& db);
     ~AdminServer();
 
     AdminServer(const AdminServer&) = delete;
@@ -32,15 +32,45 @@ public:
 private:
     void RegisterRoutes(const Options& opts);
 
-    // 鉴权中间件（JWT）
-    static int AuthMiddleware(HttpRequest* req, HttpResponse* resp, const std::string& secret);
+    // 鉴权中间件（JWT + 黑名单 + RBAC 注入）
+    int AuthMiddleware(HttpRequest* req, HttpResponse* resp);
 
-    // --- handler ---
+    // --- auth ---
+    int HandleLogin(HttpRequest* req, HttpResponse* resp);
+    int HandleLogout(HttpRequest* req, HttpResponse* resp);
+    int HandleMe(HttpRequest* req, HttpResponse* resp);
+
+    // --- dashboard ---
     int HandleHealthz(HttpRequest* req, HttpResponse* resp);
     int HandleStats(HttpRequest* req, HttpResponse* resp);
+
+    // --- user management ---
+    int HandleListUsers(HttpRequest* req, HttpResponse* resp);
+    int HandleCreateUser(HttpRequest* req, HttpResponse* resp);
+    int HandleGetUser(HttpRequest* req, HttpResponse* resp);
+    int HandleDeleteUser(HttpRequest* req, HttpResponse* resp);
+    int HandleResetPassword(HttpRequest* req, HttpResponse* resp);
+    int HandleBanUser(HttpRequest* req, HttpResponse* resp);
+    int HandleUnbanUser(HttpRequest* req, HttpResponse* resp);
     int HandleKickUser(HttpRequest* req, HttpResponse* resp);
 
+    // --- messages ---
+    int HandleListMessages(HttpRequest* req, HttpResponse* resp);
+    int HandleRecallMessage(HttpRequest* req, HttpResponse* resp);
+
+    // --- audit ---
+    int HandleListAuditLogs(HttpRequest* req, HttpResponse* resp);
+
+    // 审计日志写入助手
+    void WriteAuditLog(int64_t user_id, const std::string& action,
+                       const std::string& target_type, int64_t target_id,
+                       const std::string& detail, const std::string& ip);
+
+    // 从请求中获取客户端 IP
+    static std::string GetClientIp(HttpRequest* req);
+
     ServerContext& ctx_;
+    DbManager& db_;
     Options opts_;
     hv::HttpService service_;
     std::unique_ptr<hv::HttpServer> server_;
