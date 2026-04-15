@@ -243,7 +243,23 @@ CREATE TABLE audit_logs (
 );
 
 -- =========================================================
--- 10. 初始化基础权限（建议）
+-- 10. Admin Sessions（JWT 黑名单）
+-- =========================================================
+
+CREATE TABLE admin_sessions (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    user_id BIGINT NOT NULL,
+    token_hash VARCHAR(128) NOT NULL,    -- SHA-256(JWT)，用于黑名单比对
+    expires_at DATETIME NOT NULL,
+    revoked TINYINT DEFAULT 0,           -- 0有效 1已吊销
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    KEY idx_session_token (token_hash),
+    KEY idx_session_user (user_id),
+    KEY idx_session_expires (expires_at)
+);
+
+-- =========================================================
+-- 11. 初始化基础权限（建议）
 -- =========================================================
 
 INSERT INTO permissions (name, code) VALUES
@@ -260,9 +276,13 @@ INSERT INTO permissions (name, code) VALUES
 ('分配角色', 'group.assign_role'),
 
 ('用户查看', 'user.view'),
+('用户创建', 'user.create'),
+('用户编辑', 'user.edit'),
+('用户删除', 'user.delete'),
 ('用户封禁', 'user.ban'),
 
 ('后台登录', 'admin.login'),
-('后台首页', 'admin.dashboard');
+('后台首页', 'admin.dashboard'),
+('审计日志查看', 'admin.audit');
 
 SET FOREIGN_KEY_CHECKS = 1;
