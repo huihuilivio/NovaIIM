@@ -10,6 +10,7 @@
 #include "../dao/message_dao.h"
 #include "../dao/audit_log_dao.h"
 #include "../dao/admin_session_dao.h"
+#include "../dao/admin_account_dao.h"
 #include "../dao/rbac_dao.h"
 
 #include <hv/json.hpp>
@@ -133,7 +134,7 @@ void AdminServer::RegisterRoutes(const Options& opts) {
 
 int AdminServer::AuthMiddleware(HttpRequest* req, HttpResponse* resp) {
     // 清除客户端可能伪造的内部头
-    req->SetHeader("X-Nova-User-Id", "");
+    req->SetHeader("X-Nova-Admin-Id", "");
     req->SetHeader("X-Nova-Permissions", "");
 
     // 免鉴权路径
@@ -168,11 +169,11 @@ int AdminServer::AuthMiddleware(HttpRequest* req, HttpResponse* resp) {
         return 401;
     }
 
-    // 注入 user_id
-    req->SetHeader("X-Nova-User-Id", std::to_string(claims->user_id));
+    // 注入 admin_id
+    req->SetHeader("X-Nova-Admin-Id", std::to_string(claims->admin_id));
 
     // 注入 permissions（逗号分隔）
-    auto perms = ctx_.dao().Rbac().GetUserPermissions(claims->user_id);
+    auto perms = ctx_.dao().Rbac().GetUserPermissions(claims->admin_id);
     std::string perms_str;
     for (size_t i = 0; i < perms.size(); ++i) {
         if (i > 0) perms_str += ',';
@@ -199,11 +200,11 @@ std::string AdminServer::GetClientIp(HttpRequest* req) {
     return req->client_addr.ip;
 }
 
-void AdminServer::WriteAuditLog(int64_t user_id, const std::string& action,
+void AdminServer::WriteAuditLog(int64_t admin_id, const std::string& action,
                                 const std::string& target_type, int64_t target_id,
                                 const std::string& detail, const std::string& ip) {
     AuditLog log;
-    log.user_id     = user_id;
+    log.admin_id    = admin_id;
     log.action      = action;
     log.target_type = target_type;
     log.target_id   = target_id;
@@ -238,33 +239,33 @@ int AdminServer::HandleLogin(HttpRequest* req, HttpResponse* resp) {
     std::string uid = body["uid"].get<std::string>();
     std::string password = body["password"].get<std::string>();
 
-    auto user = ctx_.dao().User().FindByUid(uid);
-    if (!user) {
+    auto admin = ctx_.dao().AdminAccount().FindByUid(uid);
+    if (!admin) {
         return JsonError(resp, ApiCode::kUnauthorized, "invalid credentials", 401);
     }
 
-    if (!PasswordUtils::Verify(password, user->password_hash)) {
+    if (!PasswordUtils::Verify(password, admin->password_hash)) {
         return JsonError(resp, ApiCode::kUnauthorized, "invalid credentials", 401);
     }
 
-    if (user->status != 1) {
+    if (admin->status != 1) {
         return JsonError(resp, ApiCode::kForbidden, "account is disabled", 403);
     }
 
     // 检查是否有 admin.login 权限
-    if (!ctx_.dao().Rbac().HasPermission(user->id, "admin.login")) {
+    if (!ctx_.dao().Rbac().HasPermission(admin->id, "admin.login")) {
         return JsonError(resp, ApiCode::kForbidden, "no admin access", 403);
     }
 
     // 签发 JWT
-    auto token = JwtUtils::Sign(user->id, opts_.jwt_secret, opts_.jwt_expires);
+    auto token = JwtUtils::Sign(admin->id, opts_.jwt_secret, opts_.jwt_expires);
     if (token.empty()) {
         return JsonError(resp, ApiCode::kInternal, "failed to sign token");
     }
 
     // 记录 session（用于黑名单管理）
     AdminSession session;
-    session.user_id    = user->id;
+    session.admin_id   = admin->id;
     session.token_hash = Sha256Hex(token);
     // 计算过期时间 (ISO-8601)
     auto now = std::time(nullptr);
@@ -277,13 +278,13 @@ int AdminServer::HandleLogin(HttpRequest* req, HttpResponse* resp) {
     ctx_.dao().AdminSession().Insert(session);
 
     // 审计
-    WriteAuditLog(user->id, "admin.login", "user", user->id, "{}", GetClientIp(req));
+    WriteAuditLog(admin->id, "admin.login", "admin", admin->id, "{}", GetClientIp(req));
 
     return JsonOk(resp, {{"token", token}, {"expires_in", opts_.jwt_expires}});
 }
 
 int AdminServer::HandleLogout(HttpRequest* req, HttpResponse* resp) {
-    int64_t user_id = GetCurrentUserId(req);
+    int64_t admin_id = GetCurrentAdminId(req);
 
     // 吊销当前 token
     std::string auth = req->GetHeader("Authorization");
@@ -296,28 +297,28 @@ int AdminServer::HandleLogout(HttpRequest* req, HttpResponse* resp) {
 
     ctx_.dao().AdminSession().RevokeByTokenHash(token_hash);
 
-    WriteAuditLog(user_id, "admin.logout", "user", user_id, "{}", GetClientIp(req));
+    WriteAuditLog(admin_id, "admin.logout", "admin", admin_id, "{}", GetClientIp(req));
 
     return JsonOk(resp);
 }
 
 int AdminServer::HandleMe(HttpRequest* req, HttpResponse* resp) {
-    int64_t user_id = GetCurrentUserId(req);
-    if (user_id == 0) {
+    int64_t admin_id = GetCurrentAdminId(req);
+    if (admin_id == 0) {
         return JsonError(resp, ApiCode::kUnauthorized, "not authenticated", 401);
     }
 
-    auto user = ctx_.dao().User().FindById(user_id);
-    if (!user) {
-        return JsonError(resp, ApiCode::kNotFound, "user not found");
+    auto admin = ctx_.dao().AdminAccount().FindById(admin_id);
+    if (!admin) {
+        return JsonError(resp, ApiCode::kNotFound, "admin not found");
     }
 
-    auto perms = ctx_.dao().Rbac().GetUserPermissions(user_id);
+    auto perms = ctx_.dao().Rbac().GetUserPermissions(admin_id);
 
     nlohmann::json data;
-    data["user_id"]     = user->id;
-    data["uid"]         = user->uid;
-    data["nickname"]    = user->nickname;
+    data["admin_id"]    = admin->id;
+    data["uid"]         = admin->uid;
+    data["nickname"]    = admin->nickname;
     data["permissions"] = perms;
 
     return JsonOk(resp, data);
@@ -413,7 +414,7 @@ int AdminServer::HandleCreateUser(HttpRequest* req, HttpResponse* resp) {
         return JsonError(resp, ApiCode::kInternal, "failed to create user");
     }
 
-    int64_t admin_id = GetCurrentUserId(req);
+    int64_t admin_id = GetCurrentAdminId(req);
     WriteAuditLog(admin_id, "user.create", "user", user.id,
                   nlohmann::json({{"uid", uid}}).dump(), GetClientIp(req));
 
@@ -478,7 +479,7 @@ int AdminServer::HandleDeleteUser(HttpRequest* req, HttpResponse* resp) {
     auto conns = ConnManager::Instance().GetConns(id);
     for (auto& c : conns) c->Close();
 
-    int64_t admin_id = GetCurrentUserId(req);
+    int64_t admin_id = GetCurrentAdminId(req);
     WriteAuditLog(admin_id, "user.delete", "user", id, "{}", GetClientIp(req));
 
     return JsonOk(resp);
@@ -513,7 +514,7 @@ int AdminServer::HandleResetPassword(HttpRequest* req, HttpResponse* resp) {
         return JsonError(resp, ApiCode::kNotFound, "user not found");
     }
 
-    int64_t admin_id = GetCurrentUserId(req);
+    int64_t admin_id = GetCurrentAdminId(req);
     WriteAuditLog(admin_id, "user.reset_password", "user", id, "{}", GetClientIp(req));
 
     return JsonOk(resp);
@@ -540,7 +541,7 @@ int AdminServer::HandleBanUser(HttpRequest* req, HttpResponse* resp) {
     auto conns = ConnManager::Instance().GetConns(id);
     for (auto& c : conns) c->Close();
 
-    int64_t admin_id = GetCurrentUserId(req);
+    int64_t admin_id = GetCurrentAdminId(req);
     WriteAuditLog(admin_id, "user.ban", "user", id,
                   nlohmann::json({{"reason", reason}}).dump(), GetClientIp(req));
 
@@ -561,7 +562,7 @@ int AdminServer::HandleUnbanUser(HttpRequest* req, HttpResponse* resp) {
         return JsonError(resp, ApiCode::kNotFound, "user not found");
     }
 
-    int64_t admin_id = GetCurrentUserId(req);
+    int64_t admin_id = GetCurrentAdminId(req);
     WriteAuditLog(admin_id, "user.unban", "user", id, "{}", GetClientIp(req));
 
     return JsonOk(resp);
@@ -584,7 +585,7 @@ int AdminServer::HandleKickUser(HttpRequest* req, HttpResponse* resp) {
 
     for (auto& c : conns) c->Close();
 
-    int64_t admin_id = GetCurrentUserId(req);
+    int64_t admin_id = GetCurrentAdminId(req);
     WriteAuditLog(admin_id, "user.kick", "user", id, "{}", GetClientIp(req));
 
     NOVA_NLOG_INFO(kLogTag, "kicked user {} ({} connections)", id, conns.size());
@@ -660,7 +661,7 @@ int AdminServer::HandleRecallMessage(HttpRequest* req, HttpResponse* resp) {
         return JsonError(resp, ApiCode::kInternal, "failed to recall message");
     }
 
-    int64_t admin_id = GetCurrentUserId(req);
+    int64_t admin_id = GetCurrentAdminId(req);
     WriteAuditLog(admin_id, "msg.recall", "message", id,
                   nlohmann::json({{"reason", reason}, {"conversation_id", msg->conversation_id}}).dump(),
                   GetClientIp(req));
@@ -677,23 +678,23 @@ int AdminServer::HandleListAuditLogs(HttpRequest* req, HttpResponse* resp) {
     if (rc != 0) return rc;
 
     auto pg = ParsePagination(req);
-    int64_t user_id = 0;
-    auto uid_str = req->GetParam("user_id");
-    if (!uid_str.empty()) user_id = std::atoll(uid_str.c_str());
+    int64_t admin_id = 0;
+    auto aid_str = req->GetParam("admin_id");
+    if (!aid_str.empty()) admin_id = std::atoll(aid_str.c_str());
 
     std::string action     = req->GetParam("action");
     std::string start_time = req->GetParam("start_time");
     std::string end_time   = req->GetParam("end_time");
 
-    auto result = ctx_.dao().AuditLog().List(user_id, action, start_time, end_time, pg.page, pg.page_size);
+    auto result = ctx_.dao().AuditLog().List(admin_id, action, start_time, end_time, pg.page, pg.page_size);
 
     // operator_uid 缓存，避免 N+1 查询
     std::unordered_map<int64_t, std::string> uid_cache;
     auto resolve_uid = [&](int64_t id) -> const std::string& {
         auto [it, inserted] = uid_cache.try_emplace(id);
         if (inserted) {
-            auto u = ctx_.dao().User().FindById(id);
-            it->second = u ? u->uid : "";
+            auto a = ctx_.dao().AdminAccount().FindById(id);
+            it->second = a ? a->uid : "";
         }
         return it->second;
     };
@@ -702,8 +703,8 @@ int AdminServer::HandleListAuditLogs(HttpRequest* req, HttpResponse* resp) {
     for (auto& log : result.items) {
         nlohmann::json item;
         item["id"]           = log.id;
-        item["user_id"]      = log.user_id;
-        item["operator_uid"] = resolve_uid(log.user_id);
+        item["admin_id"]     = log.admin_id;
+        item["operator_uid"] = resolve_uid(log.admin_id);
         item["action"]       = log.action;
         item["target_type"]  = log.target_type;
         item["target_id"]    = log.target_id;

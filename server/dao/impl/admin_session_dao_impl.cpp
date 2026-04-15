@@ -19,8 +19,8 @@ bool AdminSessionDaoImplT<DbMgr>::IsRevoked(const std::string& token_hash) {
 }
 
 template <typename DbMgr>
-bool AdminSessionDaoImplT<DbMgr>::RevokeByUser(int64_t user_id) {
-    auto sessions = db_.DB().query_s<AdminSession>("user_id=? AND revoked=0", user_id);
+bool AdminSessionDaoImplT<DbMgr>::RevokeByAdmin(int64_t admin_id) {
+    auto sessions = db_.DB().query_s<AdminSession>("admin_id=? AND revoked=0", admin_id);
     for (auto& s : sessions) {
         s.revoked = 1;
         db_.DB().update_some<&AdminSession::revoked>(s);

@@ -76,9 +76,9 @@ inline nlohmann::json PaginatedResult(const nlohmann::json& items, int64_t total
 // 权限检查 (Phase 2 使用，依赖 req context 中的 permissions)
 // ============================================================
 
-// 从请求中获取当前用户 ID（由 AuthMiddleware 注入）
-inline int64_t GetCurrentUserId(HttpRequest* req) {
-    auto val = req->GetHeader("X-Nova-User-Id");
+// 从请求中获取当前管理员 ID（由 AuthMiddleware 注入）
+inline int64_t GetCurrentAdminId(HttpRequest* req) {
+    auto val = req->GetHeader("X-Nova-Admin-Id");
     return val.empty() ? 0 : std::atoll(val.c_str());
 }
 

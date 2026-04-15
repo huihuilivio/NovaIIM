@@ -62,7 +62,7 @@ private:
     int HandleListAuditLogs(HttpRequest* req, HttpResponse* resp);
 
     // 审计日志写入助手
-    void WriteAuditLog(int64_t user_id, const std::string& action,
+    void WriteAuditLog(int64_t admin_id, const std::string& action,
                        const std::string& target_type, int64_t target_id,
                        const std::string& detail, const std::string& ip);
 

@@ -9,11 +9,11 @@
 
 namespace nova {
 
-std::string JwtUtils::Sign(int64_t user_id,
+std::string JwtUtils::Sign(int64_t admin_id,
                            std::string_view secret,
                            int expires_seconds,
                            JwtAlgorithm alg) {
-    auto sub = std::to_string(user_id);
+    auto sub = std::to_string(admin_id);
 
     struct l8w8jwt_encoding_params params;
     l8w8jwt_encoding_params_init(&params);
@@ -81,12 +81,12 @@ std::optional<JwtClaims> JwtUtils::Verify(std::string_view token,
 
     JwtClaims result;
 
-    // 提取 sub → user_id
+    // 提取 sub → admin_id
     auto* sub_claim = l8w8jwt_get_claim(claims, claims_count, "sub", 3);
     if (sub_claim && sub_claim->value) {
         std::from_chars(sub_claim->value,
                         sub_claim->value + sub_claim->value_length,
-                        result.user_id);
+                        result.admin_id);
     }
 
     // 提取 iat
@@ -107,7 +107,7 @@ std::optional<JwtClaims> JwtUtils::Verify(std::string_view token,
 
     l8w8jwt_free_claims(claims, claims_count);
 
-    if (result.user_id == 0) {
+    if (result.admin_id == 0) {
         return std::nullopt;  // sub 缺失或无效
     }
 

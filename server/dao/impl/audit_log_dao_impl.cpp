@@ -21,13 +21,13 @@ AuditLogListResult AuditLogDaoImplT<DbMgr>::List(int64_t user_id, const std::str
 
     static constexpr auto kCountSql =
         "SELECT count(*) FROM audit_logs WHERE "
-        "(? = 0 OR user_id = ?) AND "
+        "(? = 0 OR admin_id = ?) AND "
         "(? = '' OR action = ?) AND "
         "(? = '' OR created_at >= ?) AND "
         "(? = '' OR created_at <= ?)";
 
     static constexpr auto kWhere =
-        "(? = 0 OR user_id = ?) AND "
+        "(? = 0 OR admin_id = ?) AND "
         "(? = '' OR action = ?) AND "
         "(? = '' OR created_at >= ?) AND "
         "(? = '' OR created_at <= ?) "

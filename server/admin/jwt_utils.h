@@ -8,9 +8,9 @@
 namespace nova {
 
 struct JwtClaims {
-    int64_t user_id = 0;
-    int64_t iat     = 0;
-    int64_t exp     = 0;
+    int64_t admin_id = 0;
+    int64_t iat      = 0;
+    int64_t exp      = 0;
 };
 
 /// HMAC 签名算法
@@ -27,13 +27,13 @@ public:
     static constexpr const char* kIssuer = "nova-admin";
 
     /// 签发 JWT
-    /// @param user_id   用户 ID，写入 sub claim
+    /// @param admin_id  管理员 ID，写入 sub claim
     /// @param secret    HMAC 密钥
     /// @param expires_seconds 有效期（秒），默认 86400（24h）
     /// @param alg       签名算法，默认 HS256
     /// @return token 字符串；签发失败返回空字符串
     [[nodiscard]]
-    static std::string Sign(int64_t user_id,
+    static std::string Sign(int64_t admin_id,
                             std::string_view secret,
                             int expires_seconds = 86400,
                             JwtAlgorithm alg = JwtAlgorithm::HS256);

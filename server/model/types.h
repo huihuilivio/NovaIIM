@@ -21,6 +21,18 @@ struct User {
 };
 inline constexpr std::string_view get_alias_struct_name(User*) { return "users"; }
 
+// 运维管理员（独立于 IM 用户）
+struct Admin {
+    int64_t     id = 0;
+    std::string uid;
+    std::string password_hash;
+    std::string nickname;
+    int         status = 1;        // 1正常 2封禁 3已删除
+    std::string created_at;
+    std::string updated_at;
+};
+inline constexpr std::string_view get_alias_struct_name(Admin*) { return "admins"; }
+
 struct UserDevice {
     int64_t     id = 0;
     int64_t     user_id = 0;
@@ -65,7 +77,7 @@ inline constexpr std::string_view get_alias_struct_name(ConversationMember*) { r
 
 struct AuditLog {
     int64_t     id = 0;
-    int64_t     user_id = 0;
+    int64_t     admin_id = 0;
     std::string action;              // e.g. "user.ban", "admin.login"
     std::string target_type;         // e.g. "user", "message"
     int64_t     target_id = 0;
@@ -77,7 +89,7 @@ inline constexpr std::string_view get_alias_struct_name(AuditLog*) { return "aud
 
 struct AdminSession {
     int64_t     id = 0;
-    int64_t     user_id = 0;
+    int64_t     admin_id = 0;
     std::string token_hash;          // SHA-256(JWT)
     std::string expires_at;
     int         revoked = 0;         // 0有效 1已吊销
@@ -111,11 +123,11 @@ struct RolePermission {
 };
 inline constexpr std::string_view get_alias_struct_name(RolePermission*) { return "role_permissions"; }
 
-struct UserRole {
+struct AdminRole {
     int64_t id = 0;
-    int64_t user_id = 0;
+    int64_t admin_id = 0;
     int64_t role_id = 0;
 };
-inline constexpr std::string_view get_alias_struct_name(UserRole*) { return "user_roles"; }
+inline constexpr std::string_view get_alias_struct_name(AdminRole*) { return "admin_roles"; }
 
 } // namespace nova

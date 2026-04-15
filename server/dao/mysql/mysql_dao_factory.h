@@ -20,6 +20,7 @@ public:
     MessageDao&      Message()      override;
     AuditLogDao&     AuditLog()     override;
     AdminSessionDao& AdminSession() override;
+    AdminAccountDao& AdminAccount() override;
     RbacDao&         Rbac()         override;
 
 private:

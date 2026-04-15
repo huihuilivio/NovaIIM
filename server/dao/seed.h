@@ -14,10 +14,10 @@ namespace nova {
 /// 仅在表为空时插入（首次运行），幂等安全
 template <typename DbMgr>
 void SeedSuperAdmin(DbMgr& db) {
-    // 如果已有用户，跳过（非首次运行）
-    auto user_count = db.DB().template query_s<std::tuple<int64_t>>(
-        "SELECT count(*) FROM users");
-    if (!user_count.empty() && std::get<0>(user_count[0]) > 0) {
+    // 如果已有管理员，跳过（非首次运行）
+    auto admin_count = db.DB().template query_s<std::tuple<int64_t>>(
+        "SELECT count(*) FROM admins");
+    if (!admin_count.empty() && std::get<0>(admin_count[0]) > 0) {
         return;
     }
 
@@ -71,33 +71,33 @@ void SeedSuperAdmin(DbMgr& db) {
         db.DB().insert(rp);
     }
 
-    // ---- 4. 创建超管用户 ----
+    // ---- 4. 创建超管账户 ----
     auto hash = PasswordUtils::Hash("admin123");
     if (hash.empty()) {
         SPDLOG_ERROR("Failed to seed: password hashing failed");
         return;
     }
 
-    User admin;
+    Admin admin;
     admin.uid           = "admin";
     admin.password_hash = hash;
     admin.nickname      = "Administrator";
     db.DB().insert(admin);
 
-    // 查询刚插入的 user_id
-    auto user_rows = db.DB().template query_s<std::tuple<int64_t>>(
-        "SELECT id FROM users WHERE uid = ?", std::string("admin"));
-    if (user_rows.empty()) {
-        SPDLOG_ERROR("Failed to seed: cannot find admin user");
+    // 查询刚插入的 admin_id
+    auto admin_rows = db.DB().template query_s<std::tuple<int64_t>>(
+        "SELECT id FROM admins WHERE uid = ?", std::string("admin"));
+    if (admin_rows.empty()) {
+        SPDLOG_ERROR("Failed to seed: cannot find admin account");
         return;
     }
-    int64_t user_id = std::get<0>(user_rows[0]);
+    int64_t admin_id = std::get<0>(admin_rows[0]);
 
-    // ---- 5. 绑定超管角色到管理员用户 ----
-    UserRole ur;
-    ur.user_id = user_id;
-    ur.role_id = role_id;
-    db.DB().insert(ur);
+    // ---- 5. 绑定超管角色到管理员账户 ----
+    AdminRole ar;
+    ar.admin_id = admin_id;
+    ar.role_id  = role_id;
+    db.DB().insert(ar);
 
     SPDLOG_INFO("Super admin seeded: uid=admin (change password after first login!)");
 }

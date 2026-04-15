@@ -13,7 +13,7 @@ public:
 
     bool Insert(const AdminSession& session) override;
     bool IsRevoked(const std::string& token_hash) override;
-    bool RevokeByUser(int64_t user_id) override;
+    bool RevokeByAdmin(int64_t admin_id) override;
     bool RevokeByTokenHash(const std::string& token_hash) override;
 
 private:

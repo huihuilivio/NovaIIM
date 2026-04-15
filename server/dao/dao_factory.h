@@ -8,6 +8,7 @@ class UserDao;
 class MessageDao;
 class AuditLogDao;
 class AdminSessionDao;
+class AdminAccountDao;
 class RbacDao;
 struct DatabaseConfig;
 
@@ -21,6 +22,7 @@ public:
     virtual MessageDao&      Message()      = 0;
     virtual AuditLogDao&     AuditLog()     = 0;
     virtual AdminSessionDao& AdminSession() = 0;
+    virtual AdminAccountDao& AdminAccount() = 0;
     virtual RbacDao&         Rbac()         = 0;
 };
 

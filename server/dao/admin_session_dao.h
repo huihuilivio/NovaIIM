@@ -15,8 +15,8 @@ public:
     // 检查 token 是否已被吊销
     virtual bool IsRevoked(const std::string& token_hash) = 0;
 
-    // 吊销某用户所有 session
-    virtual bool RevokeByUser(int64_t user_id) = 0;
+    // 吐销某管理员所有 session
+    virtual bool RevokeByAdmin(int64_t admin_id) = 0;
 
     // 吊销单个 token
     virtual bool RevokeByTokenHash(const std::string& token_hash) = 0;
