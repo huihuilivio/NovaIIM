@@ -4,6 +4,7 @@
 #include "mysql_db_manager.h"
 #include "../impl/user_dao_impl.h"
 #include "../impl/message_dao_impl.h"
+#include "../impl/conversation_dao_impl.h"
 #include "../impl/audit_log_dao_impl.h"
 #include "../impl/admin_session_dao_impl.h"
 #include "../impl/admin_account_dao_impl.h"
@@ -20,13 +21,14 @@ struct MysqlDaoFactory::Impl {
     MysqlDbManager                       db;
     UserDaoImplT<MysqlDbManager>         user;
     MessageDaoImplT<MysqlDbManager>      message;
+    ConversationDaoImplT<MysqlDbManager> conversation;
     AuditLogDaoImplT<MysqlDbManager>     audit_log;
     AdminSessionDaoImplT<MysqlDbManager> admin_session;
     AdminAccountDaoImplT<MysqlDbManager> admin_account;
     RbacDaoImplT<MysqlDbManager>         rbac;
 
     explicit Impl(const DatabaseConfig& config)
-        : user(db), message(db), audit_log(db),
+        : user(db), message(db), conversation(db), audit_log(db),
           admin_session(db), admin_account(db), rbac(db) {
         if (!db.Open(config)) {
             throw std::runtime_error("failed to open MySQL connection pool");
@@ -51,6 +53,7 @@ MysqlDaoFactory::~MysqlDaoFactory() = default;
 
 UserDao&         MysqlDaoFactory::User()         { return impl_->user; }
 MessageDao&      MysqlDaoFactory::Message()      { return impl_->message; }
+ConversationDao& MysqlDaoFactory::Conversation() { return impl_->conversation; }
 AuditLogDao&     MysqlDaoFactory::AuditLog()     { return impl_->audit_log; }
 AdminSessionDao& MysqlDaoFactory::AdminSession() { return impl_->admin_session; }
 AdminAccountDao& MysqlDaoFactory::AdminAccount() { return impl_->admin_account; }

@@ -6,6 +6,7 @@ namespace nova {
 
 class UserDao;
 class MessageDao;
+class ConversationDao;
 class AuditLogDao;
 class AdminSessionDao;
 class AdminAccountDao;
@@ -20,6 +21,7 @@ public:
 
     virtual UserDao&         User()         = 0;
     virtual MessageDao&      Message()      = 0;
+    virtual ConversationDao& Conversation() = 0;
     virtual AuditLogDao&     AuditLog()     = 0;
     virtual AdminSessionDao& AdminSession() = 0;
     virtual AdminAccountDao& AdminAccount() = 0;

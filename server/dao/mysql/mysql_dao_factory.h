@@ -18,6 +18,7 @@ public:
 
     UserDao&         User()         override;
     MessageDao&      Message()      override;
+    ConversationDao& Conversation() override;
     AuditLogDao&     AuditLog()     override;
     AdminSessionDao& AdminSession() override;
     AdminAccountDao& AdminAccount() override;

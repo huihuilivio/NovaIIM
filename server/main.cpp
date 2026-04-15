@@ -87,9 +87,9 @@ int main(int argc, char* argv[]) {
     }
 
     // 初始化服务
-    UserService user_svc;
-    MsgService  msg_svc;
-    SyncService sync_svc;
+    UserService user_svc(ctx);
+    MsgService  msg_svc(ctx);
+    SyncService sync_svc(ctx);
 
     // 注册路由
     Router router;

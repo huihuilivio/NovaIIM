@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <vector>
 #include "../model/types.h"
@@ -18,11 +19,17 @@ public:
     // 获取用户参与的所有会话成员关系
     virtual std::vector<ConversationMember> GetMembersByUser(int64_t user_id) = 0;
 
+    // 获取会话的所有成员
+    virtual std::vector<ConversationMember> GetMembersByConversation(int64_t conversation_id) = 0;
+
     // 更新 last_read_seq（已读回执）
     virtual bool UpdateLastReadSeq(int64_t conversation_id, int64_t user_id, int64_t seq) = 0;
 
     // 更新 last_ack_seq（投递确认）
     virtual bool UpdateLastAckSeq(int64_t conversation_id, int64_t user_id, int64_t seq) = 0;
+
+    // 获取会话信息
+    virtual std::optional<Conversation> FindById(int64_t id) = 0;
 };
 
 } // namespace nova
