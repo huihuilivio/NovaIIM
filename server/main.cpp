@@ -115,9 +115,12 @@ int main(int argc, char* argv[]) {
     Gateway gateway(ctx);
     gateway.SetWorkerThreads(cfg.server.worker_threads);
     gateway.SetPacketHandler([&](ConnectionPtr conn, Packet& pkt) {
-        worker_pool.Submit([&router, conn = std::move(conn), pkt]() mutable {
+        if (!worker_pool.Submit([&router, conn, pkt]() mutable {
             router.Dispatch(std::move(conn), pkt);
-        });
+        })) {
+            NOVA_LOG_WARN("worker queue full, dropping cmd=0x{:04X}", pkt.cmd);
+            ctx.incr_bad_packets();
+        }
     });
 
     int port = cfg.server.port;
@@ -147,6 +150,11 @@ int main(int argc, char* argv[]) {
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
     }
 
+    // 关闭顺序：
+    // 1. Admin —— 停止 HTTP API
+    // 2. Gateway —— 停止接受新连接，等待 IO 线程结束（此后无新任务提交）
+    // 3. ThreadPool —— drain 剩余任务并关闭 worker 线程
+    //    此时 Router / Services / ServerContext 在栈上仍存活，安全
     NOVA_LOG_INFO("Received signal {}, shutting down...", g_signal.load());
     if (admin) admin->Stop();
     gateway.Stop();

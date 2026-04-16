@@ -5,6 +5,7 @@
 #include <memory>
 #include "app_config.h"
 #include "../dao/dao_factory.h"
+#include "../net/conn_manager.h"
 
 namespace nova {
 
@@ -23,6 +24,10 @@ public:
     // --- DAO 工厂（全局唯一）---
     void set_dao(std::unique_ptr<DaoFactory> dao) { dao_ = std::move(dao); }
     DaoFactory& dao() const { return *dao_; }
+
+    // --- 连接管理器（显式依赖注入，避免各模块直接使用单例）---
+    ConnManager& conn_manager() { return conn_manager_; }
+    const ConnManager& conn_manager() const { return conn_manager_; }
 
     // --- 连接指标 ---
     int  connection_count() const { return conn_count_.load(std::memory_order_relaxed); }
@@ -54,6 +59,7 @@ public:
 private:
     AppConfig config_;
     std::unique_ptr<DaoFactory> dao_;
+    ConnManager conn_manager_;
     std::chrono::steady_clock::time_point start_time_;
 
     std::atomic<int>     conn_count_{0};

@@ -1,5 +1,4 @@
 #include "user_service.h"
-#include "../net/conn_manager.h"
 #include "../core/server_context.h"
 #include "../core/logger.h"
 #include "../admin/password_utils.h"
@@ -68,7 +67,7 @@ void UserService::HandleLogin(ConnectionPtr conn, Packet& pkt) {
     }
 
     // 6. 注册到连接管理器
-    ConnManager::Instance().Add(user.id, conn);
+    ctx_.conn_manager().Add(user.id, conn);
     ctx_.add_online_user();
 
     NOVA_NLOG_INFO(kLogTag, "user {} (id={}) logged in, device={}",
@@ -82,7 +81,7 @@ void UserService::HandleLogin(ConnectionPtr conn, Packet& pkt) {
 void UserService::HandleLogout(ConnectionPtr conn, Packet& pkt) {
     int64_t user_id = conn->user_id();
     if (user_id != 0) {
-        ConnManager::Instance().Remove(user_id, conn.get());
+        ctx_.conn_manager().Remove(user_id, conn.get());
         ctx_.remove_online_user();
         NOVA_NLOG_INFO(kLogTag, "user id={} logged out", user_id);
     }

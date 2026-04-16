@@ -7,6 +7,8 @@
 namespace nova {
 
 // TCP 连接实现 —— 持有 libhv SocketChannel
+// 注意: hv::Channel::write() 是线程安全的（内部跨线程投递到 IO 线程），
+// 因此多个 Worker 线程并发调用 Send() 不会产生数据竞争。
 class TcpConnection : public Connection {
 public:
     explicit TcpConnection(const hv::SocketChannelPtr& channel)

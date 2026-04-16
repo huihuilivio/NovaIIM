@@ -1,5 +1,4 @@
 #include "gateway.h"
-#include "conn_manager.h"
 #include "../core/server_context.h"
 #include "../core/logger.h"
 
@@ -81,7 +80,7 @@ void Gateway::OnConnection(const hv::SocketChannelPtr& channel) {
         // 清理 ConnManager
         auto conn = channel->getContextPtr<TcpConnection>();
         if (conn && conn->is_authenticated()) {
-            ConnManager::Instance().Remove(conn->user_id(), conn.get());
+            ctx_.conn_manager().Remove(conn->user_id(), conn.get());
             ctx_.remove_online_user();
         }
         channel->deleteContextPtr();

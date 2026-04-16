@@ -8,14 +8,18 @@ namespace nova {
 
 template <typename DbMgr>
 int64_t ConversationDaoImplT<DbMgr>::IncrMaxSeq(int64_t conversation_id) {
-    // 原子自增: 先 UPDATE max_seq = max_seq + 1，再查回新值
-    auto convs = db_.DB().query_s<Conversation>("id=?", conversation_id);
-    if (convs.empty()) return -1;
+    // 用 mutex 序列化同一进程内的并发 IncrMaxSeq 调用，
+    // 再用 SQL 原子 UPDATE 保证数据库层面的正确性
+    std::lock_guard<std::mutex> lock(seq_mutex_);
 
-    convs[0].max_seq += 1;
-    if (db_.DB().template update_some<&Conversation::max_seq>(convs[0]) != 1) {
+    std::string sql = "UPDATE conversations SET max_seq = max_seq + 1 WHERE id = "
+                      + std::to_string(conversation_id);
+    if (!db_.DB().execute(sql)) {
         return -1;
     }
+
+    auto convs = db_.DB().query_s<Conversation>("id=?", conversation_id);
+    if (convs.empty()) return -1;
     return convs[0].max_seq;
 }
 

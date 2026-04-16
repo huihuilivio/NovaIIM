@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../conversation_dao.h"
+#include <mutex>
 
 namespace nova {
 
@@ -20,6 +21,7 @@ public:
 
 private:
     DbMgr& db_;
+    std::mutex seq_mutex_;  // serializes IncrMaxSeq to prevent duplicate seq
 };
 
 } // namespace nova

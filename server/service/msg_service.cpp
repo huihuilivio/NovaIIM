@@ -1,5 +1,4 @@
 #include "msg_service.h"
-#include "../net/conn_manager.h"
 #include "../core/server_context.h"
 #include "../core/logger.h"
 #include "../dao/conversation_dao.h"
@@ -140,7 +139,7 @@ int64_t MsgService::GenerateSeq(int64_t conversation_id) {
 }
 
 void MsgService::PushToUser(int64_t user_id, const Packet& pkt) {
-    auto conns = ConnManager::Instance().GetConns(user_id);
+    auto conns = ctx_.conn_manager().GetConns(user_id);
     for (auto& c : conns) {
         c->Send(pkt);
         ctx_.incr_messages_out();
@@ -148,7 +147,7 @@ void MsgService::PushToUser(int64_t user_id, const Packet& pkt) {
 }
 
 void MsgService::PushToOtherDevices(int64_t user_id, const std::string& exclude_device, const Packet& pkt) {
-    auto conns = ConnManager::Instance().GetConns(user_id);
+    auto conns = ctx_.conn_manager().GetConns(user_id);
     for (auto& c : conns) {
         if (c->device_id() != exclude_device) {
             c->Send(pkt);

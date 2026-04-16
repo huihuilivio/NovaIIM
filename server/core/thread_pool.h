@@ -1,8 +1,10 @@
 #pragma once
 
 #include <condition_variable>
+#include <cstdio>
 #include <functional>
 #include <mutex>
+#include <stdexcept>
 #include <thread>
 #include <vector>
 #include "mpmc_queue.h"
@@ -50,7 +52,13 @@ private:
         while (!stop_) {
             Task task;
             if (queue_.Pop(task)) {
-                task();
+                try {
+                    task();
+                } catch (const std::exception& e) {
+                    fprintf(stderr, "[ThreadPool] unhandled exception: %s\n", e.what());
+                } catch (...) {
+                    fprintf(stderr, "[ThreadPool] unknown exception\n");
+                }
             } else {
                 std::unique_lock<std::mutex> lock(mutex_);
                 cv_.wait_for(lock, std::chrono::milliseconds(1));
@@ -59,7 +67,9 @@ private:
         // drain remaining tasks
         Task task;
         while (queue_.Pop(task)) {
-            task();
+            try {
+                task();
+            } catch (...) {}
         }
     }
 

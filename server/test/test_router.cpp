@@ -23,6 +23,7 @@ TEST(RouterTest, DispatchRegisteredCmd) {
     });
 
     auto conn = std::make_shared<MockConnection>();
+    conn->set_user_id(1);  // authenticate for non-Login cmd
     Packet pkt;
     pkt.cmd = static_cast<uint16_t>(Cmd::kSendMsg);
     pkt.seq = 1;
@@ -53,6 +54,7 @@ TEST(RouterTest, MultipleHandlers) {
     router.Register(Cmd::kSendMsg, [&](ConnectionPtr, Packet&) { ++msg_count; });
 
     auto conn = std::make_shared<MockConnection>();
+    conn->set_user_id(1);  // authenticate for non-Login cmd
 
     Packet login_pkt;
     login_pkt.cmd = static_cast<uint16_t>(Cmd::kLogin);
@@ -66,6 +68,34 @@ TEST(RouterTest, MultipleHandlers) {
 
     EXPECT_EQ(login_count, 1);
     EXPECT_EQ(msg_count, 2);
+}
+
+TEST(RouterTest, AuthGuardBlocksUnauthenticated) {
+    Router router;
+    bool called = false;
+
+    router.Register(Cmd::kSendMsg, [&](ConnectionPtr, Packet&) { called = true; });
+
+    auto conn = std::make_shared<MockConnection>();  // user_id == 0, not authenticated
+    Packet pkt;
+    pkt.cmd = static_cast<uint16_t>(Cmd::kSendMsg);
+
+    router.Dispatch(conn, pkt);
+    EXPECT_FALSE(called);  // should be blocked by auth guard
+}
+
+TEST(RouterTest, AuthGuardAllowsLogin) {
+    Router router;
+    bool called = false;
+
+    router.Register(Cmd::kLogin, [&](ConnectionPtr, Packet&) { called = true; });
+
+    auto conn = std::make_shared<MockConnection>();  // not authenticated
+    Packet pkt;
+    pkt.cmd = static_cast<uint16_t>(Cmd::kLogin);
+
+    router.Dispatch(conn, pkt);
+    EXPECT_TRUE(called);  // Login should pass even when unauthenticated
 }
 
 } // namespace
