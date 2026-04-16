@@ -1,33 +1,35 @@
 #include "sqlite_db_manager.h"
 
-#include <spdlog/spdlog.h>
+#include "../../core/logger.h"
 
 namespace nova {
 
+static constexpr const char* kLogTag = "SqliteDB";
+
 bool SqliteDbManager::Open(const std::string& path) {
     if (!db_.connect(path)) {
-        SPDLOG_ERROR("Failed to open database: {}", path);
+        NOVA_NLOG_ERROR(kLogTag, "Failed to open database: {}", path);
         return false;
     }
 
     // 启用 WAL 模式 + 外键约束
     if (!db_.execute("PRAGMA journal_mode=WAL")) {
-        SPDLOG_WARN("Failed to enable WAL mode");
+        NOVA_NLOG_WARN(kLogTag, "Failed to enable WAL mode");
     }
     if (!db_.execute("PRAGMA foreign_keys=ON")) {
-        SPDLOG_WARN("Failed to enable foreign key constraints");
+        NOVA_NLOG_WARN(kLogTag, "Failed to enable foreign key constraints");
     }
     if (!db_.execute("PRAGMA busy_timeout=5000")) {
-        SPDLOG_WARN("Failed to set busy_timeout");
+        NOVA_NLOG_WARN(kLogTag, "Failed to set busy_timeout");
     }
 
-    SPDLOG_INFO("Database opened: {}", path);
+    NOVA_NLOG_INFO(kLogTag, "Database opened: {}", path);
     return true;
 }
 
 void SqliteDbManager::Close() {
     db_.disconnect();
-    SPDLOG_INFO("Database closed");
+    NOVA_NLOG_INFO(kLogTag, "Database closed");
 }
 
 bool SqliteDbManager::InitSchema() {
@@ -57,9 +59,9 @@ bool SqliteDbManager::InitSchema() {
     db_.execute("CREATE INDEX IF NOT EXISTS idx_session_admin ON admin_sessions(admin_id)");
 
     if (!ok) {
-        SPDLOG_ERROR("Failed to initialize database schema");
+        NOVA_NLOG_ERROR(kLogTag, "Failed to initialize database schema");
     } else {
-        SPDLOG_INFO("Database schema initialized");
+        NOVA_NLOG_INFO(kLogTag, "Database schema initialized");
     }
     return ok;
 }

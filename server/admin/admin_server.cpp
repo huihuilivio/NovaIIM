@@ -46,7 +46,10 @@ static std::optional<hv::Json> ParseJsonBody(HttpRequest* req) {
     return j;
 }
 
-AdminServer::AdminServer(ServerContext& ctx) : ctx_(ctx) {}
+AdminServer::AdminServer(ServerContext& ctx)
+    : ctx_(ctx),
+      login_limiter_(ctx.config().admin.login_max_attempts, std::chrono::seconds(ctx.config().admin.login_window_secs)) {
+}
 
 AdminServer::~AdminServer() {
     Stop();

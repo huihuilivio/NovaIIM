@@ -127,6 +127,7 @@ int main(int argc, char* argv[]) {
     // 启动 Gateway
     Gateway gateway(ctx);
     gateway.SetWorkerThreads(cfg.server.worker_threads);
+    gateway.SetHeartbeatInterval(cfg.server.heartbeat_ms);
     gateway.SetPacketHandler([&](ConnectionPtr conn, Packet& pkt) {
         if (!worker_pool.Submit([&router, conn, pkt]() mutable { router.Dispatch(std::move(conn), pkt); })) {
             NOVA_LOG_WARN("worker queue full, rejecting cmd=0x{:04X}", pkt.cmd);

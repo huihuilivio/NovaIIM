@@ -4,6 +4,13 @@ server:
   port: 9090
   worker_threads: 4
   queue_capacity: 8192        # MPMC 队列容量，必须为 2 的幂
+  heartbeat_ms: 30000         # 心跳超时（毫秒）
+  max_content_size: 4096      # 单条消息最大字节数
+  dedup_cache_size: 10000     # 幂等去重 LRU 缓存大小
+  sync_default: 20            # 消息同步默认每页条数
+  sync_max: 100               # 消息同步最大每页条数
+  login_max_attempts: 5       # IM 登录频率限制：最大失败次数
+  login_window_secs: 60       # IM 登录频率限制：窗口时间（秒）
 
 log:
   level: debug                # trace / debug / info / warn / error / critical
@@ -31,3 +38,5 @@ admin:
   port: 9091
   jwt_secret: "change-me-in-production"   # JWT HMAC 密钥
   jwt_expires: 86400                       # JWT 有效期（秒）
+  login_max_attempts: 5                    # Admin 登录频率限制：最大失败次数
+  login_window_secs: 60                    # Admin 登录频率限制：窗口时间（秒）

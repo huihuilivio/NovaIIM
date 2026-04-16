@@ -1,12 +1,13 @@
 #pragma once
 
-#include <cstdio>
 #include <functional>
 #include <semaphore>
 #include <stdexcept>
 #include <thread>
 #include <vector>
 #include "mpmc_queue.h"
+
+#include <spdlog/spdlog.h>
 
 namespace nova {
 
@@ -63,9 +64,9 @@ private:
                 try {
                     task();
                 } catch (const std::exception& e) {
-                    fprintf(stderr, "[ThreadPool] unhandled exception: %s\n", e.what());
+                    SPDLOG_ERROR("[ThreadPool] unhandled exception: {}", e.what());
                 } catch (...) {
-                    fprintf(stderr, "[ThreadPool] unknown exception\n");
+                    SPDLOG_ERROR("[ThreadPool] unknown exception");
                 }
             }
         }

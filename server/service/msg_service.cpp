@@ -12,6 +12,11 @@ namespace ec = errc;
 
 static constexpr const char* kLogTag = "MsgService";
 
+MsgService::MsgService(ServerContext& ctx)
+    : ServiceBase(ctx),
+      max_dedup_cache_size_(static_cast<size_t>(ctx.config().server.dedup_cache_size)),
+      max_content_size_(static_cast<size_t>(ctx.config().server.max_content_size)) {}
+
 // ---- LRU dedup 缓存实现 ----
 
 proto::SendMsgAck* MsgService::DedupFind(const std::string& key) {
@@ -31,7 +36,7 @@ void MsgService::DedupInsert(const std::string& key, const proto::SendMsgAck& ac
         return;
     }
     // 淘汰最旧条目（front）直到低于阈值
-    while (dedup_index_.size() >= kMaxDedupCacheSize) {
+    while (dedup_index_.size() >= max_dedup_cache_size_) {
         auto& oldest = dedup_order_.front();
         dedup_index_.erase(oldest.first);
         dedup_order_.pop_front();
@@ -93,7 +98,7 @@ void MsgService::HandleSendMsg(ConnectionPtr conn, Packet& pkt) {
         return;
     }
 
-    if (req->content.size() > kMaxContentSize) {
+    if (req->content.size() > max_content_size_) {
         SendPacket(conn, Cmd::kSendMsgAck, seq, uid,
                    proto::SendMsgAck{ec::msg::kContentTooLarge.code, ec::msg::kContentTooLarge.msg});
         return;

@@ -12,7 +12,7 @@ namespace nova {
 // 职责：seq 生成、写 DB、推送消息、ACK 处理、消息幂等去重
 class MsgService : public ServiceBase {
 public:
-    explicit MsgService(ServerContext& ctx) : ServiceBase(ctx) {}
+    explicit MsgService(ServerContext& ctx);
 
     void HandleSendMsg(ConnectionPtr conn, Packet& pkt);
     void HandleDeliverAck(ConnectionPtr conn, Packet& pkt);
@@ -24,8 +24,8 @@ private:
                           const std::string& encoded);
 
     // ---- 消息幂等去重缓存（LRU：淘汰最旧条目，避免全量清空） ----
-    static constexpr size_t kMaxDedupCacheSize                    = 10000;
-    static constexpr size_t kMaxContentSize                       = 4096;
+    size_t max_dedup_cache_size_;
+    size_t max_content_size_;
     static constexpr std::chrono::seconds kInflightTimeout{30};  // in-flight 超时
     std::mutex dedup_mutex_;
     // LRU 列表：front = 最旧，back = 最新

@@ -3,12 +3,14 @@
 #include "mysql_db_manager.h"
 #include "../../core/app_config.h"
 
-#include <spdlog/spdlog.h>
+#include "../../core/logger.h"
 
 #include <chrono>
 #include <stdexcept>
 
 namespace nova {
+
+static constexpr const char* kLogTag = "MysqlDB";
 
 // ---- 线程级连接固定 ----
 static thread_local ormpp::dbng<ormpp::mysql>* g_pinned = nullptr;
@@ -63,7 +65,7 @@ MysqlDbManager::~MysqlDbManager() {
 std::unique_ptr<ormpp::dbng<ormpp::mysql>> MysqlDbManager::NewConn() {
     auto conn = std::make_unique<ormpp::dbng<ormpp::mysql>>();
     if (!conn->connect(host_, user_, passwd_, dbname_, std::optional<int>(10), std::optional<int>(port_))) {
-        SPDLOG_ERROR("MySQL connect failed: {}:{}@{}:{}/{}", user_, "***", host_, port_, dbname_);
+        NOVA_NLOG_ERROR(kLogTag, "MySQL connect failed: {}:{}@{}:{}/{}", user_, "***", host_, port_, dbname_);
         return nullptr;
     }
     return conn;
@@ -82,12 +84,12 @@ bool MysqlDbManager::Open(const DatabaseConfig& config) {
     for (int i = 0; i < pool_size_; ++i) {
         auto conn = NewConn();
         if (!conn) {
-            SPDLOG_ERROR("Failed to create MySQL connection {}/{}", i + 1, pool_size_);
+            NOVA_NLOG_ERROR(kLogTag, "Failed to create MySQL connection {}/{}", i + 1, pool_size_);
             return false;
         }
         pool_.push_back(std::move(conn));
     }
-    SPDLOG_INFO("MySQL connection pool initialized: {}:{}/{} (pool_size={})", host_, port_, dbname_, pool_size_);
+    NOVA_NLOG_INFO(kLogTag, "MySQL connection pool initialized: {}:{}/{} (pool_size={})", host_, port_, dbname_, pool_size_);
     return true;
 }
 
@@ -96,7 +98,7 @@ void MysqlDbManager::Close() {
     closed_ = true;
     pool_.clear();
     cv_.notify_all();
-    SPDLOG_INFO("MySQL connection pool closed");
+    NOVA_NLOG_INFO(kLogTag, "MySQL connection pool closed");
 }
 
 void MysqlDbManager::ReturnConn(std::unique_ptr<ormpp::dbng<ormpp::mysql>> conn) {
@@ -107,7 +109,7 @@ void MysqlDbManager::ReturnConn(std::unique_ptr<ormpp::dbng<ormpp::mysql>> conn)
         if (closed_)
             return;
         if (!conn->ping()) {
-            SPDLOG_WARN("MySQL connection lost, discarding");
+            NOVA_NLOG_WARN(kLogTag, "MySQL connection lost, discarding");
             return;
         }
         pool_.push_back(std::move(conn));
@@ -141,7 +143,7 @@ std::unique_ptr<ormpp::dbng<ormpp::mysql>> MysqlDbManager::AcquireFromPool() {
     lock.unlock();
 
     if (!conn->ping()) {
-        SPDLOG_WARN("MySQL connection stale, reconnecting...");
+        NOVA_NLOG_WARN(kLogTag, "MySQL connection stale, reconnecting...");
         conn = NewConn();
         if (!conn) {
             throw std::runtime_error("MySQL reconnect failed");
@@ -183,9 +185,9 @@ bool MysqlDbManager::InitSchema() {
     db.execute("CREATE INDEX IF NOT EXISTS idx_session_admin ON admin_sessions(admin_id)");
 
     if (!ok) {
-        SPDLOG_ERROR("Failed to initialize MySQL schema");
+        NOVA_NLOG_ERROR(kLogTag, "Failed to initialize MySQL schema");
     } else {
-        SPDLOG_INFO("MySQL schema initialized");
+        NOVA_NLOG_INFO(kLogTag, "MySQL schema initialized");
     }
     return ok;
 }

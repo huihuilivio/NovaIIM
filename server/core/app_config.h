@@ -14,9 +14,16 @@
 namespace nova {
 
 struct ServerConfig {
-    int port           = 9090;
-    int worker_threads = 4;
-    int queue_capacity = 8192;  // MPMC 队列容量，必须为 2 的幂
+    int port               = 9090;
+    int worker_threads     = 4;
+    int queue_capacity     = 8192;  // MPMC 队列容量，必须为 2 的幂
+    int heartbeat_ms       = 30000; // 心跳超时（毫秒）
+    int max_content_size   = 4096;  // 单条消息最大字节数
+    int dedup_cache_size   = 10000; // 幂等去重 LRU 缓存大小
+    int sync_default       = 20;    // 消息同步默认每页条数
+    int sync_max           = 100;   // 消息同步最大每页条数
+    int login_max_attempts = 5;     // IM 登录频率限制：最大失败次数
+    int login_window_secs  = 60;    // IM 登录频率限制：窗口时间（秒）
 };
 
 struct LogConfig {
@@ -46,8 +53,10 @@ struct AdminConfig {
     bool enabled = false;
     int port     = 9091;
     std::string jwt_secret;    // JWT HMAC 密钥，空则不启用鉴权
-    int jwt_expires  = 86400;  // JWT 有效期（秒），默认 24h
-    bool trust_proxy = false;  // 信任反向代理的 X-Forwarded-For/X-Real-IP 头
+    int jwt_expires       = 86400;  // JWT 有效期（秒），默认 24h
+    bool trust_proxy      = false;  // 信任反向代理的 X-Forwarded-For/X-Real-IP 头
+    int login_max_attempts = 5;     // 登录频率限制：最大失败次数
+    int login_window_secs  = 60;    // 登录频率限制：窗口时间（秒）
 };
 
 struct AppConfig {

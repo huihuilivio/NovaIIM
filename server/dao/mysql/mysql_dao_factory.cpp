@@ -12,7 +12,7 @@
 #include "../seed.h"
 #include "../../core/app_config.h"
 
-#include <spdlog/spdlog.h>
+#include "../../core/logger.h"
 #include <stdexcept>
 
 namespace nova {
@@ -36,7 +36,7 @@ struct MysqlDaoFactory::Impl {
             throw std::runtime_error("failed to initialize MySQL schema");
         }
         SeedSuperAdmin(db);
-        SPDLOG_INFO("MySQL DaoFactory initialized: {}:{}/{}", config.host, config.port, config.database);
+        NOVA_LOG_INFO("MySQL DaoFactory initialized: {}:{}/{}", config.host, config.port, config.database);
     }
 
     ~Impl() { db.Close(); }

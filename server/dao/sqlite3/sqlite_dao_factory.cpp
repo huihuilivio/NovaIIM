@@ -9,7 +9,7 @@
 #include "../impl/rbac_dao_impl.h"
 #include "../seed.h"
 
-#include <spdlog/spdlog.h>
+#include "../../core/logger.h"
 #include <stdexcept>
 
 namespace nova {
@@ -33,7 +33,7 @@ struct SqliteDaoFactory::Impl {
             throw std::runtime_error("failed to initialize database schema");
         }
         SeedSuperAdmin(db);
-        SPDLOG_INFO("SQLite DaoFactory initialized: {}", path);
+        NOVA_LOG_INFO("SQLite DaoFactory initialized: {}", path);
     }
 
     ~Impl() { db.Close(); }

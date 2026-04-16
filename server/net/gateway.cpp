@@ -69,7 +69,7 @@ void Gateway::OnConnection(const hv::SocketChannelPtr& channel) {
 
     if (channel->isConnected()) {
         ctx_.add_connection();
-        NOVA_NLOG_INFO(kLogTag, "new connection from {}", peer);
+        NOVA_NLOG_DEBUG(kLogTag, "new connection from {}", peer);
         // 为每个连接创建 TcpConnection，附加到 channel context
         auto conn = std::make_shared<TcpConnection>(channel);
         channel->setContextPtr(conn);
@@ -83,7 +83,7 @@ void Gateway::OnConnection(const hv::SocketChannelPtr& channel) {
             ctx_.conn_manager().Remove(conn->user_id(), conn.get());
         }
         channel->deleteContextPtr();
-        NOVA_NLOG_INFO(kLogTag, "connection closed {}", peer);
+        NOVA_NLOG_DEBUG(kLogTag, "connection closed {}", peer);
     }
 }
 

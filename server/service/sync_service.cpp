@@ -10,9 +10,7 @@ namespace nova {
 
 namespace ec = errc;
 
-static constexpr const char* kLogTag   = "SyncService";
-static constexpr int kDefaultSyncLimit = 20;
-static constexpr int kMaxSyncLimit     = 100;
+static constexpr const char* kLogTag = "SyncService";
 
 void SyncService::HandleSyncMsg(ConnectionPtr conn, Packet& pkt) {
     auto session    = ctx_.dao().Session();
@@ -42,11 +40,13 @@ void SyncService::HandleSyncMsg(ConnectionPtr conn, Packet& pkt) {
         return;
     }
 
-    int limit = req->limit;
+    const int sync_default = ctx_.config().server.sync_default;
+    const int sync_max     = ctx_.config().server.sync_max;
+    int limit              = req->limit;
     if (limit <= 0)
-        limit = kDefaultSyncLimit;
-    if (limit > kMaxSyncLimit)
-        limit = kMaxSyncLimit;
+        limit = sync_default;
+    if (limit > sync_max)
+        limit = sync_max;
 
     // 2. 从 DB 拉取 seq > last_seq 的消息
     auto messages = ctx_.dao().Message().GetAfterSeq(req->conversation_id, req->last_seq, limit);
