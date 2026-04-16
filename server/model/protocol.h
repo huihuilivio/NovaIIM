@@ -29,7 +29,7 @@ struct RspBase {
 
 // C→S  Cmd::kLogin (0x0001)
 struct LoginReq {
-    std::string uid;
+    std::string email;       // 登录邮箱
     std::string password;
     std::string device_id;
     std::string device_type;  // "pc", "mobile", "web" 等
@@ -48,8 +48,9 @@ struct LoginAck {
 
 // C→S  Cmd::kRegister (0x0004)
 struct RegisterReq {
-    std::string nickname;  // 必填，可重复
-    std::string password;
+    std::string email;     // 必填，最长 255 字符，格式校验，不区分大小写
+    std::string nickname;  // 必填，可重复，最长 100 字符，自动 trim 首尾空白，禁止控制字符
+    std::string password;  // 必填，6–128 字符
 };
 
 // S→C  Cmd::kRegisterAck (0x0005)

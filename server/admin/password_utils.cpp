@@ -98,7 +98,7 @@ bool PasswordUtils::Verify(std::string_view password, std::string_view stored_ha
     if (dollar1 == std::string::npos)
         return false;
     int iterations = std::atoi(s.substr(0, dollar1).c_str());
-    if (iterations <= 0)
+    if (iterations <= 0 || iterations > 10'000'000)
         return false;
     s = s.substr(dollar1 + 1);
 

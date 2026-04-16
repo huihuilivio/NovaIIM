@@ -45,6 +45,8 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 | kLogin | 0x0001 | C→S | 登录请求 |
 | kLoginAck | 0x0002 | S→C | 登录响应 |
 | kLogout | 0x0003 | C→S | 登出请求 |
+| kRegister | 0x0004 | C→S | 注册请求 |
+| kRegisterAck | 0x0005 | S→C | 注册响应 |
 | **心跳** |
 | kHeartbeat | 0x0010 | C→S | 心跳请求 |
 | kHeartbeatAck | 0x0011 | S→C | 心跳响应 |
@@ -62,7 +64,75 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 
 ---
 
-## 3. Admin HTTP API 协议
+## 3. 消息体定义
+
+### 注册 (kRegister / kRegisterAck)
+
+**RegisterReq** (C→S, 0x0004):
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| email | string | ✅ | 登录邮箱，最长 255 字符，不区分大小写，格式校验 |
+| nickname | string | ✅ | 昵称，可重复，最长 100 字符，自动 trim 首尾空白，禁止控制字符 |
+| password | string | ✅ | 密码，6–128 字符 |
+
+**RegisterAck** (S→C, 0x0005):
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| code | int32 | 0=成功，>0 错误 |
+| msg | string | 错误描述 |
+| uid | string | 服务端生成的唯一 UID（Snowflake，内部标识） |
+| user_id | int64 | 用户内部 ID |
+
+**注册错误码:**
+
+| code | 含义 |
+|------|------|
+| 1 | 邮箱为空 |
+| 6 | 邮箱格式无效 |
+| 7 | 邮箱超过 255 字符 |
+| 8 | 邮箱已注册 |
+| 10 | 昵称为空 |
+| 11 | 昵称超过 100 字符 |
+| 12 | 昵称包含非法字符（控制字符） |
+| 13 | 密码少于 6 字符 |
+| 14 | 密码超过 128 字符 |
+| 16 | 注册失败（服务端内部错误） |
+
+### 登录 (kLogin / kLoginAck)
+
+**LoginReq** (C→S, 0x0001):
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| email | string | ✅ | 登录邮箱（不区分大小写） |
+| password | string | ✅ | 密码 |
+| device_id | string | | 设备标识（用于多端管理） |
+| device_type | string | | 设备类型："pc", "mobile", "web" 等 |
+
+**LoginAck** (S→C, 0x0002):
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| code | int32 | 0=成功，>0 错误 |
+| msg | string | 错误描述 |
+| user_id | int64 | 用户内部 ID |
+| nickname | string | 昵称 |
+| avatar | string | 头像 URL |
+
+**登录错误码:**
+
+| code | 含义 |
+|------|------|
+| 1 | 邮箱为空 |
+| 2 | 邮箱或密码错误（含封禁） |
+| 3 | 密码为空 |
+| 5 | 登录频率限制（防暴力破解） |
+
+---
+
+## 4. Admin HTTP API 协议
 
 独立端口 (默认 9091)，RESTful JSON API。
 

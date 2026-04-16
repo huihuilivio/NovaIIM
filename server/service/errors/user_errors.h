@@ -6,14 +6,19 @@
 namespace nova::errc::user {
 
 // clang-format off
-inline constexpr Error kUidRequired         {1, "uid is required"};
-inline constexpr Error kPasswordRequired    {1, "password is required"};
+inline constexpr Error kEmailRequired       {1, "email is required"};
 inline constexpr Error kInvalidCredentials  {2, "invalid credentials"};
+inline constexpr Error kPasswordRequired    {3, "password is required"};
 inline constexpr Error kUserBanned          {4, "user is banned"};
 inline constexpr Error kRateLimited         {5, "too many attempts, try later"};
 
 // ---- 注册 ----
+inline constexpr Error kEmailInvalid        {6, "invalid email format"};
+inline constexpr Error kEmailTooLong        {7, "email must be at most 255 characters"};
+inline constexpr Error kEmailAlreadyExists  {8, "email already registered"};
 inline constexpr Error kNicknameRequired    {10, "nickname is required"};
+inline constexpr Error kNicknameTooLong     {11, "nickname must be at most 100 characters"};
+inline constexpr Error kNicknameInvalid     {12, "nickname contains invalid characters"};
 inline constexpr Error kPasswordTooShort    {13, "password must be at least 6 characters"};
 inline constexpr Error kPasswordTooLong     {14, "password must be at most 128 characters"};
 inline constexpr Error kRegisterFailed      {16, "registration failed"};

@@ -12,6 +12,7 @@ public:
     explicit UserDaoImplT(DbMgr& db) : db_(db) {}
 
     std::optional<User> FindByUid(const std::string& uid) override;
+    std::optional<User> FindByEmail(const std::string& email) override;
     std::optional<User> FindById(int64_t id) override;
     UserListResult ListUsers(const std::string& keyword, int status, int page, int page_size) override;
     bool Insert(User& user) override;

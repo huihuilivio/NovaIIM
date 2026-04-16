@@ -16,6 +16,8 @@
 
 #include <mbedtls/sha256.h>
 
+#include <algorithm>
+#include <cctype>
 #include <functional>
 #include <optional>
 #include <unordered_map>
@@ -24,6 +26,27 @@ namespace nova {
 
 static constexpr const char* kLogTag      = "Admin";
 static constexpr size_t kAdminMaxBodySize = 1 * 1024 * 1024;  // 1 MB
+
+// 邮箱格式校验（与 UserService 一致）
+static bool IsValidEmail(const std::string& email) {
+    auto at = email.find('@');
+    if (at == std::string::npos || at == 0 || at == email.size() - 1)
+        return false;
+    auto dot = email.find('.', at + 1);
+    if (dot == std::string::npos || dot == at + 1 || dot == email.size() - 1)
+        return false;
+    for (unsigned char c : email) {
+        if (c <= 0x20 || c == 0x7F)
+            return false;
+    }
+    return true;
+}
+
+// 邮箱转小写
+static void EmailToLower(std::string& email) {
+    std::transform(email.begin(), email.end(), email.begin(),
+                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+}
 
 // SHA-256 哈希（用于 token_hash）
 static std::string Sha256Hex(std::string_view data) {
@@ -424,6 +447,7 @@ int AdminServer::HandleListUsers(HttpRequest* req, HttpResponse* resp) {
         items.push_back({
             {"id", u.id},
             {"uid", u.uid},
+            {"email", u.email},
             {"nickname", u.nickname},
             {"avatar", u.avatar},
             {"status", u.status},
@@ -442,26 +466,43 @@ int AdminServer::HandleCreateUser(HttpRequest* req, HttpResponse* resp) {
         return rc;
 
     auto body_opt = ParseJsonBody(req);
-    if (!body_opt || !body_opt->contains("uid") || !body_opt->contains("password")) {
-        return JsonError(resp, api_err::kUidPasswordRequired);
+    if (!body_opt || !body_opt->contains("email") || !body_opt->contains("password")) {
+        return JsonError(resp, api_err::kEmailPasswordRequired);
     }
     auto& body = *body_opt;
 
-    if (!body["uid"].is_string() || !body["password"].is_string()) {
-        return JsonError(resp, api_err::kUidPasswordStrings);
+    if (!body["email"].is_string() || !body["password"].is_string()) {
+        return JsonError(resp, api_err::kEmailPasswordStrings);
     }
 
-    std::string uid      = body["uid"].get<std::string>();
+    std::string email    = body["email"].get<std::string>();
     std::string password = body["password"].get<std::string>();
-    std::string nickname = body.value("nickname", uid);
+    std::string nickname = body.value("nickname", email);
 
-    if (uid.empty() || password.empty()) {
-        return JsonError(resp, api_err::kUidPasswordEmpty);
+    if (email.empty() || password.empty()) {
+        return JsonError(resp, api_err::kEmailPasswordEmpty);
     }
 
-    // 检查 uid 是否已存在
-    if (ctx_.dao().User().FindByUid(uid)) {
-        return JsonError(resp, api_err::kUidAlreadyExists);
+    // 邮箱校验（trim + lowercase + 格式 + 长度）
+    EmailToLower(email);
+    if (email.size() > 255) {
+        return JsonError(resp, api_err::kEmailTooLong);
+    }
+    if (!IsValidEmail(email)) {
+        return JsonError(resp, api_err::kEmailInvalidFormat);
+    }
+
+    // 密码长度校验
+    if (password.size() < 6) {
+        return JsonError(resp, api_err::kPasswordTooShort);
+    }
+    if (password.size() > 128) {
+        return JsonError(resp, api_err::kPasswordTooLong);
+    }
+
+    // 检查 email 是否已存在
+    if (ctx_.dao().User().FindByEmail(email)) {
+        return JsonError(resp, api_err::kEmailAlreadyExists);
     }
 
     auto hash = PasswordUtils::Hash(password);
@@ -477,18 +518,23 @@ int AdminServer::HandleCreateUser(HttpRequest* req, HttpResponse* resp) {
     }
 
     User user;
-    user.uid           = uid;
+    user.uid           = ctx_.snowflake().NextIdStr();
+    user.email         = email;
     user.password_hash = hash;
     user.nickname      = nickname;
 
     if (!ctx_.dao().User().Insert(user)) {
+        // 区分 UNIQUE 冲突（并发创建同一邮箱）与其他 DB 错误
+        if (ctx_.dao().User().FindByEmail(email)) {
+            return JsonError(resp, api_err::kEmailAlreadyExists);
+        }
         return JsonError(resp, api_err::kCreateUserFailed);
     }
 
     int64_t admin_id = GetCurrentAdminId(req);
-    WriteAuditLog(admin_id, "user.create", "user", user.id, nlohmann::json({{"uid", uid}}).dump(), GetClientIp(req));
+    WriteAuditLog(admin_id, "user.create", "user", user.id, nlohmann::json({{"email", email}}).dump(), GetClientIp(req));
 
-    return JsonOk(resp, {{"id", user.id}, {"uid", uid}});
+    return JsonOk(resp, {{"id", user.id}, {"email", email}});
 }
 
 int AdminServer::HandleGetUser(HttpRequest* req, HttpResponse* resp) {
@@ -511,6 +557,7 @@ int AdminServer::HandleGetUser(HttpRequest* req, HttpResponse* resp) {
     nlohmann::json data;
     data["id"]         = user->id;
     data["uid"]        = user->uid;
+    data["email"]      = user->email;
     data["nickname"]   = user->nickname;
     data["avatar"]     = user->avatar;
     data["status"]     = user->status;
@@ -584,6 +631,12 @@ int AdminServer::HandleResetPassword(HttpRequest* req, HttpResponse* resp) {
     std::string new_password = (*body_opt)["new_password"].get<std::string>();
     if (new_password.empty()) {
         return JsonError(resp, api_err::kNewPasswordEmpty);
+    }
+    if (new_password.size() < 6) {
+        return JsonError(resp, api_err::kPasswordTooShort);
+    }
+    if (new_password.size() > 128) {
+        return JsonError(resp, api_err::kPasswordTooLong);
     }
 
     auto hash = PasswordUtils::Hash(new_password);

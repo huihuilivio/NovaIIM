@@ -35,7 +35,7 @@ void SqliteDbManager::Close() {
 bool SqliteDbManager::InitSchema() {
     bool ok = true;
 
-    ok = ok && db_.create_datatable<User>(ormpp_auto_key{"id"}, ormpp_unique{{"uid"}});
+    ok = ok && db_.create_datatable<User>(ormpp_auto_key{"id"}, ormpp_unique{{"uid"}}, ormpp_unique{{"email"}});
     ok = ok && db_.create_datatable<Admin>(ormpp_auto_key{"id"}, ormpp_unique{{"uid"}});
     ok = ok && db_.create_datatable<UserDevice>(ormpp_auto_key{"id"}, ormpp_unique{{"user_id", "device_id"}});
     ok = ok && db_.create_datatable<Message>(ormpp_auto_key{"id"});

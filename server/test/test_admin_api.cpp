@@ -359,7 +359,7 @@ TEST_F(AdminApiTest, CreateUserSuccess) {
     auto token = Login();
     ASSERT_FALSE(token.empty());
 
-    nlohmann::json body = {{"uid", "testuser1"}, {"nickname", "测试用户"}, {"password", "testpass123"}};
+    nlohmann::json body = {{"email", "testuser1@example.com"}, {"nickname", "测试用户"}, {"password", "testpass123"}};
     auto resp           = AuthPost(Url("/api/v1/users"), token, body);
     ASSERT_NE(resp, nullptr);
     EXPECT_EQ(resp->status_code, 200);
@@ -368,11 +368,11 @@ TEST_F(AdminApiTest, CreateUserSuccess) {
     EXPECT_EQ(j["code"], 0);
 }
 
-TEST_F(AdminApiTest, CreateUserDuplicateUidFails) {
+TEST_F(AdminApiTest, CreateUserDuplicateEmailFails) {
     auto token = Login();
     ASSERT_FALSE(token.empty());
 
-    nlohmann::json body = {{"uid", "dupuser"}, {"nickname", "Dup1"}, {"password", "pass"}};
+    nlohmann::json body = {{"email", "dup@example.com"}, {"nickname", "Dup1"}, {"password", "pass123"}};
     // 第一次成功
     AuthPost(Url("/api/v1/users"), token, body);
 
@@ -382,11 +382,11 @@ TEST_F(AdminApiTest, CreateUserDuplicateUidFails) {
     EXPECT_NE(resp->status_code, 200);
 }
 
-TEST_F(AdminApiTest, CreateUserMissingUidFails) {
+TEST_F(AdminApiTest, CreateUserMissingEmailFails) {
     auto token = Login();
     ASSERT_FALSE(token.empty());
 
-    nlohmann::json body = {{"nickname", "NoUid"}, {"password", "pass"}};
+    nlohmann::json body = {{"nickname", "NoEmail"}, {"password", "pass"}};
     auto resp           = AuthPost(Url("/api/v1/users"), token, body);
     ASSERT_NE(resp, nullptr);
     EXPECT_NE(resp->status_code, 200);
@@ -397,7 +397,7 @@ TEST_F(AdminApiTest, ListUsersReflectsCreatedUser) {
     ASSERT_FALSE(token.empty());
 
     // 创建用户
-    nlohmann::json body = {{"uid", "listme_user"}, {"nickname", "列表可见"}, {"password", "pass"}};
+    nlohmann::json body = {{"email", "listme@example.com"}, {"nickname", "列表可见"}, {"password", "pass123"}};
     AuthPost(Url("/api/v1/users"), token, body);
 
     // 列表中应能返回数据（code=0）

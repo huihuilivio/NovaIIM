@@ -13,11 +13,11 @@ struct Error {
 
 // ---- 通用 ----
 // clang-format off
-inline constexpr Error kOk                  {0,   "ok"};
-inline constexpr Error kInvalidBody         {1,   "invalid body"};
-inline constexpr Error kNotAuthenticated    {2,   "not authenticated"};
-inline constexpr Error kDatabaseError       {100, "database error"};
-inline constexpr Error kServerBusy          {503, "server busy"};
+inline constexpr Error kOk                  {0,    "ok"};
+inline constexpr Error kInvalidBody         {-1,   "invalid body"};
+inline constexpr Error kNotAuthenticated    {-2,   "not authenticated"};
+inline constexpr Error kDatabaseError       {-100, "database error"};
+inline constexpr Error kServerBusy          {-503, "server busy"};
 // clang-format on
 
 }  // namespace nova::errc

@@ -13,6 +13,42 @@ namespace ec = errc;
 
 static constexpr const char* kLogTag = "UserService";
 
+// Trim 首尾空白
+static void TrimInPlace(std::string& s) {
+    auto start = s.find_first_not_of(" \t\r\n");
+    if (start == std::string::npos) { s.clear(); return; }
+    auto end = s.find_last_not_of(" \t\r\n");
+    s = s.substr(start, end - start + 1);
+}
+
+// 检查是否包含控制字符（\x00-\x1F, \x7F）
+static bool ContainsControlChars(const std::string& s) {
+    return std::any_of(s.begin(), s.end(), [](unsigned char c) {
+        return c < 0x20 || c == 0x7F;
+    });
+}
+
+// 简单邮箱格式校验：non-empty@non-empty.non-empty，不含空白/控制字符
+static bool IsValidEmail(const std::string& email) {
+    auto at = email.find('@');
+    if (at == std::string::npos || at == 0 || at == email.size() - 1)
+        return false;
+    auto dot = email.find('.', at + 1);
+    if (dot == std::string::npos || dot == at + 1 || dot == email.size() - 1)
+        return false;
+    for (unsigned char c : email) {
+        if (c <= 0x20 || c == 0x7F)
+            return false;
+    }
+    return true;
+}
+
+// 将邮箱转为小写（不区分大小写）
+static void EmailToLower(std::string& email) {
+    std::transform(email.begin(), email.end(), email.begin(),
+                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+}
+
 void UserService::HandleRegister(ConnectionPtr conn, Packet& pkt) {
     auto session = ctx_.dao().Session();
     uint32_t seq = pkt.seq;
@@ -24,14 +60,51 @@ void UserService::HandleRegister(ConnectionPtr conn, Packet& pkt) {
         return;
     }
 
-    // 2. 校验 nickname（必填）
+    // 2. 校验 email（必填，最长 255 字符，格式校验，不区分大小写）
+    TrimInPlace(req->email);
+    EmailToLower(req->email);
+    if (req->email.empty()) {
+        SendPacket(conn, Cmd::kRegisterAck, seq, 0,
+                   proto::RegisterAck{ec::user::kEmailRequired.code, ec::user::kEmailRequired.msg});
+        return;
+    }
+    if (req->email.size() > 255) {
+        SendPacket(conn, Cmd::kRegisterAck, seq, 0,
+                   proto::RegisterAck{ec::user::kEmailTooLong.code, ec::user::kEmailTooLong.msg});
+        return;
+    }
+    if (!IsValidEmail(req->email)) {
+        SendPacket(conn, Cmd::kRegisterAck, seq, 0,
+                   proto::RegisterAck{ec::user::kEmailInvalid.code, ec::user::kEmailInvalid.msg});
+        return;
+    }
+
+    // 3. 检查邮箱是否已注册
+    if (ctx_.dao().User().FindByEmail(req->email)) {
+        SendPacket(conn, Cmd::kRegisterAck, seq, 0,
+                   proto::RegisterAck{ec::user::kEmailAlreadyExists.code, ec::user::kEmailAlreadyExists.msg});
+        return;
+    }
+
+    // 4. 校验 nickname（必填，最长 100 字符，去除首尾空白，禁止控制字符）
+    TrimInPlace(req->nickname);
     if (req->nickname.empty()) {
         SendPacket(conn, Cmd::kRegisterAck, seq, 0,
                    proto::RegisterAck{ec::user::kNicknameRequired.code, ec::user::kNicknameRequired.msg});
         return;
     }
+    if (req->nickname.size() > 100) {
+        SendPacket(conn, Cmd::kRegisterAck, seq, 0,
+                   proto::RegisterAck{ec::user::kNicknameTooLong.code, ec::user::kNicknameTooLong.msg});
+        return;
+    }
+    if (ContainsControlChars(req->nickname)) {
+        SendPacket(conn, Cmd::kRegisterAck, seq, 0,
+                   proto::RegisterAck{ec::user::kNicknameInvalid.code, ec::user::kNicknameInvalid.msg});
+        return;
+    }
 
-    // 3. 校验 password
+    // 5. 校验 password
     if (req->password.empty() || req->password.size() < 6) {
         SendPacket(conn, Cmd::kRegisterAck, seq, 0,
                    proto::RegisterAck{ec::user::kPasswordTooShort.code, ec::user::kPasswordTooShort.msg});
@@ -43,7 +116,7 @@ void UserService::HandleRegister(ConnectionPtr conn, Packet& pkt) {
         return;
     }
 
-    // 4. 哈希密码
+    // 6. 哈希密码
     auto hash = PasswordUtils::Hash(req->password);
 
     // 安全：清除明文密码
@@ -60,21 +133,28 @@ void UserService::HandleRegister(ConnectionPtr conn, Packet& pkt) {
         return;
     }
 
-    // 5. 生成唯一 UID（Snowflake 算法，全局唯一无碰撞）
+    // 7. 生成唯一 UID（Snowflake 算法，全局唯一无碰撞）
     User user;
     user.uid           = ctx_.snowflake().NextIdStr();
+    user.email         = req->email;
     user.password_hash = hash;
     user.nickname      = req->nickname;
     user.status        = static_cast<int>(AccountStatus::Normal);
 
     if (ctx_.dao().User().Insert(user)) {
-        NOVA_NLOG_INFO(kLogTag, "user registered: uid={}, id={}, nickname={}", user.uid, user.id, user.nickname);
+        NOVA_NLOG_INFO(kLogTag, "user registered: email={}, uid={}, id={}, nickname={}", user.email, user.uid, user.id, user.nickname);
         SendPacket(conn, Cmd::kRegisterAck, seq, 0,
                    proto::RegisterAck{ec::kOk.code, ec::kOk.msg, user.uid, user.id});
         return;
     }
 
-    // 插入失败（数据库错误）
+    // 插入失败 — 区分 UNIQUE 冲突（并发注册同一邮箱）与其他 DB 错误
+    if (ctx_.dao().User().FindByEmail(req->email)) {
+        SendPacket(conn, Cmd::kRegisterAck, seq, 0,
+                   proto::RegisterAck{ec::user::kEmailAlreadyExists.code, ec::user::kEmailAlreadyExists.msg});
+        return;
+    }
+    NOVA_NLOG_ERROR(kLogTag, "failed to insert user: email={}, uid={}, nickname={}", user.email, user.uid, user.nickname);
     SendPacket(conn, Cmd::kRegisterAck, seq, 0,
                proto::RegisterAck{ec::user::kRegisterFailed.code, ec::user::kRegisterFailed.msg});
 }
@@ -97,9 +177,9 @@ void UserService::HandleLogin(ConnectionPtr conn, Packet& pkt) {
         return;
     }
 
-    if (req->uid.empty()) {
+    if (req->email.empty()) {
         SendPacket(conn, Cmd::kLoginAck, seq, 0,
-                   proto::LoginAck{ec::user::kUidRequired.code, ec::user::kUidRequired.msg});
+                   proto::LoginAck{ec::user::kEmailRequired.code, ec::user::kEmailRequired.msg});
         conn->Close();
         return;
     }
@@ -111,9 +191,13 @@ void UserService::HandleLogin(ConnectionPtr conn, Packet& pkt) {
         return;
     }
 
+    // 邮箱不区分大小写，trim + lower
+    TrimInPlace(req->email);
+    EmailToLower(req->email);
+
     // 2. 频率限制检查（防暴力破解）
-    if (!login_limiter_.Allow(req->uid)) {
-        NOVA_NLOG_WARN(kLogTag, "login rate limited for uid={}", req->uid);
+    if (!login_limiter_.Allow(req->email)) {
+        NOVA_NLOG_WARN(kLogTag, "login rate limited for email={}", req->email);
         SendPacket(conn, Cmd::kLoginAck, seq, 0,
                    proto::LoginAck{ec::user::kRateLimited.code, ec::user::kRateLimited.msg});
         conn->Close();
@@ -121,10 +205,10 @@ void UserService::HandleLogin(ConnectionPtr conn, Packet& pkt) {
     }
 
     // 3. 查询用户
-    auto user_opt = ctx_.dao().User().FindByUid(req->uid);
+    auto user_opt = ctx_.dao().User().FindByEmail(req->email);
     if (!user_opt) {
         // 统一错误信息，防止用户枚举
-        login_limiter_.RecordFailure(req->uid);
+        login_limiter_.RecordFailure(req->email);
         SendPacket(conn, Cmd::kLoginAck, seq, 0,
                    proto::LoginAck{ec::user::kInvalidCredentials.code, ec::user::kInvalidCredentials.msg});
         conn->Close();
@@ -133,10 +217,11 @@ void UserService::HandleLogin(ConnectionPtr conn, Packet& pkt) {
 
     auto& user = *user_opt;
 
-    // 4. 检查用户状态
+    // 4. 检查用户状态（封禁账户也返回 kInvalidCredentials，防止用户枚举）
     if (user.status == static_cast<int>(AccountStatus::Banned)) {
+        login_limiter_.RecordFailure(req->email);
         SendPacket(conn, Cmd::kLoginAck, seq, 0,
-                   proto::LoginAck{ec::user::kUserBanned.code, ec::user::kUserBanned.msg});
+                   proto::LoginAck{ec::user::kInvalidCredentials.code, ec::user::kInvalidCredentials.msg});
         conn->Close();
         return;
     }
@@ -155,7 +240,7 @@ void UserService::HandleLogin(ConnectionPtr conn, Packet& pkt) {
     }
 
     if (!ok) {
-        login_limiter_.RecordFailure(req->uid);
+        login_limiter_.RecordFailure(req->email);
         // 与"用户不存在"使用相同的错误码和消息，防止用户枚举
         SendPacket(conn, Cmd::kLoginAck, seq, 0,
                    proto::LoginAck{ec::user::kInvalidCredentials.code, ec::user::kInvalidCredentials.msg});
@@ -164,7 +249,7 @@ void UserService::HandleLogin(ConnectionPtr conn, Packet& pkt) {
     }
 
     // 登录成功，重置频率限制计数
-    login_limiter_.Reset(req->uid);
+    login_limiter_.Reset(req->email);
 
     // 6. 设置连接状态
     conn->set_user_id(user.id);
@@ -180,7 +265,7 @@ void UserService::HandleLogin(ConnectionPtr conn, Packet& pkt) {
         ctx_.dao().User().UpsertDevice(user.id, req->device_id, req->device_type);
     }
 
-    NOVA_NLOG_INFO(kLogTag, "user {} (id={}) logged in, device={} type={}", req->uid, user.id, req->device_id,
+    NOVA_NLOG_INFO(kLogTag, "user {} (id={}) logged in, device={} type={}", req->email, user.id, req->device_id,
                    req->device_type);
 
     // 9. 返回 LoginAck

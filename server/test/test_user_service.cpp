@@ -63,14 +63,15 @@ protected:
     // 注册一个测试用户并返回 uid 和 user_id
     struct RegisterResult {
         std::string uid;
+        std::string email;
         int64_t user_id = 0;
     };
-    RegisterResult RegisterUser(const std::string& nickname, const std::string& password) {
+    RegisterResult RegisterUser(const std::string& email, const std::string& nickname, const std::string& password) {
         auto conn = std::make_shared<MockConnection>();
-        auto pkt  = MakePacket(Cmd::kRegister, proto::RegisterReq{nickname, password});
+        auto pkt  = MakePacket(Cmd::kRegister, proto::RegisterReq{email, nickname, password});
         svc_->HandleRegister(conn, pkt);
         auto ack = proto::Deserialize<proto::RegisterAck>(conn->last_pkt.body);
-        if (ack && ack->code == 0) return {ack->uid, ack->user_id};
+        if (ack && ack->code == 0) return {ack->uid, email, ack->user_id};
         return {};
     }
 
@@ -79,11 +80,11 @@ protected:
         std::shared_ptr<MockConnection> conn;
         proto::LoginAck ack;
     };
-    LoginResult DoLogin(const std::string& uid, const std::string& password,
+    LoginResult DoLogin(const std::string& email, const std::string& password,
                         const std::string& device_id = "test-device",
                         const std::string& device_type = "pc") {
         auto conn = std::make_shared<MockConnection>();
-        auto pkt  = MakePacket(Cmd::kLogin, proto::LoginReq{uid, password, device_id, device_type});
+        auto pkt  = MakePacket(Cmd::kLogin, proto::LoginReq{email, password, device_id, device_type});
         svc_->HandleLogin(conn, pkt);
         auto ack = proto::Deserialize<proto::LoginAck>(conn->last_pkt.body);
         return {conn, ack ? *ack : proto::LoginAck{-1, "deserialize failed"}};
@@ -100,7 +101,7 @@ protected:
 
 TEST_F(UserServiceTest, RegisterSuccess) {
     auto conn = std::make_shared<MockConnection>();
-    auto pkt  = MakePacket(Cmd::kRegister, proto::RegisterReq{"Alice", "pass123"});
+    auto pkt  = MakePacket(Cmd::kRegister, proto::RegisterReq{"alice@example.com", "Alice", "pass123"});
     svc_->HandleRegister(conn, pkt);
 
     auto ack = proto::Deserialize<proto::RegisterAck>(conn->last_pkt.body);
@@ -111,11 +112,11 @@ TEST_F(UserServiceTest, RegisterSuccess) {
 }
 
 TEST_F(UserServiceTest, RegisterDuplicateNicknameAllowed) {
-    RegisterUser("bob", "pass123");
+    RegisterUser("bob1@example.com", "bob", "pass123");
 
     // 同昵称可以重复注册
     auto conn = std::make_shared<MockConnection>();
-    auto pkt  = MakePacket(Cmd::kRegister, proto::RegisterReq{"bob", "pass123"});
+    auto pkt  = MakePacket(Cmd::kRegister, proto::RegisterReq{"bob2@example.com", "bob", "pass123"});
     svc_->HandleRegister(conn, pkt);
 
     auto ack = proto::Deserialize<proto::RegisterAck>(conn->last_pkt.body);
@@ -125,7 +126,7 @@ TEST_F(UserServiceTest, RegisterDuplicateNicknameAllowed) {
 
 TEST_F(UserServiceTest, RegisterEmptyNickname) {
     auto conn = std::make_shared<MockConnection>();
-    auto pkt  = MakePacket(Cmd::kRegister, proto::RegisterReq{"", "pass123"});
+    auto pkt  = MakePacket(Cmd::kRegister, proto::RegisterReq{"empty@example.com", "", "pass123"});
     svc_->HandleRegister(conn, pkt);
 
     auto ack = proto::Deserialize<proto::RegisterAck>(conn->last_pkt.body);
@@ -135,7 +136,7 @@ TEST_F(UserServiceTest, RegisterEmptyNickname) {
 
 TEST_F(UserServiceTest, RegisterShortPassword) {
     auto conn = std::make_shared<MockConnection>();
-    auto pkt  = MakePacket(Cmd::kRegister, proto::RegisterReq{"charlie", "12345"});
+    auto pkt  = MakePacket(Cmd::kRegister, proto::RegisterReq{"charlie@example.com", "charlie", "12345"});
     svc_->HandleRegister(conn, pkt);
 
     auto ack = proto::Deserialize<proto::RegisterAck>(conn->last_pkt.body);
@@ -143,13 +144,202 @@ TEST_F(UserServiceTest, RegisterShortPassword) {
     EXPECT_NE(ack->code, 0);
 }
 
+TEST_F(UserServiceTest, RegisterPasswordExactMin) {
+    auto conn = std::make_shared<MockConnection>();
+    auto pkt  = MakePacket(Cmd::kRegister, proto::RegisterReq{"alice1@example.com", "alice", "123456"});  // 恰好 6 字符
+    svc_->HandleRegister(conn, pkt);
+
+    auto ack = proto::Deserialize<proto::RegisterAck>(conn->last_pkt.body);
+    ASSERT_TRUE(ack.has_value());
+    EXPECT_EQ(ack->code, 0);
+}
+
+TEST_F(UserServiceTest, RegisterPasswordExactMax) {
+    auto conn = std::make_shared<MockConnection>();
+    std::string long_pass(128, 'a');  // 恰好 128 字符
+    auto pkt  = MakePacket(Cmd::kRegister, proto::RegisterReq{"alice2@example.com", "alice", long_pass});
+    svc_->HandleRegister(conn, pkt);
+
+    auto ack = proto::Deserialize<proto::RegisterAck>(conn->last_pkt.body);
+    ASSERT_TRUE(ack.has_value());
+    EXPECT_EQ(ack->code, 0);
+}
+
+TEST_F(UserServiceTest, RegisterPasswordOverMax) {
+    auto conn = std::make_shared<MockConnection>();
+    std::string long_pass(129, 'a');  // 超过 128 字符
+    auto pkt  = MakePacket(Cmd::kRegister, proto::RegisterReq{"alice3@example.com", "alice", long_pass});
+    svc_->HandleRegister(conn, pkt);
+
+    auto ack = proto::Deserialize<proto::RegisterAck>(conn->last_pkt.body);
+    ASSERT_TRUE(ack.has_value());
+    EXPECT_NE(ack->code, 0);
+}
+
+TEST_F(UserServiceTest, RegisterNicknameTooLong) {
+    auto conn = std::make_shared<MockConnection>();
+    std::string long_nick(101, 'x');  // 超过 100 字符
+    auto pkt  = MakePacket(Cmd::kRegister, proto::RegisterReq{"longnick@example.com", long_nick, "pass123"});
+    svc_->HandleRegister(conn, pkt);
+
+    auto ack = proto::Deserialize<proto::RegisterAck>(conn->last_pkt.body);
+    ASSERT_TRUE(ack.has_value());
+    EXPECT_EQ(ack->code, 11);  // kNicknameTooLong
+}
+
+TEST_F(UserServiceTest, RegisterNicknameExactMax) {
+    auto conn = std::make_shared<MockConnection>();
+    std::string nick(100, 'x');  // 恰好 100 字符
+    auto pkt  = MakePacket(Cmd::kRegister, proto::RegisterReq{"maxnick@example.com", nick, "pass123"});
+    svc_->HandleRegister(conn, pkt);
+
+    auto ack = proto::Deserialize<proto::RegisterAck>(conn->last_pkt.body);
+    ASSERT_TRUE(ack.has_value());
+    EXPECT_EQ(ack->code, 0);
+}
+
+TEST_F(UserServiceTest, RegisterWhitespaceOnlyNickname) {
+    auto conn = std::make_shared<MockConnection>();
+    auto pkt  = MakePacket(Cmd::kRegister, proto::RegisterReq{"ws@example.com", "   \t\n  ", "pass123"});
+    svc_->HandleRegister(conn, pkt);
+
+    auto ack = proto::Deserialize<proto::RegisterAck>(conn->last_pkt.body);
+    ASSERT_TRUE(ack.has_value());
+    EXPECT_EQ(ack->code, 10);  // kNicknameRequired（trim 后为空）
+}
+
+TEST_F(UserServiceTest, RegisterNicknameTrimsWhitespace) {
+    auto conn = std::make_shared<MockConnection>();
+    auto pkt  = MakePacket(Cmd::kRegister, proto::RegisterReq{"trim@example.com", "  Alice  ", "pass123"});
+    svc_->HandleRegister(conn, pkt);
+
+    auto ack = proto::Deserialize<proto::RegisterAck>(conn->last_pkt.body);
+    ASSERT_TRUE(ack.has_value());
+    EXPECT_EQ(ack->code, 0);
+
+    // 验证数据库中的昵称已 trim
+    auto user = ctx_->dao().User().FindByEmail("trim@example.com");
+    ASSERT_TRUE(user.has_value());
+    EXPECT_EQ(user->nickname, "Alice");
+}
+
+TEST_F(UserServiceTest, RegisterNicknameWithControlChars) {
+    auto conn = std::make_shared<MockConnection>();
+    std::string nick = "Alice\x01Bob";
+    auto pkt  = MakePacket(Cmd::kRegister, proto::RegisterReq{"ctrl@example.com", nick, "pass123"});
+    svc_->HandleRegister(conn, pkt);
+
+    auto ack = proto::Deserialize<proto::RegisterAck>(conn->last_pkt.body);
+    ASSERT_TRUE(ack.has_value());
+    EXPECT_EQ(ack->code, 12);  // kNicknameInvalid
+}
+
+TEST_F(UserServiceTest, RegisterInvalidBody) {
+    auto conn = std::make_shared<MockConnection>();
+    Packet pkt;
+    pkt.cmd  = static_cast<uint16_t>(Cmd::kRegister);
+    pkt.seq  = 1;
+    pkt.uid  = 0;
+    pkt.body = "not a valid struct_pack payload";
+    svc_->HandleRegister(conn, pkt);
+
+    auto ack = proto::Deserialize<proto::RegisterAck>(conn->last_pkt.body);
+    ASSERT_TRUE(ack.has_value());
+    EXPECT_NE(ack->code, 0);
+}
+
+// ---- 邮箱相关注册测试 ----
+
+TEST_F(UserServiceTest, RegisterEmptyEmail) {
+    auto conn = std::make_shared<MockConnection>();
+    auto pkt  = MakePacket(Cmd::kRegister, proto::RegisterReq{"", "Alice", "pass123"});
+    svc_->HandleRegister(conn, pkt);
+
+    auto ack = proto::Deserialize<proto::RegisterAck>(conn->last_pkt.body);
+    ASSERT_TRUE(ack.has_value());
+    EXPECT_EQ(ack->code, 1);  // kEmailRequired
+}
+
+TEST_F(UserServiceTest, RegisterInvalidEmailFormat) {
+    auto conn = std::make_shared<MockConnection>();
+    auto pkt  = MakePacket(Cmd::kRegister, proto::RegisterReq{"not-an-email", "Alice", "pass123"});
+    svc_->HandleRegister(conn, pkt);
+
+    auto ack = proto::Deserialize<proto::RegisterAck>(conn->last_pkt.body);
+    ASSERT_TRUE(ack.has_value());
+    EXPECT_EQ(ack->code, 6);  // kEmailInvalid
+}
+
+TEST_F(UserServiceTest, RegisterDuplicateEmail) {
+    RegisterUser("dup@example.com", "Alice", "pass123");
+
+    auto conn = std::make_shared<MockConnection>();
+    auto pkt  = MakePacket(Cmd::kRegister, proto::RegisterReq{"dup@example.com", "Bob", "pass456"});
+    svc_->HandleRegister(conn, pkt);
+
+    auto ack = proto::Deserialize<proto::RegisterAck>(conn->last_pkt.body);
+    ASSERT_TRUE(ack.has_value());
+    EXPECT_EQ(ack->code, 8);  // kEmailAlreadyExists
+}
+
+TEST_F(UserServiceTest, RegisterEmailCaseInsensitive) {
+    RegisterUser("case@example.com", "Alice", "pass123");
+
+    auto conn = std::make_shared<MockConnection>();
+    auto pkt  = MakePacket(Cmd::kRegister, proto::RegisterReq{"CASE@EXAMPLE.COM", "Bob", "pass456"});
+    svc_->HandleRegister(conn, pkt);
+
+    auto ack = proto::Deserialize<proto::RegisterAck>(conn->last_pkt.body);
+    ASSERT_TRUE(ack.has_value());
+    EXPECT_EQ(ack->code, 8);  // 不区分大小写，视为重复
+}
+
+TEST_F(UserServiceTest, RegisterEmailTooLong) {
+    auto conn = std::make_shared<MockConnection>();
+    std::string long_email = std::string(251, 'a') + "@b.cc";  // 257 chars > 255
+    auto pkt  = MakePacket(Cmd::kRegister, proto::RegisterReq{long_email, "Alice", "pass123"});
+    svc_->HandleRegister(conn, pkt);
+
+    auto ack = proto::Deserialize<proto::RegisterAck>(conn->last_pkt.body);
+    ASSERT_TRUE(ack.has_value());
+    EXPECT_EQ(ack->code, 7);  // kEmailTooLong
+}
+
+TEST_F(UserServiceTest, RegisterConcurrentDuplicateEmailReturnsAlreadyExists) {
+    // 模拟 TOCTOU：先正常注册，然后尝试用同一 email 直接 Insert
+    // Insert 失败后应检测 UNIQUE 冲突并返回 kEmailAlreadyExists 而非 kRegisterFailed
+    RegisterUser("race@example.com", "Alice", "pass123");
+
+    auto conn = std::make_shared<MockConnection>();
+    auto pkt  = MakePacket(Cmd::kRegister, proto::RegisterReq{"race@example.com", "Bob", "pass456"});
+    svc_->HandleRegister(conn, pkt);
+
+    auto ack = proto::Deserialize<proto::RegisterAck>(conn->last_pkt.body);
+    ASSERT_TRUE(ack.has_value());
+    EXPECT_EQ(ack->code, 8);  // kEmailAlreadyExists
+}
+
+TEST_F(UserServiceTest, LoginEmailWithWhitespace) {
+    RegisterUser("trim@example.com", "alice", "pass123");
+    // 邮箱带首尾空白也应正常登录
+    auto [conn, ack] = DoLogin("  trim@example.com  ", "pass123");
+    EXPECT_EQ(ack.code, 0);
+}
+
+TEST_F(UserServiceTest, LoginPasswordRequiredHasDistinctCode) {
+    auto reg = RegisterUser("alice@example.com", "alice", "pass123");
+    auto [conn, ack] = DoLogin(reg.email, "");
+    // kPasswordRequired 的 code(3) 应不同于 kEmailRequired(1)
+    EXPECT_EQ(ack.code, 3);
+}
+
 // ============================================================
 //  登录
 // ============================================================
 
 TEST_F(UserServiceTest, LoginSuccess) {
-    auto reg = RegisterUser("alice", "pass123");
-    auto [conn, ack] = DoLogin(reg.uid, "pass123");
+    auto reg = RegisterUser("alice@example.com", "alice", "pass123");
+    auto [conn, ack] = DoLogin(reg.email, "pass123");
 
     EXPECT_EQ(ack.code, 0);
     EXPECT_GT(ack.user_id, 0);
@@ -160,8 +350,8 @@ TEST_F(UserServiceTest, LoginSuccess) {
 }
 
 TEST_F(UserServiceTest, LoginWrongPassword) {
-    auto reg = RegisterUser("alice", "pass123");
-    auto [conn, ack] = DoLogin(reg.uid, "wrongpass");
+    auto reg = RegisterUser("alice@example.com", "alice", "pass123");
+    auto [conn, ack] = DoLogin(reg.email, "wrongpass");
 
     EXPECT_NE(ack.code, 0);
     EXPECT_TRUE(conn->closed);
@@ -169,13 +359,13 @@ TEST_F(UserServiceTest, LoginWrongPassword) {
 }
 
 TEST_F(UserServiceTest, LoginUserNotFound) {
-    auto [conn, ack] = DoLogin("nonexistent", "pass123");
+    auto [conn, ack] = DoLogin("nonexistent@example.com", "pass123");
 
     EXPECT_NE(ack.code, 0);
     EXPECT_TRUE(conn->closed);
 }
 
-TEST_F(UserServiceTest, LoginEmptyUid) {
+TEST_F(UserServiceTest, LoginEmptyEmail) {
     auto [conn, ack] = DoLogin("", "pass123");
 
     EXPECT_NE(ack.code, 0);
@@ -183,36 +373,37 @@ TEST_F(UserServiceTest, LoginEmptyUid) {
 }
 
 TEST_F(UserServiceTest, LoginEmptyPassword) {
-    auto reg = RegisterUser("alice", "pass123");
-    auto [conn, ack] = DoLogin(reg.uid, "");
+    auto reg = RegisterUser("alice@example.com", "alice", "pass123");
+    auto [conn, ack] = DoLogin(reg.email, "");
 
     EXPECT_NE(ack.code, 0);
     EXPECT_TRUE(conn->closed);
 }
 
 TEST_F(UserServiceTest, LoginRateLimit) {
-    auto reg = RegisterUser("alice", "pass123");
+    auto reg = RegisterUser("alice@example.com", "alice", "pass123");
 
     // 3 次失败（= login_max_attempts）
     for (int i = 0; i < 3; ++i) {
-        DoLogin(reg.uid, "wrongpass");
+        DoLogin(reg.email, "wrongpass");
     }
 
     // 第 4 次即使密码正确也应被限流
-    auto [conn, ack] = DoLogin(reg.uid, "pass123");
+    auto [conn, ack] = DoLogin(reg.email, "pass123");
     EXPECT_NE(ack.code, 0);
     EXPECT_TRUE(conn->closed);
 }
 
 TEST_F(UserServiceTest, LoginBannedUser) {
-    auto reg = RegisterUser("alice", "pass123");
+    auto reg = RegisterUser("alice@example.com", "alice", "pass123");
     auto session = ctx_->dao().Session();
-    auto user    = ctx_->dao().User().FindByUid(reg.uid);
+    auto user    = ctx_->dao().User().FindByEmail(reg.email);
     ASSERT_TRUE(user.has_value());
     ctx_->dao().User().UpdateStatus(user->id, static_cast<int>(AccountStatus::Banned));  // 封禁
 
-    auto [conn, ack] = DoLogin(reg.uid, "pass123");
-    EXPECT_NE(ack.code, 0);
+    auto [conn, ack] = DoLogin(reg.email, "pass123");
+    // 封禁用户应返回与"不存在/密码错误"相同的 code，防止用户枚举
+    EXPECT_EQ(ack.code, 2);  // kInvalidCredentials
     EXPECT_TRUE(conn->closed);
 }
 
@@ -221,8 +412,8 @@ TEST_F(UserServiceTest, LoginBannedUser) {
 // ============================================================
 
 TEST_F(UserServiceTest, LoginPersistsDevice) {
-    auto reg = RegisterUser("alice", "pass123");
-    auto [conn, ack] = DoLogin(reg.uid, "pass123", "pc-001", "pc");
+    auto reg = RegisterUser("alice@example.com", "alice", "pass123");
+    auto [conn, ack] = DoLogin(reg.email, "pass123", "pc-001", "pc");
     ASSERT_EQ(ack.code, 0);
 
     auto session = ctx_->dao().Session();
@@ -234,28 +425,28 @@ TEST_F(UserServiceTest, LoginPersistsDevice) {
 }
 
 TEST_F(UserServiceTest, LoginUpdatesExistingDevice) {
-    auto reg = RegisterUser("alice", "pass123");
+    auto reg = RegisterUser("alice@example.com", "alice", "pass123");
 
     // 第一次登录
-    DoLogin(reg.uid, "pass123", "phone-001", "mobile");
+    DoLogin(reg.email, "pass123", "phone-001", "mobile");
     // 第二次同设备登录（更新 device_type）
-    DoLogin(reg.uid, "pass123", "phone-001", "tablet");
+    DoLogin(reg.email, "pass123", "phone-001", "tablet");
 
     auto session = ctx_->dao().Session();
     auto devices = ctx_->dao().User().ListDevicesByUser(
-        ctx_->dao().User().FindByUid(reg.uid)->id);
+        ctx_->dao().User().FindByEmail(reg.email)->id);
     ASSERT_EQ(devices.size(), 1u);  // 同一 device_id 只有 1 条记录
     EXPECT_EQ(devices[0].device_type, "tablet");
 }
 
 TEST_F(UserServiceTest, LoginMultipleDevices) {
-    auto reg = RegisterUser("alice", "pass123");
-    DoLogin(reg.uid, "pass123", "pc-001", "pc");
-    DoLogin(reg.uid, "pass123", "phone-001", "mobile");
+    auto reg = RegisterUser("alice@example.com", "alice", "pass123");
+    DoLogin(reg.email, "pass123", "pc-001", "pc");
+    DoLogin(reg.email, "pass123", "phone-001", "mobile");
 
     auto session = ctx_->dao().Session();
     auto devices = ctx_->dao().User().ListDevicesByUser(
-        ctx_->dao().User().FindByUid(reg.uid)->id);
+        ctx_->dao().User().FindByEmail(reg.email)->id);
     EXPECT_EQ(devices.size(), 2u);
 }
 
@@ -264,14 +455,14 @@ TEST_F(UserServiceTest, LoginMultipleDevices) {
 // ============================================================
 
 TEST_F(UserServiceTest, SameDeviceKicksOldConnection) {
-    auto reg = RegisterUser("alice", "pass123");
+    auto reg = RegisterUser("alice@example.com", "alice", "pass123");
 
-    auto [conn1, ack1] = DoLogin(reg.uid, "pass123", "pc-001", "pc");
+    auto [conn1, ack1] = DoLogin(reg.email, "pass123", "pc-001", "pc");
     ASSERT_EQ(ack1.code, 0);
     EXPECT_FALSE(conn1->closed);
 
     // 同一 device_id 再次登录
-    auto [conn2, ack2] = DoLogin(reg.uid, "pass123", "pc-001", "pc");
+    auto [conn2, ack2] = DoLogin(reg.email, "pass123", "pc-001", "pc");
     ASSERT_EQ(ack2.code, 0);
 
     // 旧连接应被踢下线
@@ -280,10 +471,10 @@ TEST_F(UserServiceTest, SameDeviceKicksOldConnection) {
 }
 
 TEST_F(UserServiceTest, DifferentDeviceKeepsBoth) {
-    auto reg = RegisterUser("alice", "pass123");
+    auto reg = RegisterUser("alice@example.com", "alice", "pass123");
 
-    auto [conn1, ack1] = DoLogin(reg.uid, "pass123", "pc-001", "pc");
-    auto [conn2, ack2] = DoLogin(reg.uid, "pass123", "phone-001", "mobile");
+    auto [conn1, ack1] = DoLogin(reg.email, "pass123", "pc-001", "pc");
+    auto [conn2, ack2] = DoLogin(reg.email, "pass123", "phone-001", "mobile");
 
     EXPECT_FALSE(conn1->closed);
     EXPECT_FALSE(conn2->closed);
@@ -297,8 +488,8 @@ TEST_F(UserServiceTest, DifferentDeviceKeepsBoth) {
 // ============================================================
 
 TEST_F(UserServiceTest, LogoutSuccess) {
-    auto reg = RegisterUser("alice", "pass123");
-    auto [conn, ack] = DoLogin(reg.uid, "pass123");
+    auto reg = RegisterUser("alice@example.com", "alice", "pass123");
+    auto [conn, ack] = DoLogin(reg.email, "pass123");
     ASSERT_EQ(ack.code, 0);
 
     Packet pkt;
@@ -315,8 +506,8 @@ TEST_F(UserServiceTest, LogoutSuccess) {
 // ============================================================
 
 TEST_F(UserServiceTest, HeartbeatAck) {
-    auto reg = RegisterUser("alice", "pass123");
-    auto [conn, ack] = DoLogin(reg.uid, "pass123");
+    auto reg = RegisterUser("alice@example.com", "alice", "pass123");
+    auto [conn, ack] = DoLogin(reg.email, "pass123");
     ASSERT_EQ(ack.code, 0);
 
     Packet pkt;
@@ -334,19 +525,19 @@ TEST_F(UserServiceTest, HeartbeatAck) {
 // ============================================================
 
 TEST_F(UserServiceTest, ReloginOnSameConnection) {
-    auto reg_alice = RegisterUser("alice", "pass123");
-    auto reg_bob   = RegisterUser("bob", "pass456");
+    auto reg_alice = RegisterUser("alice@example.com", "alice", "pass123");
+    auto reg_bob   = RegisterUser("bob@example.com", "bob", "pass456");
 
     auto conn = std::make_shared<MockConnection>();
 
     // 第一次登录 alice
-    auto pkt1 = MakePacket(Cmd::kLogin, proto::LoginReq{reg_alice.uid, "pass123", "dev1", "pc"});
+    auto pkt1 = MakePacket(Cmd::kLogin, proto::LoginReq{reg_alice.email, "pass123", "dev1", "pc"});
     svc_->HandleLogin(conn, pkt1);
     auto ack1 = proto::Deserialize<proto::LoginAck>(conn->last_pkt.body);
     ASSERT_TRUE(ack1 && ack1->code == 0);
 
     // 同连接再登录 bob（应先清理 alice 会话）
-    auto pkt2 = MakePacket(Cmd::kLogin, proto::LoginReq{reg_bob.uid, "pass456", "dev1", "pc"});
+    auto pkt2 = MakePacket(Cmd::kLogin, proto::LoginReq{reg_bob.email, "pass456", "dev1", "pc"});
     svc_->HandleLogin(conn, pkt2);
     auto ack2 = proto::Deserialize<proto::LoginAck>(conn->last_pkt.body);
     ASSERT_TRUE(ack2 && ack2->code == 0);

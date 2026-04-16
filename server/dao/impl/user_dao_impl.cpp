@@ -35,6 +35,14 @@ std::optional<User> UserDaoImplT<DbMgr>::FindByUid(const std::string& uid) {
 }
 
 template <typename DbMgr>
+std::optional<User> UserDaoImplT<DbMgr>::FindByEmail(const std::string& email) {
+    auto res = db_.DB().query_s<User>("email=? AND status!=3" /* Deleted */, email);
+    if (res.empty())
+        return std::nullopt;
+    return res[0];
+}
+
+template <typename DbMgr>
 std::optional<User> UserDaoImplT<DbMgr>::FindById(int64_t id) {
     auto res = db_.DB().query_s<User>("id=? AND status!=3" /* Deleted */, id);
     if (res.empty())
@@ -64,22 +72,22 @@ UserListResult UserDaoImplT<DbMgr>::ListUsers(const std::string& keyword, int st
     static constexpr auto kCountSql =
         "SELECT count(*) FROM users WHERE status!=3 "
         "AND (? < 0 OR status = ?) "
-        "AND (? = '' OR uid LIKE ? ESCAPE '\\' OR nickname LIKE ? ESCAPE '\\')";
+        "AND (? = '' OR uid LIKE ? ESCAPE '\\' OR nickname LIKE ? ESCAPE '\\' OR email LIKE ? ESCAPE '\\')";
 
     static constexpr auto kWhere =
         "status!=3 "
         "AND (? < 0 OR status = ?) "
-        "AND (? = '' OR uid LIKE ? ESCAPE '\\' OR nickname LIKE ? ESCAPE '\\') "
+        "AND (? = '' OR uid LIKE ? ESCAPE '\\' OR nickname LIKE ? ESCAPE '\\' OR email LIKE ? ESCAPE '\\') "
         "ORDER BY id DESC LIMIT ? OFFSET ?";
 
     auto&& conn = db_.DB();
 
-    auto count_res = conn.query_s<std::tuple<int64_t>>(kCountSql, status, status, like, like, like);
+    auto count_res = conn.query_s<std::tuple<int64_t>>(kCountSql, status, status, like, like, like, like);
     if (!count_res.empty()) {
         result.total = std::get<0>(count_res[0]);
     }
 
-    result.items = conn.query_s<User>(kWhere, status, status, like, like, like, page_size, offset);
+    result.items = conn.query_s<User>(kWhere, status, status, like, like, like, like, page_size, offset);
 
     return result;
 }

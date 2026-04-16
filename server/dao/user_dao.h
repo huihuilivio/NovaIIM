@@ -19,6 +19,7 @@ public:
     virtual ~UserDao() = default;
 
     virtual std::optional<User> FindByUid(const std::string& uid) = 0;
+    virtual std::optional<User> FindByEmail(const std::string& email) = 0;
     virtual std::optional<User> FindById(int64_t id)              = 0;
 
     // 分页查询，keyword 可匹配 uid/nickname，status=-1 表示不过滤

@@ -56,6 +56,14 @@ inline constexpr ApiError kUidPasswordRequired  {ApiCode::kParamError,      "uid
 inline constexpr ApiError kUidPasswordStrings   {ApiCode::kParamError,      "uid and password must be strings",         400};
 inline constexpr ApiError kUidPasswordEmpty     {ApiCode::kParamError,      "uid and password cannot be empty",         400};
 inline constexpr ApiError kUidAlreadyExists     {ApiCode::kParamError,      "uid already exists",                       409};
+inline constexpr ApiError kEmailPasswordRequired{ApiCode::kParamError,      "email and password required",              400};
+inline constexpr ApiError kEmailPasswordStrings {ApiCode::kParamError,      "email and password must be strings",       400};
+inline constexpr ApiError kEmailPasswordEmpty   {ApiCode::kParamError,      "email and password cannot be empty",       400};
+inline constexpr ApiError kEmailAlreadyExists   {ApiCode::kParamError,      "email already exists",                     409};
+inline constexpr ApiError kEmailInvalidFormat   {ApiCode::kParamError,      "invalid email format",                     400};
+inline constexpr ApiError kEmailTooLong         {ApiCode::kParamError,      "email must be at most 255 characters",     400};
+inline constexpr ApiError kPasswordTooShort     {ApiCode::kParamError,      "password must be at least 6 characters",   400};
+inline constexpr ApiError kPasswordTooLong      {ApiCode::kParamError,      "password must be at most 128 characters",  400};
 inline constexpr ApiError kNewPasswordRequired  {ApiCode::kParamError,      "new_password required",                    400};
 inline constexpr ApiError kNewPasswordString    {ApiCode::kParamError,      "new_password must be a string",            400};
 inline constexpr ApiError kNewPasswordEmpty     {ApiCode::kParamError,      "new_password cannot be empty",             400};

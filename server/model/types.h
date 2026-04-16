@@ -32,6 +32,7 @@ enum class SessionRevoked : int { Valid = 0, Revoked = 1 };
 struct User {
     int64_t id = 0;
     std::string uid;
+    std::string email;
     std::string password_hash;
     std::string nickname;
     std::string avatar;
