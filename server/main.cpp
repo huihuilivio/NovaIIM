@@ -3,6 +3,7 @@
 #include "service/user_service.h"
 #include "service/msg_service.h"
 #include "service/sync_service.h"
+#include "service/errors/common.h"
 #include "core/thread_pool.h"
 #include "core/logger.h"
 #include "core/app_config.h"
@@ -104,6 +105,8 @@ int main(int argc, char* argv[]) {
     router.Register(Cmd::kSyncMsg,    [&](ConnectionPtr c, Packet& p) { sync_svc.HandleSyncMsg(c, p); });
     router.Register(Cmd::kSyncUnread, [&](ConnectionPtr c, Packet& p) { sync_svc.HandleSyncUnread(c, p); });
 
+    router.Freeze();  // 禁止后续注册，确保多线程安全
+
     // 注册信号处理（在 Gateway 启动前，避免信号丢失）
     std::signal(SIGINT,  SignalHandler);
     std::signal(SIGTERM, SignalHandler);
@@ -127,7 +130,14 @@ int main(int argc, char* argv[]) {
         if (!worker_pool.Submit([&router, conn, pkt]() mutable {
             router.Dispatch(std::move(conn), pkt);
         })) {
-            NOVA_LOG_WARN("worker queue full, dropping cmd=0x{:04X}", pkt.cmd);
+            NOVA_LOG_WARN("worker queue full, rejecting cmd=0x{:04X}", pkt.cmd);
+            // 返回错误响应而非静默丢弃
+            Packet err;
+            err.cmd = pkt.cmd;
+            err.seq = pkt.seq;
+            err.uid = pkt.uid;
+            err.body = nova::proto::Serialize(nova::proto::RspBase{nova::errc::kServerBusy.code, nova::errc::kServerBusy.msg});
+            conn->Send(err);
             ctx.incr_bad_packets();
         }
     });

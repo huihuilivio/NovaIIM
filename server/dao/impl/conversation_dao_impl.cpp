@@ -43,6 +43,21 @@ std::optional<Conversation> ConversationDaoImplT<DbMgr>::FindById(int64_t id) {
 }
 
 template <typename DbMgr>
+std::vector<Conversation> ConversationDaoImplT<DbMgr>::FindByIds(const std::vector<int64_t>& ids) {
+    if (ids.empty()) return {};
+
+    // 构建 IN 子句（int64_t 转字符串，无注入风险）
+    std::string in_clause = "id IN (";
+    for (size_t i = 0; i < ids.size(); ++i) {
+        if (i > 0) in_clause += ",";
+        in_clause += std::to_string(ids[i]);
+    }
+    in_clause += ")";
+
+    return db_.DB().query_s<Conversation>(in_clause);
+}
+
+template <typename DbMgr>
 bool ConversationDaoImplT<DbMgr>::IsMember(int64_t conversation_id, int64_t user_id) {
     auto res = db_.DB().query_s<ConversationMember>(
         "conversation_id=? AND user_id=?", conversation_id, user_id);

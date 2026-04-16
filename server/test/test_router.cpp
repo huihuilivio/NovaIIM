@@ -9,6 +9,7 @@ namespace {
 class MockConnection : public Connection {
 public:
     void Send(const Packet& /*pkt*/) override {}
+    void SendEncoded(const std::string& /*data*/) override {}
     void Close() override {}
 };
 
@@ -21,6 +22,7 @@ TEST(RouterTest, DispatchRegisteredCmd) {
         called = true;
         received_cmd = pkt.cmd;
     });
+    router.Freeze();
 
     auto conn = std::make_shared<MockConnection>();
     conn->set_user_id(1);  // authenticate for non-Login cmd
@@ -36,6 +38,7 @@ TEST(RouterTest, DispatchRegisteredCmd) {
 
 TEST(RouterTest, DispatchUnknownCmdDoesNotCrash) {
     Router router;
+    router.Freeze();
 
     auto conn = std::make_shared<MockConnection>();
     Packet pkt;
@@ -52,6 +55,7 @@ TEST(RouterTest, MultipleHandlers) {
 
     router.Register(Cmd::kLogin, [&](ConnectionPtr, Packet&) { ++login_count; });
     router.Register(Cmd::kSendMsg, [&](ConnectionPtr, Packet&) { ++msg_count; });
+    router.Freeze();
 
     auto conn = std::make_shared<MockConnection>();
     conn->set_user_id(1);  // authenticate for non-Login cmd
@@ -75,6 +79,7 @@ TEST(RouterTest, AuthGuardBlocksUnauthenticated) {
     bool called = false;
 
     router.Register(Cmd::kSendMsg, [&](ConnectionPtr, Packet&) { called = true; });
+    router.Freeze();
 
     auto conn = std::make_shared<MockConnection>();  // user_id == 0, not authenticated
     Packet pkt;
@@ -89,6 +94,7 @@ TEST(RouterTest, AuthGuardAllowsLogin) {
     bool called = false;
 
     router.Register(Cmd::kLogin, [&](ConnectionPtr, Packet&) { called = true; });
+    router.Freeze();
 
     auto conn = std::make_shared<MockConnection>();  // not authenticated
     Packet pkt;

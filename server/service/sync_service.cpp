@@ -1,50 +1,43 @@
 #include "sync_service.h"
-#include "../core/server_context.h"
+#include "errors/sync_errors.h"
 #include "../core/logger.h"
 #include "../dao/conversation_dao.h"
 #include "../dao/message_dao.h"
 
+#include <unordered_map>
+
 namespace nova {
+
+using namespace errc;
 
 static constexpr const char* kLogTag = "SyncService";
 static constexpr int kDefaultSyncLimit = 20;
 static constexpr int kMaxSyncLimit = 100;
-
-template <typename T>
-void SyncService::SendPacket(ConnectionPtr& conn, Cmd cmd, uint32_t seq, uint64_t uid, const T& body) {
-    Packet pkt;
-    pkt.cmd = static_cast<uint16_t>(cmd);
-    pkt.seq = seq;
-    pkt.uid = uid;
-    pkt.body = proto::Serialize(body);
-    conn->Send(pkt);
-    ctx_.incr_messages_out();
-}
 
 void SyncService::HandleSyncMsg(ConnectionPtr conn, Packet& pkt) {
     int64_t user_id = conn->user_id();
     auto uid = static_cast<uint64_t>(user_id);
 
     if (user_id == 0) {
-        SendPacket(conn, Cmd::kSyncMsgResp, pkt.seq, 0, proto::SyncMsgResp{2});
+        SendPacket(conn, Cmd::kSyncMsgResp, pkt.seq, 0, proto::SyncMsgResp{kNotAuthenticated.code});
         return;
     }
 
     // 1. 反序列化 body → SyncMsgReq
     auto req = proto::Deserialize<proto::SyncMsgReq>(pkt.body);
     if (!req) {
-        SendPacket(conn, Cmd::kSyncMsgResp, pkt.seq, uid, proto::SyncMsgResp{1});
+        SendPacket(conn, Cmd::kSyncMsgResp, pkt.seq, uid, proto::SyncMsgResp{kInvalidBody.code});
         return;
     }
 
     if (req->conversation_id <= 0) {
-        SendPacket(conn, Cmd::kSyncMsgResp, pkt.seq, uid, proto::SyncMsgResp{1});
+        SendPacket(conn, Cmd::kSyncMsgResp, pkt.seq, uid, proto::SyncMsgResp{kInvalidBody.code});
         return;
     }
 
     // 检查用户是否为会话成员
     if (!ctx_.dao().Conversation().IsMember(req->conversation_id, user_id)) {
-        SendPacket(conn, Cmd::kSyncMsgResp, pkt.seq, uid, proto::SyncMsgResp{3});
+        SendPacket(conn, Cmd::kSyncMsgResp, pkt.seq, uid, proto::SyncMsgResp{sync::kNotMember.code});
         return;
     }
 
@@ -57,7 +50,7 @@ void SyncService::HandleSyncMsg(ConnectionPtr conn, Packet& pkt) {
 
     // 3. 构建响应
     proto::SyncMsgResp resp;
-    resp.code = 0;
+    resp.code = kOk.code;
     resp.has_more = static_cast<int>(messages.size()) >= limit;
     resp.messages.reserve(messages.size());
 
@@ -77,22 +70,37 @@ void SyncService::HandleSyncUnread(ConnectionPtr conn, Packet& pkt) {
     auto uid = static_cast<uint64_t>(user_id);
 
     if (user_id == 0) {
-        SendPacket(conn, Cmd::kSyncUnreadResp, pkt.seq, 0, proto::SyncUnreadResp{2});
+        SendPacket(conn, Cmd::kSyncUnreadResp, pkt.seq, 0, proto::SyncUnreadResp{kNotAuthenticated.code});
         return;
     }
 
     // 1. 查询用户参与的所有会话
     auto memberships = ctx_.dao().Conversation().GetMembersByUser(user_id);
 
-    // 2. 计算各会话未读数
+    // 2. 批量获取所有会话信息（1 次查询代替 N 次 FindById）
+    std::vector<int64_t> conv_ids;
+    conv_ids.reserve(memberships.size());
+    for (const auto& m : memberships) {
+        conv_ids.push_back(m.conversation_id);
+    }
+    auto conversations = ctx_.dao().Conversation().FindByIds(conv_ids);
+
+    std::unordered_map<int64_t, const Conversation*> conv_map;
+    conv_map.reserve(conversations.size());
+    for (const auto& c : conversations) {
+        conv_map[c.id] = &c;
+    }
+
+    // 3. 计算各会话未读数
     proto::SyncUnreadResp resp;
-    resp.code = 0;
+    resp.code = kOk.code;
 
     for (const auto& member : memberships) {
-        auto conv = ctx_.dao().Conversation().FindById(member.conversation_id);
-        if (!conv) continue;
+        auto it = conv_map.find(member.conversation_id);
+        if (it == conv_map.end()) continue;
+        const auto& conv = *(it->second);
 
-        int64_t unread = conv->max_seq - member.last_read_seq;
+        int64_t unread = conv.max_seq - member.last_read_seq;
         if (unread < 0) unread = 0;
         resp.total_unread += unread;
 
@@ -101,8 +109,8 @@ void SyncService::HandleSyncUnread(ConnectionPtr conn, Packet& pkt) {
             item.conversation_id = member.conversation_id;
             item.count = unread;
 
-            // 拉取最近几条消息作为预览
-            auto preview_from = std::max<int64_t>(0, conv->max_seq - 3);
+            // 拉取最近几条消息作为预览（仅对有未读的会话）
+            auto preview_from = std::max<int64_t>(0, conv.max_seq - 3);
             auto preview = ctx_.dao().Message().GetAfterSeq(
                 member.conversation_id, preview_from, 3);
             for (const auto& m : preview) {

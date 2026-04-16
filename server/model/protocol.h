@@ -61,6 +61,7 @@ struct SendMsgReq {
     int64_t     conversation_id = 0;
     std::string content;
     int32_t     msg_type = 1;      // 1=text, 2=image, 3=voice ...
+    std::string client_msg_id;     // 客户端生成的去重 ID（可选，用于消息幂等）
 };
 
 // S→C  Cmd::kSendMsgAck (0x0101)

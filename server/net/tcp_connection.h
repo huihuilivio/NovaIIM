@@ -19,6 +19,10 @@ public:
         channel_->write(frame);
     }
 
+    void SendEncoded(const std::string& data) override {
+        channel_->write(data);
+    }
+
     void Close() override {
         channel_->close();
     }

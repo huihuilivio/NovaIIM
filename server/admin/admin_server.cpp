@@ -240,6 +240,10 @@ int AdminServer::HandleLogin(HttpRequest* req, HttpResponse* resp) {
     }
     auto& body = *body_opt;
 
+    if (!body["uid"].is_string() || !body["password"].is_string()) {
+        return JsonError(resp, ApiCode::kParamError, "uid and password must be strings", 400);
+    }
+
     std::string uid = body["uid"].get<std::string>();
     std::string password = body["password"].get<std::string>();
 
@@ -276,10 +280,17 @@ int AdminServer::HandleLogin(HttpRequest* req, HttpResponse* resp) {
     auto exp = now + opts_.jwt_expires;
     char exp_buf[32];
     struct tm tm_buf{};
-    gmtime_s(&tm_buf, &exp);  // MSVC thread-safe variant
+#ifdef _MSC_VER
+    gmtime_s(&tm_buf, &exp);
+#else
+    gmtime_r(&exp, &tm_buf);
+#endif
     std::strftime(exp_buf, sizeof(exp_buf), "%Y-%m-%d %H:%M:%S", &tm_buf);
     session.expires_at = exp_buf;
-    ctx_.dao().AdminSession().Insert(session);
+    if (!ctx_.dao().AdminSession().Insert(session)) {
+        NOVA_NLOG_WARN(kLogTag, "failed to persist session for admin_id={}, token irrevocable until expiry",
+                       admin->id);
+    }
 
     // 审计
     WriteAuditLog(admin->id, "admin.login", "admin", admin->id, "{}", GetClientIp(req));
@@ -390,6 +401,10 @@ int AdminServer::HandleCreateUser(HttpRequest* req, HttpResponse* resp) {
         return JsonError(resp, ApiCode::kParamError, "uid and password required", 400);
     }
     auto& body = *body_opt;
+
+    if (!body["uid"].is_string() || !body["password"].is_string()) {
+        return JsonError(resp, ApiCode::kParamError, "uid and password must be strings", 400);
+    }
 
     std::string uid = body["uid"].get<std::string>();
     std::string password = body["password"].get<std::string>();
@@ -502,6 +517,10 @@ int AdminServer::HandleResetPassword(HttpRequest* req, HttpResponse* resp) {
     auto body_opt = ParseJsonBody(req);
     if (!body_opt || !body_opt->contains("new_password")) {
         return JsonError(resp, ApiCode::kParamError, "new_password required");
+    }
+
+    if (!(*body_opt)["new_password"].is_string()) {
+        return JsonError(resp, ApiCode::kParamError, "new_password must be a string", 400);
     }
 
     std::string new_password = (*body_opt)["new_password"].get<std::string>();
@@ -678,7 +697,7 @@ int AdminServer::HandleRecallMessage(HttpRequest* req, HttpResponse* resp) {
 // ============================================================
 
 int AdminServer::HandleListAuditLogs(HttpRequest* req, HttpResponse* resp) {
-    int rc = RequirePermission(req, resp, "admin.dashboard");
+    int rc = RequirePermission(req, resp, "admin.audit");
     if (rc != 0) return rc;
 
     auto pg = ParsePagination(req);

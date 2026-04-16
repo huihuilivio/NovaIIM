@@ -1,0 +1,21 @@
+#pragma once
+// 公共错误码 —— 所有服务共用
+// 约定：code=0 表示成功，>0 表示业务错误
+
+#include <cstdint>
+
+namespace nova::errc {
+
+struct Error {
+    int32_t     code;
+    const char* msg;
+};
+
+// ---- 通用 ----
+inline constexpr Error kOk                 {0,   "ok"};
+inline constexpr Error kInvalidBody        {1,   "invalid body"};
+inline constexpr Error kNotAuthenticated   {2,   "not authenticated"};
+inline constexpr Error kDatabaseError      {100, "database error"};
+inline constexpr Error kServerBusy         {503, "server busy"};
+
+} // namespace nova::errc

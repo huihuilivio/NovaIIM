@@ -4,8 +4,12 @@
 namespace nova {
 
 void ConnManager::Add(int64_t user_id, ConnectionPtr conn) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto& vec = conns_[user_id];
+    auto& shard = GetShard(user_id);
+    std::lock_guard<std::mutex> lock(shard.mutex);
+    auto& vec = shard.conns[user_id];
+
+    bool was_empty = vec.empty();
+
     // 移除同一 device_id 的旧连接，避免重复推送
     auto did = conn->device_id();
     if (!did.empty()) {
@@ -19,12 +23,17 @@ void ConnManager::Add(int64_t user_id, ConnectionPtr conn) {
         }
     }
     vec.push_back(std::move(conn));
+
+    if (was_empty) {
+        online_count_.fetch_add(1, std::memory_order_relaxed);
+    }
 }
 
 void ConnManager::Remove(int64_t user_id, Connection* conn) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto it = conns_.find(user_id);
-    if (it == conns_.end()) return;
+    auto& shard = GetShard(user_id);
+    std::lock_guard<std::mutex> lock(shard.mutex);
+    auto it = shard.conns.find(user_id);
+    if (it == shard.conns.end()) return;
 
     auto& vec = it->second;
     vec.erase(
@@ -34,21 +43,24 @@ void ConnManager::Remove(int64_t user_id, Connection* conn) {
     );
 
     if (vec.empty()) {
-        conns_.erase(it);
+        shard.conns.erase(it);
+        online_count_.fetch_sub(1, std::memory_order_relaxed);
     }
 }
 
 std::vector<ConnectionPtr> ConnManager::GetConns(int64_t user_id) const {
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto it = conns_.find(user_id);
-    if (it == conns_.end()) return {};
+    auto& shard = GetShard(user_id);
+    std::lock_guard<std::mutex> lock(shard.mutex);
+    auto it = shard.conns.find(user_id);
+    if (it == shard.conns.end()) return {};
     return it->second;
 }
 
 ConnectionPtr ConnManager::GetConn(int64_t user_id, const std::string& device_id) const {
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto it = conns_.find(user_id);
-    if (it == conns_.end()) return nullptr;
+    auto& shard = GetShard(user_id);
+    std::lock_guard<std::mutex> lock(shard.mutex);
+    auto it = shard.conns.find(user_id);
+    if (it == shard.conns.end()) return nullptr;
 
     for (const auto& c : it->second) {
         if (c->device_id() == device_id) return c;
@@ -57,9 +69,10 @@ ConnectionPtr ConnManager::GetConn(int64_t user_id, const std::string& device_id
 }
 
 bool ConnManager::IsOnline(int64_t user_id) const {
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto it = conns_.find(user_id);
-    return it != conns_.end() && !it->second.empty();
+    auto& shard = GetShard(user_id);
+    std::lock_guard<std::mutex> lock(shard.mutex);
+    auto it = shard.conns.find(user_id);
+    return it != shard.conns.end() && !it->second.empty();
 }
 
 } // namespace nova

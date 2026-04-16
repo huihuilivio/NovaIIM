@@ -1,28 +1,24 @@
 #pragma once
 
-#include "../net/connection.h"
-#include "../model/packet.h"
-#include "../model/protocol.h"
+#include "service_base.h"
+#include "../core/rate_limiter.h"
 
 namespace nova {
 
-class ServerContext;
-
 // 用户服务
-// 职责：登录认证（密码校验）、登出、心跳
-class UserService {
+// 职责：登录认证（密码校验 + 频率限制）、登出、心跳
+class UserService : public ServiceBase {
 public:
-    explicit UserService(ServerContext& ctx) : ctx_(ctx) {}
+    explicit UserService(ServerContext& ctx)
+        : ServiceBase(ctx)
+        , login_limiter_(5, std::chrono::seconds(60)) {}
 
     void HandleLogin(ConnectionPtr conn, Packet& pkt);
     void HandleLogout(ConnectionPtr conn, Packet& pkt);
     void HandleHeartbeat(ConnectionPtr conn, Packet& pkt);
 
 private:
-    template <typename T>
-    void SendPacket(ConnectionPtr& conn, Cmd cmd, uint32_t seq, uint64_t uid, const T& body);
-
-    ServerContext& ctx_;
+    RateLimiter login_limiter_;  // 5 次失败 / 60 秒窗口
 };
 
 } // namespace nova

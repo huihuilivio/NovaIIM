@@ -33,6 +33,9 @@ public:
 
     // 获取会话信息
     virtual std::optional<Conversation> FindById(int64_t id) = 0;
+
+    // 批量获取会话信息（避免 N+1 查询）
+    virtual std::vector<Conversation> FindByIds(const std::vector<int64_t>& ids) = 0;
 };
 
 } // namespace nova

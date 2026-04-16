@@ -19,6 +19,7 @@ public:
     bool UpdateLastAckSeq(int64_t conversation_id, int64_t user_id, int64_t seq) override;
     bool IsMember(int64_t conversation_id, int64_t user_id) override;
     std::optional<Conversation> FindById(int64_t id) override;
+    std::vector<Conversation> FindByIds(const std::vector<int64_t>& ids) override;
 
 private:
     DbMgr& db_;

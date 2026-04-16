@@ -77,11 +77,10 @@ void Gateway::OnConnection(const hv::SocketChannelPtr& channel) {
         channel->setReadTimeout(heartbeat_ms_);
     } else {
         ctx_.remove_connection();
-        // 清理 ConnManager
+        // 清理 ConnManager（ConnManager 自动维护在线计数）
         auto conn = channel->getContextPtr<TcpConnection>();
         if (conn && conn->is_authenticated()) {
             ctx_.conn_manager().Remove(conn->user_id(), conn.get());
-            ctx_.remove_online_user();
         }
         channel->deleteContextPtr();
         NOVA_NLOG_INFO(kLogTag, "connection closed {}", peer);

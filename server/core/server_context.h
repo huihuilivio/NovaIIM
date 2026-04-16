@@ -35,10 +35,8 @@ public:
     void add_connection()         { conn_count_.fetch_add(1, std::memory_order_relaxed); }
     void remove_connection()      { conn_count_.fetch_sub(1, std::memory_order_relaxed); }
 
-    // --- 在线用户数（已认证的连接数）---
-    int  online_user_count() const { return online_users_.load(std::memory_order_relaxed); }
-    void add_online_user()         { online_users_.fetch_add(1, std::memory_order_relaxed); }
-    void remove_online_user()      { online_users_.fetch_sub(1, std::memory_order_relaxed); }
+    // --- 在线用户数（由 ConnManager 自动维护，无需手动增减）---
+    int  online_user_count() const { return conn_manager_.online_count(); }
 
     // --- 消息统计 ---
     int64_t total_messages_in() const  { return msgs_in_.load(std::memory_order_relaxed); }
@@ -64,7 +62,6 @@ private:
     std::chrono::steady_clock::time_point start_time_;
 
     std::atomic<int>     conn_count_{0};
-    std::atomic<int>     online_users_{0};
     std::atomic<int64_t> msgs_in_{0};
     std::atomic<int64_t> msgs_out_{0};
     std::atomic<int64_t> bad_packets_{0};

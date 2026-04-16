@@ -32,6 +32,9 @@ public:
     // 发送数据包
     virtual void Send(const Packet& pkt) = 0;
 
+    // 发送已编码的原始帧（用于广播避免重复编码）
+    virtual void SendEncoded(const std::string& data) = 0;
+
     // 关闭连接
     virtual void Close() = 0;
 

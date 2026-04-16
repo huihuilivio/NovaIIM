@@ -10,6 +10,7 @@ namespace {
 class MockConnection : public Connection {
 public:
     void Send(const Packet& /*pkt*/) override { ++send_count; }
+    void SendEncoded(const std::string& /*data*/) override { ++send_count; }
     void Close() override { closed = true; }
 
     int  send_count = 0;
