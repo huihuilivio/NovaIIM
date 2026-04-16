@@ -143,28 +143,28 @@ int AdminServer::AuthMiddleware(HttpRequest* req, HttpResponse* resp) {
 
     // 请求体大小限制
     if (req->body.size() > kAdminMaxBodySize) {
-        JsonError(resp, ApiCode::kParamError, "request body too large", 413);
+        JsonError(resp, api_err::kBodyTooLarge);
         return 413;
     }
 
     std::string auth = req->GetHeader("Authorization");
     constexpr std::string_view kBearer = "Bearer ";
     if (auth.size() <= kBearer.size() || auth.substr(0, kBearer.size()) != kBearer) {
-        JsonError(resp, ApiCode::kUnauthorized, "missing or invalid token", 401);
+        JsonError(resp, api_err::kMissingToken);
         return 401;
     }
 
     auto token_sv = std::string_view(auth).substr(kBearer.size());
     auto claims = JwtUtils::Verify(token_sv, opts_.jwt_secret);
     if (!claims) {
-        JsonError(resp, ApiCode::kUnauthorized, "invalid or expired token", 401);
+        JsonError(resp, api_err::kTokenExpired);
         return 401;
     }
 
     // 查 admin_sessions 黑名单
     std::string token_hash = Sha256Hex(token_sv);
     if (ctx_.dao().AdminSession().IsRevoked(token_hash)) {
-        JsonError(resp, ApiCode::kUnauthorized, "token has been revoked", 401);
+        JsonError(resp, api_err::kTokenRevoked);
         return 401;
     }
 
@@ -234,23 +234,23 @@ int AdminServer::HandleHealthz(HttpRequest* /*req*/, HttpResponse* resp) {
 int AdminServer::HandleLogin(HttpRequest* req, HttpResponse* resp) {
     // body 大小限制（middleware 对 login 路径免鉴权但同样需要限制）
     if (req->body.size() > kAdminMaxBodySize) {
-        return JsonError(resp, ApiCode::kParamError, "request body too large", 413);
+        return JsonError(resp, api_err::kBodyTooLarge);
     }
 
     // 频率限制（按客户端 IP）
     std::string client_ip = GetClientIp(req);
     if (!login_limiter_.Allow(client_ip)) {
-        return JsonError(resp, ApiCode::kForbidden, "too many login attempts, try again later", 429);
+        return JsonError(resp, api_err::kRateLimited);
     }
 
     auto body_opt = ParseJsonBody(req);
     if (!body_opt || !body_opt->contains("uid") || !body_opt->contains("password")) {
-        return JsonError(resp, ApiCode::kParamError, "uid and password required", 400);
+        return JsonError(resp, api_err::kUidPasswordRequired);
     }
     auto& body = *body_opt;
 
     if (!body["uid"].is_string() || !body["password"].is_string()) {
-        return JsonError(resp, ApiCode::kParamError, "uid and password must be strings", 400);
+        return JsonError(resp, api_err::kUidPasswordStrings);
     }
 
     std::string uid = body["uid"].get<std::string>();
@@ -263,7 +263,7 @@ int AdminServer::HandleLogin(HttpRequest* req, HttpResponse* resp) {
         volatile char* p = reinterpret_cast<volatile char*>(password.data());
         for (size_t i = 0; i < password.size(); ++i) p[i] = 0;
         password.clear();
-        return JsonError(resp, ApiCode::kUnauthorized, "invalid credentials", 401);
+        return JsonError(resp, api_err::kInvalidCredentials);
     }
 
     if (!PasswordUtils::Verify(password, admin->password_hash)) {
@@ -272,7 +272,7 @@ int AdminServer::HandleLogin(HttpRequest* req, HttpResponse* resp) {
         volatile char* p = reinterpret_cast<volatile char*>(password.data());
         for (size_t i = 0; i < password.size(); ++i) p[i] = 0;
         password.clear();
-        return JsonError(resp, ApiCode::kUnauthorized, "invalid credentials", 401);
+        return JsonError(resp, api_err::kInvalidCredentials);
     }
 
     // 安全：验证完成后立即清除明文密码
@@ -283,19 +283,19 @@ int AdminServer::HandleLogin(HttpRequest* req, HttpResponse* resp) {
     }
 
     if (admin->status != 1) {
-        return JsonError(resp, ApiCode::kForbidden, "account is disabled", 403);
+        return JsonError(resp, api_err::kAccountDisabled);
     }
 
     // 检查是否有 admin.login 权限
     if (!ctx_.dao().Rbac().HasPermission(admin->id, "admin.login")) {
-        return JsonError(resp, ApiCode::kForbidden, "no admin access", 403);
+        return JsonError(resp, api_err::kNoAdminAccess);
     }
 
     // 签发 JWT
     login_limiter_.Reset(client_ip);
     auto token = JwtUtils::Sign(admin->id, opts_.jwt_secret, opts_.jwt_expires);
     if (token.empty()) {
-        return JsonError(resp, ApiCode::kInternal, "failed to sign token");
+        return JsonError(resp, api_err::kSignTokenFailed);
     }
 
     // 记录 session（用于黑名单管理）
@@ -332,7 +332,7 @@ int AdminServer::HandleLogout(HttpRequest* req, HttpResponse* resp) {
     std::string auth = req->GetHeader("Authorization");
     constexpr std::string_view kBearer = "Bearer ";
     if (auth.size() <= kBearer.size()) {
-        return JsonError(resp, ApiCode::kUnauthorized, "missing token", 401);
+        return JsonError(resp, api_err::kMissingToken);
     }
     auto token_sv = std::string_view(auth).substr(kBearer.size());
     std::string token_hash = Sha256Hex(token_sv);
@@ -347,12 +347,12 @@ int AdminServer::HandleLogout(HttpRequest* req, HttpResponse* resp) {
 int AdminServer::HandleMe(HttpRequest* req, HttpResponse* resp) {
     int64_t admin_id = GetCurrentAdminId(req);
     if (admin_id == 0) {
-        return JsonError(resp, ApiCode::kUnauthorized, "not authenticated", 401);
+        return JsonError(resp, api_err::kNotAuthenticated);
     }
 
     auto admin = ctx_.dao().AdminAccount().FindById(admin_id);
     if (!admin) {
-        return JsonError(resp, ApiCode::kNotFound, "admin not found");
+        return JsonError(resp, api_err::kAdminNotFound);
     }
 
     auto perms = ctx_.dao().Rbac().GetUserPermissions(admin_id);
@@ -425,12 +425,12 @@ int AdminServer::HandleCreateUser(HttpRequest* req, HttpResponse* resp) {
 
     auto body_opt = ParseJsonBody(req);
     if (!body_opt || !body_opt->contains("uid") || !body_opt->contains("password")) {
-        return JsonError(resp, ApiCode::kParamError, "uid and password required", 400);
+        return JsonError(resp, api_err::kUidPasswordRequired);
     }
     auto& body = *body_opt;
 
     if (!body["uid"].is_string() || !body["password"].is_string()) {
-        return JsonError(resp, ApiCode::kParamError, "uid and password must be strings", 400);
+        return JsonError(resp, api_err::kUidPasswordStrings);
     }
 
     std::string uid = body["uid"].get<std::string>();
@@ -438,17 +438,17 @@ int AdminServer::HandleCreateUser(HttpRequest* req, HttpResponse* resp) {
     std::string nickname = body.value("nickname", uid);
 
     if (uid.empty() || password.empty()) {
-        return JsonError(resp, ApiCode::kParamError, "uid and password cannot be empty", 400);
+        return JsonError(resp, api_err::kUidPasswordEmpty);
     }
 
     // 检查 uid 是否已存在
     if (ctx_.dao().User().FindByUid(uid)) {
-        return JsonError(resp, ApiCode::kParamError, "uid already exists", 409);
+        return JsonError(resp, api_err::kUidAlreadyExists);
     }
 
     auto hash = PasswordUtils::Hash(password);
     if (hash.empty()) {
-        return JsonError(resp, ApiCode::kInternal, "failed to hash password");
+        return JsonError(resp, api_err::kHashFailed);
     }
 
     User user;
@@ -457,7 +457,7 @@ int AdminServer::HandleCreateUser(HttpRequest* req, HttpResponse* resp) {
     user.nickname      = nickname;
 
     if (!ctx_.dao().User().Insert(user)) {
-        return JsonError(resp, ApiCode::kInternal, "failed to create user");
+        return JsonError(resp, api_err::kCreateUserFailed);
     }
 
     int64_t admin_id = GetCurrentAdminId(req);
@@ -474,12 +474,12 @@ int AdminServer::HandleGetUser(HttpRequest* req, HttpResponse* resp) {
     auto id_str = req->GetParam("id");
     int64_t id = std::atoll(id_str.c_str());
     if (id <= 0) {
-        return JsonError(resp, ApiCode::kParamError, "invalid user id");
+        return JsonError(resp, api_err::kInvalidUserId);
     }
 
     auto user = ctx_.dao().User().FindById(id);
     if (!user) {
-        return JsonError(resp, ApiCode::kNotFound, "user not found");
+        return JsonError(resp, api_err::kUserNotFound);
     }
 
     nlohmann::json data;
@@ -512,11 +512,11 @@ int AdminServer::HandleDeleteUser(HttpRequest* req, HttpResponse* resp) {
     auto id_str = req->GetParam("id");
     int64_t id = std::atoll(id_str.c_str());
     if (id <= 0) {
-        return JsonError(resp, ApiCode::kParamError, "invalid user id");
+        return JsonError(resp, api_err::kInvalidUserId);
     }
 
     if (!ctx_.dao().User().FindById(id)) {
-        return JsonError(resp, ApiCode::kNotFound, "user not found");
+        return JsonError(resp, api_err::kUserNotFound);
     }
 
     ctx_.dao().User().SoftDelete(id);
@@ -538,30 +538,30 @@ int AdminServer::HandleResetPassword(HttpRequest* req, HttpResponse* resp) {
     auto id_str = req->GetParam("id");
     int64_t id = std::atoll(id_str.c_str());
     if (id <= 0) {
-        return JsonError(resp, ApiCode::kParamError, "invalid user id");
+        return JsonError(resp, api_err::kInvalidUserId);
     }
 
     auto body_opt = ParseJsonBody(req);
     if (!body_opt || !body_opt->contains("new_password")) {
-        return JsonError(resp, ApiCode::kParamError, "new_password required");
+        return JsonError(resp, api_err::kNewPasswordRequired);
     }
 
     if (!(*body_opt)["new_password"].is_string()) {
-        return JsonError(resp, ApiCode::kParamError, "new_password must be a string", 400);
+        return JsonError(resp, api_err::kNewPasswordString);
     }
 
     std::string new_password = (*body_opt)["new_password"].get<std::string>();
     if (new_password.empty()) {
-        return JsonError(resp, ApiCode::kParamError, "new_password cannot be empty");
+        return JsonError(resp, api_err::kNewPasswordEmpty);
     }
 
     auto hash = PasswordUtils::Hash(new_password);
     if (hash.empty()) {
-        return JsonError(resp, ApiCode::kInternal, "failed to hash password");
+        return JsonError(resp, api_err::kHashFailed);
     }
 
     if (!ctx_.dao().User().UpdatePassword(id, hash)) {
-        return JsonError(resp, ApiCode::kNotFound, "user not found");
+        return JsonError(resp, api_err::kUserNotFound);
     }
 
     int64_t admin_id = GetCurrentAdminId(req);
@@ -577,14 +577,14 @@ int AdminServer::HandleBanUser(HttpRequest* req, HttpResponse* resp) {
     auto id_str = req->GetParam("id");
     int64_t id = std::atoll(id_str.c_str());
     if (id <= 0) {
-        return JsonError(resp, ApiCode::kParamError, "invalid user id");
+        return JsonError(resp, api_err::kInvalidUserId);
     }
 
     auto body_opt = ParseJsonBody(req);
     std::string reason = body_opt ? body_opt->value("reason", "") : "";
 
     if (!ctx_.dao().User().UpdateStatus(id, 2)) {
-        return JsonError(resp, ApiCode::kNotFound, "user not found");
+        return JsonError(resp, api_err::kUserNotFound);
     }
 
     // 踢下线
@@ -605,11 +605,11 @@ int AdminServer::HandleUnbanUser(HttpRequest* req, HttpResponse* resp) {
     auto id_str = req->GetParam("id");
     int64_t id = std::atoll(id_str.c_str());
     if (id <= 0) {
-        return JsonError(resp, ApiCode::kParamError, "invalid user id");
+        return JsonError(resp, api_err::kInvalidUserId);
     }
 
     if (!ctx_.dao().User().UpdateStatus(id, 1)) {
-        return JsonError(resp, ApiCode::kNotFound, "user not found");
+        return JsonError(resp, api_err::kUserNotFound);
     }
 
     int64_t admin_id = GetCurrentAdminId(req);
@@ -625,12 +625,12 @@ int AdminServer::HandleKickUser(HttpRequest* req, HttpResponse* resp) {
     auto id_str = req->GetParam("id");
     int64_t id = std::atoll(id_str.c_str());
     if (id <= 0) {
-        return JsonError(resp, ApiCode::kParamError, "invalid user id");
+        return JsonError(resp, api_err::kInvalidUserId);
     }
 
     auto conns = ctx_.conn_manager().GetConns(id);
     if (conns.empty()) {
-        return JsonError(resp, ApiCode::kNotFound, "user not online");
+        return JsonError(resp, api_err::kUserNotOnline);
     }
 
     for (auto& c : conns) c->Close();
@@ -696,7 +696,7 @@ int AdminServer::HandleRecallMessage(HttpRequest* req, HttpResponse* resp) {
     auto id_str = req->GetParam("id");
     int64_t id = std::atoll(id_str.c_str());
     if (id <= 0) {
-        return JsonError(resp, ApiCode::kParamError, "invalid message id");
+        return JsonError(resp, api_err::kInvalidMessageId);
     }
 
     auto body_opt = ParseJsonBody(req);
@@ -704,11 +704,11 @@ int AdminServer::HandleRecallMessage(HttpRequest* req, HttpResponse* resp) {
 
     auto msg = ctx_.dao().Message().FindById(id);
     if (!msg) {
-        return JsonError(resp, ApiCode::kNotFound, "message not found");
+        return JsonError(resp, api_err::kMessageNotFound);
     }
 
     if (!ctx_.dao().Message().UpdateStatus(id, 1)) {
-        return JsonError(resp, ApiCode::kInternal, "failed to recall message");
+        return JsonError(resp, api_err::kRecallFailed);
     }
 
     int64_t admin_id = GetCurrentAdminId(req);

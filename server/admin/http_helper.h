@@ -23,6 +23,55 @@ enum class ApiCode : int {
     kInternal     = 5,
 };
 
+// 预定义 API 错误（消除 hardcode 字符串）
+struct ApiError {
+    ApiCode     code;
+    const char* msg;
+    int         http_status;
+};
+
+namespace api_err {
+// ---- 通用 ----
+inline constexpr ApiError kBodyTooLarge        {ApiCode::kParamError,   "request body too large",                    413};
+inline constexpr ApiError kInvalidParam        {ApiCode::kParamError,   "invalid parameter",                         400};
+inline constexpr ApiError kInvalidUserId       {ApiCode::kParamError,   "invalid user id",                           200};
+inline constexpr ApiError kInvalidMessageId    {ApiCode::kParamError,   "invalid message id",                        200};
+
+// ---- 认证 ----
+inline constexpr ApiError kMissingToken        {ApiCode::kUnauthorized, "missing or invalid token",                  401};
+inline constexpr ApiError kTokenExpired        {ApiCode::kUnauthorized, "invalid or expired token",                  401};
+inline constexpr ApiError kTokenRevoked        {ApiCode::kUnauthorized, "token has been revoked",                    401};
+inline constexpr ApiError kInvalidCredentials  {ApiCode::kUnauthorized, "invalid credentials",                       401};
+inline constexpr ApiError kNotAuthenticated    {ApiCode::kUnauthorized, "not authenticated",                         401};
+
+// ---- 权限 / 频率 ----
+inline constexpr ApiError kRateLimited         {ApiCode::kForbidden,   "too many login attempts, try again later",   429};
+inline constexpr ApiError kAccountDisabled     {ApiCode::kForbidden,   "account is disabled",                        403};
+inline constexpr ApiError kNoAdminAccess       {ApiCode::kForbidden,   "no admin access",                            403};
+inline constexpr ApiError kPermissionDenied    {ApiCode::kForbidden,   "permission denied",                          403};
+
+// ---- 参数校验 ----
+inline constexpr ApiError kUidPasswordRequired {ApiCode::kParamError,   "uid and password required",                 400};
+inline constexpr ApiError kUidPasswordStrings  {ApiCode::kParamError,   "uid and password must be strings",          400};
+inline constexpr ApiError kUidPasswordEmpty    {ApiCode::kParamError,   "uid and password cannot be empty",          400};
+inline constexpr ApiError kUidAlreadyExists    {ApiCode::kParamError,   "uid already exists",                        409};
+inline constexpr ApiError kNewPasswordRequired {ApiCode::kParamError,   "new_password required",                     200};
+inline constexpr ApiError kNewPasswordString   {ApiCode::kParamError,   "new_password must be a string",             400};
+inline constexpr ApiError kNewPasswordEmpty    {ApiCode::kParamError,   "new_password cannot be empty",              200};
+
+// ---- 资源不存在 ----
+inline constexpr ApiError kUserNotFound        {ApiCode::kNotFound,     "user not found",                            200};
+inline constexpr ApiError kAdminNotFound       {ApiCode::kNotFound,     "admin not found",                           200};
+inline constexpr ApiError kMessageNotFound     {ApiCode::kNotFound,     "message not found",                         200};
+inline constexpr ApiError kUserNotOnline       {ApiCode::kNotFound,     "user not online",                           200};
+
+// ---- 内部错误 ----
+inline constexpr ApiError kHashFailed          {ApiCode::kInternal,     "failed to hash password",                   200};
+inline constexpr ApiError kSignTokenFailed     {ApiCode::kInternal,     "failed to sign token",                      200};
+inline constexpr ApiError kCreateUserFailed    {ApiCode::kInternal,     "failed to create user",                     200};
+inline constexpr ApiError kRecallFailed        {ApiCode::kInternal,     "failed to recall message",                  200};
+} // namespace api_err
+
 inline int JsonOk(HttpResponse* resp, const nlohmann::json& data = nullptr) {
     resp->content_type = APPLICATION_JSON;
     nlohmann::json j;
@@ -41,6 +90,11 @@ inline int JsonError(HttpResponse* resp, ApiCode code, std::string_view msg, int
     j["data"] = nlohmann::json::object();
     resp->body = j.dump();
     return http_status;
+}
+
+// 便捷重载：直接传 ApiError 常量
+inline int JsonError(HttpResponse* resp, const ApiError& err) {
+    return JsonError(resp, err.code, err.msg, err.http_status);
 }
 
 // ============================================================
@@ -99,7 +153,7 @@ inline bool HasPermission(HttpRequest* req, std::string_view perm) {
 
 inline int RequirePermission(HttpRequest* req, HttpResponse* resp, std::string_view perm) {
     if (!HasPermission(req, perm)) {
-        return JsonError(resp, ApiCode::kForbidden, "permission denied", 403);
+        return JsonError(resp, api_err::kPermissionDenied);
     }
     return 0;  // 0 表示通过
 }
