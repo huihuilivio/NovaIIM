@@ -70,6 +70,29 @@ std::optional<Message> MessageDaoImplT<DbMgr>::FindById(int64_t id) {
     return res[0];
 }
 
+template <typename DbMgr>
+std::vector<Message> MessageDaoImplT<DbMgr>::GetLatestByConversations(
+        const std::vector<std::pair<int64_t, int64_t>>& conv_from_seqs,
+        int limit_per_conv) {
+    if (conv_from_seqs.empty()) return {};
+
+    // 构建 UNION ALL 查询：每个会话取最新 limit_per_conv 条
+    // 所有参数都是 int64_t，无注入风险
+    std::string sql = "SELECT * FROM (";
+    for (size_t i = 0; i < conv_from_seqs.size(); ++i) {
+        if (i > 0) sql += " UNION ALL ";
+        sql += "SELECT * FROM messages WHERE conversation_id = "
+             + std::to_string(conv_from_seqs[i].first)
+             + " AND seq > "
+             + std::to_string(conv_from_seqs[i].second)
+             + " ORDER BY seq DESC LIMIT "
+             + std::to_string(limit_per_conv);
+    }
+    sql += ")";
+
+    return db_.DB().template query_s<Message>(sql);
+}
+
 // 显式实例化
 template class MessageDaoImplT<SqliteDbManager>;
 #ifdef ORMPP_ENABLE_MYSQL

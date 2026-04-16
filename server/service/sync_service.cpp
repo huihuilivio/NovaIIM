@@ -8,7 +8,7 @@
 
 namespace nova {
 
-using namespace errc;
+namespace ec = errc;
 
 static constexpr const char* kLogTag = "SyncService";
 static constexpr int kDefaultSyncLimit = 20;
@@ -19,25 +19,25 @@ void SyncService::HandleSyncMsg(ConnectionPtr conn, Packet& pkt) {
     auto uid = static_cast<uint64_t>(user_id);
 
     if (user_id == 0) {
-        SendPacket(conn, Cmd::kSyncMsgResp, pkt.seq, 0, proto::SyncMsgResp{kNotAuthenticated.code});
+        SendPacket(conn, Cmd::kSyncMsgResp, pkt.seq, 0, proto::SyncMsgResp{ec::kNotAuthenticated.code});
         return;
     }
 
     // 1. 反序列化 body → SyncMsgReq
     auto req = proto::Deserialize<proto::SyncMsgReq>(pkt.body);
     if (!req) {
-        SendPacket(conn, Cmd::kSyncMsgResp, pkt.seq, uid, proto::SyncMsgResp{kInvalidBody.code});
+        SendPacket(conn, Cmd::kSyncMsgResp, pkt.seq, uid, proto::SyncMsgResp{ec::kInvalidBody.code});
         return;
     }
 
     if (req->conversation_id <= 0) {
-        SendPacket(conn, Cmd::kSyncMsgResp, pkt.seq, uid, proto::SyncMsgResp{kInvalidBody.code});
+        SendPacket(conn, Cmd::kSyncMsgResp, pkt.seq, uid, proto::SyncMsgResp{ec::kInvalidBody.code});
         return;
     }
 
     // 检查用户是否为会话成员
     if (!ctx_.dao().Conversation().IsMember(req->conversation_id, user_id)) {
-        SendPacket(conn, Cmd::kSyncMsgResp, pkt.seq, uid, proto::SyncMsgResp{sync::kNotMember.code});
+        SendPacket(conn, Cmd::kSyncMsgResp, pkt.seq, uid, proto::SyncMsgResp{ec::sync::kNotMember.code});
         return;
     }
 
@@ -50,7 +50,7 @@ void SyncService::HandleSyncMsg(ConnectionPtr conn, Packet& pkt) {
 
     // 3. 构建响应
     proto::SyncMsgResp resp;
-    resp.code = kOk.code;
+    resp.code = ec::kOk.code;
     resp.has_more = static_cast<int>(messages.size()) >= limit;
     resp.messages.reserve(messages.size());
 
@@ -70,7 +70,7 @@ void SyncService::HandleSyncUnread(ConnectionPtr conn, Packet& pkt) {
     auto uid = static_cast<uint64_t>(user_id);
 
     if (user_id == 0) {
-        SendPacket(conn, Cmd::kSyncUnreadResp, pkt.seq, 0, proto::SyncUnreadResp{kNotAuthenticated.code});
+        SendPacket(conn, Cmd::kSyncUnreadResp, pkt.seq, 0, proto::SyncUnreadResp{ec::kNotAuthenticated.code});
         return;
     }
 
@@ -91,9 +91,12 @@ void SyncService::HandleSyncUnread(ConnectionPtr conn, Packet& pkt) {
         conv_map[c.id] = &c;
     }
 
-    // 3. 计算各会话未读数
+    // 3. 计算各会话未读数，收集需要预览的会话
     proto::SyncUnreadResp resp;
-    resp.code = kOk.code;
+    resp.code = ec::kOk.code;
+
+    // 收集有未读的会话 (conversation_id, preview_from_seq)
+    std::vector<std::pair<int64_t, int64_t>> preview_convs;
 
     for (const auto& member : memberships) {
         auto it = conv_map.find(member.conversation_id);
@@ -108,17 +111,31 @@ void SyncService::HandleSyncUnread(ConnectionPtr conn, Packet& pkt) {
             proto::UnreadItem item;
             item.conversation_id = member.conversation_id;
             item.count = unread;
-
-            // 拉取最近几条消息作为预览（仅对有未读的会话）
-            auto preview_from = std::max<int64_t>(0, conv.max_seq - 3);
-            auto preview = ctx_.dao().Message().GetAfterSeq(
-                member.conversation_id, preview_from, 3);
-            for (const auto& m : preview) {
-                item.latest_messages.push_back(
-                    {m.seq, m.sender_id, m.content, m.msg_type, m.created_at, m.status});
-            }
-
             resp.items.push_back(std::move(item));
+
+            auto preview_from = std::max<int64_t>(0, conv.max_seq - 3);
+            preview_convs.emplace_back(member.conversation_id, preview_from);
+        }
+    }
+
+    // 4. 批量获取所有有未读会话的预览消息（1 次 UNION ALL 代替 N 次查询）
+    if (!preview_convs.empty()) {
+        auto all_previews = ctx_.dao().Message().GetLatestByConversations(preview_convs, 3);
+
+        // 按 conversation_id 分组
+        std::unordered_map<int64_t, std::vector<const Message*>> preview_map;
+        for (const auto& m : all_previews) {
+            preview_map[m.conversation_id].push_back(&m);
+        }
+
+        // 填充到对应的 UnreadItem
+        for (auto& item : resp.items) {
+            auto pit = preview_map.find(item.conversation_id);
+            if (pit == preview_map.end()) continue;
+            for (const auto* m : pit->second) {
+                item.latest_messages.push_back(
+                    {m->seq, m->sender_id, m->content, m->msg_type, m->created_at, m->status});
+            }
         }
     }
 

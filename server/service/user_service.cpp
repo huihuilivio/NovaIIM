@@ -4,11 +4,9 @@
 #include "../admin/password_utils.h"
 #include "../dao/user_dao.h"
 
-#include <cstring>
-
 namespace nova {
 
-using namespace errc;
+namespace ec = errc;
 
 static constexpr const char* kLogTag = "UserService";
 
@@ -24,19 +22,19 @@ void UserService::HandleLogin(ConnectionPtr conn, Packet& pkt) {
     // 1. 反序列化 body → LoginReq
     auto req = proto::Deserialize<proto::LoginReq>(pkt.body);
     if (!req) {
-        SendPacket(conn, Cmd::kLoginAck, seq, 0, proto::LoginAck{kInvalidBody.code, kInvalidBody.msg});
+        SendPacket(conn, Cmd::kLoginAck, seq, 0, proto::LoginAck{ec::kInvalidBody.code, ec::kInvalidBody.msg});
         conn->Close();
         return;
     }
 
     if (req->uid.empty()) {
-        SendPacket(conn, Cmd::kLoginAck, seq, 0, proto::LoginAck{user::kUidRequired.code, user::kUidRequired.msg});
+        SendPacket(conn, Cmd::kLoginAck, seq, 0, proto::LoginAck{ec::user::kUidRequired.code, ec::user::kUidRequired.msg});
         conn->Close();
         return;
     }
 
     if (req->password.empty()) {
-        SendPacket(conn, Cmd::kLoginAck, seq, 0, proto::LoginAck{user::kPasswordRequired.code, user::kPasswordRequired.msg});
+        SendPacket(conn, Cmd::kLoginAck, seq, 0, proto::LoginAck{ec::user::kPasswordRequired.code, ec::user::kPasswordRequired.msg});
         conn->Close();
         return;
     }
@@ -44,7 +42,7 @@ void UserService::HandleLogin(ConnectionPtr conn, Packet& pkt) {
     // 2. 频率限制检查（防暴力破解）
     if (!login_limiter_.Allow(req->uid)) {
         NOVA_NLOG_WARN(kLogTag, "login rate limited for uid={}", req->uid);
-        SendPacket(conn, Cmd::kLoginAck, seq, 0, proto::LoginAck{user::kRateLimited.code, user::kRateLimited.msg});
+        SendPacket(conn, Cmd::kLoginAck, seq, 0, proto::LoginAck{ec::user::kRateLimited.code, ec::user::kRateLimited.msg});
         conn->Close();
         return;
     }
@@ -54,7 +52,7 @@ void UserService::HandleLogin(ConnectionPtr conn, Packet& pkt) {
     if (!user_opt) {
         // 统一错误信息，防止用户枚举
         login_limiter_.RecordFailure(req->uid);
-        SendPacket(conn, Cmd::kLoginAck, seq, 0, proto::LoginAck{user::kInvalidCredentials.code, user::kInvalidCredentials.msg});
+        SendPacket(conn, Cmd::kLoginAck, seq, 0, proto::LoginAck{ec::user::kInvalidCredentials.code, ec::user::kInvalidCredentials.msg});
         conn->Close();
         return;
     }
@@ -63,7 +61,7 @@ void UserService::HandleLogin(ConnectionPtr conn, Packet& pkt) {
 
     // 4. 检查用户状态
     if (user.status == 2) {
-        SendPacket(conn, Cmd::kLoginAck, seq, 0, proto::LoginAck{user::kUserBanned.code, user::kUserBanned.msg});
+        SendPacket(conn, Cmd::kLoginAck, seq, 0, proto::LoginAck{ec::user::kUserBanned.code, ec::user::kUserBanned.msg});
         conn->Close();
         return;
     }
@@ -72,16 +70,18 @@ void UserService::HandleLogin(ConnectionPtr conn, Packet& pkt) {
     bool ok = PasswordUtils::Verify(req->password, user.password_hash);
 
     // 安全：立即清除内存中的明文密码
+    // 使用逐字节 volatile 写入，保证不被编译器优化掉
+    // （memset + volatile cast 可能被优化，因 memset 参数本身不是 volatile）
     if (!req->password.empty()) {
-        volatile char* p = req->password.data();
-        std::memset(const_cast<char*>(static_cast<const volatile char*>(p)), 0, req->password.size());
+        volatile char* p = reinterpret_cast<volatile char*>(req->password.data());
+        for (size_t i = 0; i < req->password.size(); ++i) p[i] = 0;
         req->password.clear();
     }
 
     if (!ok) {
         login_limiter_.RecordFailure(req->uid);
         // 与"用户不存在"使用相同的错误码和消息，防止用户枚举
-        SendPacket(conn, Cmd::kLoginAck, seq, 0, proto::LoginAck{user::kInvalidCredentials.code, user::kInvalidCredentials.msg});
+        SendPacket(conn, Cmd::kLoginAck, seq, 0, proto::LoginAck{ec::user::kInvalidCredentials.code, ec::user::kInvalidCredentials.msg});
         conn->Close();
         return;
     }
@@ -103,7 +103,7 @@ void UserService::HandleLogin(ConnectionPtr conn, Packet& pkt) {
 
     // 8. 返回 LoginAck
     SendPacket(conn, Cmd::kLoginAck, seq, static_cast<uint64_t>(user.id),
-               proto::LoginAck{kOk.code, kOk.msg, user.id, user.nickname, user.avatar});
+               proto::LoginAck{ec::kOk.code, ec::kOk.msg, user.id, user.nickname, user.avatar});
 }
 
 void UserService::HandleLogout(ConnectionPtr conn, Packet& pkt) {
@@ -115,13 +115,13 @@ void UserService::HandleLogout(ConnectionPtr conn, Packet& pkt) {
     }
 
     SendPacket(conn, Cmd::kLogout, pkt.seq, static_cast<uint64_t>(user_id),
-               proto::RspBase{kOk.code, "goodbye"});
+               proto::RspBase{ec::kOk.code, "goodbye"});
     conn->Close();
 }
 
 void UserService::HandleHeartbeat(ConnectionPtr conn, Packet& pkt) {
     SendPacket(conn, Cmd::kHeartbeatAck, pkt.seq,
-               static_cast<uint64_t>(conn->user_id()), proto::RspBase{kOk.code, {}});
+               static_cast<uint64_t>(conn->user_id()), proto::RspBase{ec::kOk.code, {}});
 }
 
 } // namespace nova

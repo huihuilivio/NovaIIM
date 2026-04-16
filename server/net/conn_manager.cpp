@@ -4,28 +4,39 @@
 namespace nova {
 
 void ConnManager::Add(int64_t user_id, ConnectionPtr conn) {
-    auto& shard = GetShard(user_id);
-    std::lock_guard<std::mutex> lock(shard.mutex);
-    auto& vec = shard.conns[user_id];
+    std::vector<ConnectionPtr> to_close;  // 延迟关闭，避免锁内 Close()
+    {
+        auto& shard = GetShard(user_id);
+        std::lock_guard<std::mutex> lock(shard.mutex);
+        auto& vec = shard.conns[user_id];
 
-    bool was_empty = vec.empty();
-
-    // 移除同一 device_id 的旧连接，避免重复推送
-    auto did = conn->device_id();
-    if (!did.empty()) {
-        for (auto it = vec.begin(); it != vec.end(); ) {
-            if ((*it)->device_id() == did) {
-                (*it)->Close();
-                it = vec.erase(it);
-            } else {
-                ++it;
+        // 移除同一 device_id 的旧连接，避免重复推送
+        auto did = conn->device_id();
+        if (!did.empty()) {
+            for (auto it = vec.begin(); it != vec.end(); ) {
+                if ((*it)->device_id() == did) {
+                    to_close.push_back(std::move(*it));
+                    it = vec.erase(it);
+                } else {
+                    ++it;
+                }
             }
         }
-    }
-    vec.push_back(std::move(conn));
 
-    if (was_empty) {
-        online_count_.fetch_add(1, std::memory_order_relaxed);
+        // 在移除旧连接之后判断是否为空，避免边界情况：
+        // 若旧连接移除后 vec 变空，说明该用户之前已离线（online_count 已减过），
+        // 此时重新上线需要 +1
+        bool was_empty = vec.empty();
+
+        vec.push_back(std::move(conn));
+
+        if (was_empty) {
+            online_count_.fetch_add(1, std::memory_order_relaxed);
+        }
+    }
+    // 锁已释放，安全关闭旧连接
+    for (auto& c : to_close) {
+        c->Close();
     }
 }
 

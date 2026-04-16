@@ -47,6 +47,7 @@ struct AdminConfig {
     int         port        = 9091;
     std::string jwt_secret;            // JWT HMAC 密钥，空则不启用鉴权
     int         jwt_expires = 86400;   // JWT 有效期（秒），默认 24h
+    bool        trust_proxy = false;   // 信任反向代理的 X-Forwarded-For/X-Real-IP 头
 };
 
 struct AppConfig {

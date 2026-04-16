@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <cstring>
 #include <string>
+#include <type_traits>
 
 namespace nova {
 
@@ -15,6 +16,50 @@ namespace nova {
 constexpr uint32_t kHeaderSize = 18;
 constexpr uint32_t kMaxBodySize = 1 * 1024 * 1024; // 1 MB
 
+// ---- 显式小端序读写（跨平台安全） ----
+namespace detail {
+
+inline void WriteLE16(char* dst, uint16_t v) {
+    auto* p = reinterpret_cast<unsigned char*>(dst);
+    p[0] = static_cast<unsigned char>(v);
+    p[1] = static_cast<unsigned char>(v >> 8);
+}
+inline void WriteLE32(char* dst, uint32_t v) {
+    auto* p = reinterpret_cast<unsigned char*>(dst);
+    p[0] = static_cast<unsigned char>(v);
+    p[1] = static_cast<unsigned char>(v >> 8);
+    p[2] = static_cast<unsigned char>(v >> 16);
+    p[3] = static_cast<unsigned char>(v >> 24);
+}
+inline void WriteLE64(char* dst, uint64_t v) {
+    auto* p = reinterpret_cast<unsigned char*>(dst);
+    for (int i = 0; i < 8; ++i) {
+        p[i] = static_cast<unsigned char>(v >> (i * 8));
+    }
+}
+
+inline uint16_t ReadLE16(const char* src) {
+    auto* p = reinterpret_cast<const unsigned char*>(src);
+    return static_cast<uint16_t>(p[0]) | (static_cast<uint16_t>(p[1]) << 8);
+}
+inline uint32_t ReadLE32(const char* src) {
+    auto* p = reinterpret_cast<const unsigned char*>(src);
+    return static_cast<uint32_t>(p[0])
+         | (static_cast<uint32_t>(p[1]) << 8)
+         | (static_cast<uint32_t>(p[2]) << 16)
+         | (static_cast<uint32_t>(p[3]) << 24);
+}
+inline uint64_t ReadLE64(const char* src) {
+    auto* p = reinterpret_cast<const unsigned char*>(src);
+    uint64_t v = 0;
+    for (int i = 0; i < 8; ++i) {
+        v |= static_cast<uint64_t>(p[i]) << (i * 8);
+    }
+    return v;
+}
+
+} // namespace detail
+
 // 协议包结构
 struct Packet {
     uint16_t cmd = 0;
@@ -22,28 +67,27 @@ struct Packet {
     uint64_t uid = 0;
     std::string body;
 
-    // 编码为二进制帧
+    // 编码为二进制帧（小端序，跨平台安全）
     std::string Encode() const {
         uint32_t body_len = static_cast<uint32_t>(body.size());
         std::string buf(kHeaderSize + body_len, '\0');
         char* p = buf.data();
-        std::memcpy(p,      &cmd,      2); p += 2;
-        std::memcpy(p,      &seq,      4); p += 4;
-        std::memcpy(p,      &uid,      8); p += 8;
-        std::memcpy(p,      &body_len, 4); p += 4;
-        std::memcpy(p,      body.data(), body_len);
+        detail::WriteLE16(p, cmd);      p += 2;
+        detail::WriteLE32(p, seq);      p += 4;
+        detail::WriteLE64(p, uid);      p += 8;
+        detail::WriteLE32(p, body_len); p += 4;
+        std::memcpy(p, body.data(), body_len);
         return buf;
     }
 
-    // 从完整帧解码（data 长度 >= kHeaderSize）
+    // 从完整帧解码（小端序，跨平台安全）
     static bool Decode(const char* data, size_t len, Packet& pkt) {
         if (len < kHeaderSize) return false;
         const char* p = data;
-        std::memcpy(&pkt.cmd, p, 2); p += 2;
-        std::memcpy(&pkt.seq, p, 4); p += 4;
-        std::memcpy(&pkt.uid, p, 8); p += 8;
-        uint32_t body_len = 0;
-        std::memcpy(&body_len, p, 4); p += 4;
+        pkt.cmd = detail::ReadLE16(p);  p += 2;
+        pkt.seq = detail::ReadLE32(p);  p += 4;
+        pkt.uid = detail::ReadLE64(p);  p += 8;
+        uint32_t body_len = detail::ReadLE32(p); p += 4;
         if (body_len > kMaxBodySize) return false;
         if (len < kHeaderSize + body_len) return false;
         pkt.body.assign(p, body_len);

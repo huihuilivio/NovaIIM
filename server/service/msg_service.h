@@ -1,8 +1,10 @@
 #pragma once
 
 #include "service_base.h"
+#include <list>
 #include <mutex>
 #include <unordered_map>
+#include <unordered_set>
 
 namespace nova {
 
@@ -21,10 +23,25 @@ private:
     void BroadcastEncoded(int64_t sender_id, const std::string& exclude_device,
                           int64_t conversation_id, const std::string& encoded);
 
-    // 消息幂等去重缓存（client_msg_id → SendMsgAck）
+    // ---- 消息幂等去重缓存（LRU：淘汰最旧条目，避免全量清空） ----
     static constexpr size_t kMaxDedupCacheSize = 10000;
     std::mutex dedup_mutex_;
-    std::unordered_map<std::string, proto::SendMsgAck> dedup_cache_;
+    // LRU 列表：front = 最旧，back = 最新
+    using DedupEntry = std::pair<std::string, proto::SendMsgAck>;  // key, value
+    std::list<DedupEntry> dedup_order_;
+    std::unordered_map<std::string, std::list<DedupEntry>::iterator> dedup_index_;
+
+    // 正在处理中的 client_msg_id 集合（防止 TOCTOU 竞态）
+    std::unordered_set<std::string> in_flight_;
+
+    // 查找（调用方需持锁）
+    proto::SendMsgAck* DedupFind(const std::string& key);
+    // 插入或更新（调用方需持锁）
+    void DedupInsert(const std::string& key, const proto::SendMsgAck& ack);
+    // 移除 in-flight 标记（调用方需持锁）
+    void DedupRemoveInflight(const std::string& key);
+    // 便捷方法：非空 key 时加锁并移除 in-flight 标记
+    void DedupRemoveInflightIfNeeded(const std::string& key);
 };
 
 } // namespace nova

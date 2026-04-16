@@ -66,8 +66,8 @@ private:
                        const std::string& target_type, int64_t target_id,
                        const std::string& detail, const std::string& ip);
 
-    // 从请求中获取客户端 IP
-    static std::string GetClientIp(HttpRequest* req);
+    // 从请求中获取客户端 IP（根据 trust_proxy 配置决定是否信任代理头）
+    std::string GetClientIp(HttpRequest* req) const;
 
     ServerContext& ctx_;
     Options opts_;

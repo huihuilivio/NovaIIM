@@ -1,9 +1,8 @@
 #pragma once
 
-#include <condition_variable>
 #include <cstdio>
 #include <functional>
-#include <mutex>
+#include <semaphore>
 #include <stdexcept>
 #include <thread>
 #include <vector>
@@ -13,12 +12,14 @@ namespace nova {
 
 // Worker 线程池（对应架构文档第 7 节）
 // IO线程(libhv) → MPMCQueue → Worker线程池
+// 使用 counting_semaphore 替代 mutex+CV：每次 Push 精确唤醒一个 worker，
+// 空闲时零 CPU 消耗，无 lost-wakeup 风险
 class ThreadPool {
 public:
     using Task = std::function<void()>;
 
     explicit ThreadPool(size_t num_threads, size_t queue_capacity = 8192)
-        : queue_(queue_capacity), stop_(false) {
+        : queue_(queue_capacity), stop_(false), sem_(0) {
         for (size_t i = 0; i < num_threads; ++i) {
             workers_.emplace_back([this] { WorkerLoop(); });
         }
@@ -33,14 +34,17 @@ public:
         if (stop_) return false;
         bool ok = queue_.Push(std::move(task));
         if (ok) {
-            cv_.notify_one();
+            sem_.release();
         }
         return ok;
     }
 
     void Stop() {
         if (stop_.exchange(true)) return;  // 重入安全
-        cv_.notify_all();
+        // 唤醒所有等待中的 worker
+        for (size_t i = 0; i < workers_.size(); ++i) {
+            sem_.release();
+        }
         for (auto& t : workers_) {
             if (t.joinable()) t.join();
         }
@@ -49,7 +53,9 @@ public:
 
 private:
     void WorkerLoop() {
-        while (!stop_) {
+        while (true) {
+            sem_.acquire();
+            if (stop_) break;
             Task task;
             if (queue_.Pop(task)) {
                 try {
@@ -59,9 +65,6 @@ private:
                 } catch (...) {
                     fprintf(stderr, "[ThreadPool] unknown exception\n");
                 }
-            } else {
-                std::unique_lock<std::mutex> lock(mutex_);
-                cv_.wait_for(lock, std::chrono::milliseconds(1));
             }
         }
         // drain remaining tasks
@@ -76,8 +79,7 @@ private:
     MPMCQueue<Task>          queue_;
     std::vector<std::thread> workers_;
     std::atomic<bool>        stop_;
-    std::mutex               mutex_;
-    std::condition_variable  cv_;
+    std::counting_semaphore<65536> sem_;
 };
 
 } // namespace nova

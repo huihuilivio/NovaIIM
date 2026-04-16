@@ -187,15 +187,18 @@ int AdminServer::AuthMiddleware(HttpRequest* req, HttpResponse* resp) {
 // 工具函数
 // ============================================================
 
-std::string AdminServer::GetClientIp(HttpRequest* req) {
-    // 优先 X-Forwarded-For，再 X-Real-IP，最后 peeraddr
-    auto xff = req->GetHeader("X-Forwarded-For");
-    if (!xff.empty()) {
-        auto comma = xff.find(',');
-        return comma != std::string::npos ? xff.substr(0, comma) : xff;
+std::string AdminServer::GetClientIp(HttpRequest* req) const {
+    // 仅在 trust_proxy 启用时信任代理注入的 IP 头
+    // 默认不信任，防止客户端伪造 IP 写入审计日志
+    if (ctx_.config().admin.trust_proxy) {
+        auto xff = req->GetHeader("X-Forwarded-For");
+        if (!xff.empty()) {
+            auto comma = xff.find(',');
+            return comma != std::string::npos ? xff.substr(0, comma) : xff;
+        }
+        auto real_ip = req->GetHeader("X-Real-IP");
+        if (!real_ip.empty()) return real_ip;
     }
-    auto real_ip = req->GetHeader("X-Real-IP");
-    if (!real_ip.empty()) return real_ip;
     return req->client_addr.ip;
 }
 

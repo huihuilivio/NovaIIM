@@ -8,9 +8,50 @@
 
 namespace nova {
 
-using namespace errc;
+namespace ec = errc;
 
 static constexpr const char* kLogTag = "MsgService";
+
+// ---- LRU dedup 缓存实现 ----
+
+proto::SendMsgAck* MsgService::DedupFind(const std::string& key) {
+    auto it = dedup_index_.find(key);
+    if (it == dedup_index_.end()) return nullptr;
+    // 移到最新（back）
+    dedup_order_.splice(dedup_order_.end(), dedup_order_, it->second);
+    return &it->second->second;
+}
+
+void MsgService::DedupInsert(const std::string& key, const proto::SendMsgAck& ack) {
+    auto it = dedup_index_.find(key);
+    if (it != dedup_index_.end()) {
+        it->second->second = ack;
+        dedup_order_.splice(dedup_order_.end(), dedup_order_, it->second);
+        return;
+    }
+    // 淘汰最旧条目（front）直到低于阈值
+    while (dedup_index_.size() >= kMaxDedupCacheSize) {
+        auto& oldest = dedup_order_.front();
+        dedup_index_.erase(oldest.first);
+        dedup_order_.pop_front();
+    }
+    dedup_order_.emplace_back(key, ack);
+    dedup_index_[key] = std::prev(dedup_order_.end());
+}
+
+void MsgService::DedupRemoveInflight(const std::string& key) {
+    in_flight_.erase(key);
+}
+
+// 便捷方法：非空 key 时在锁内移除 in-flight 标记
+void MsgService::DedupRemoveInflightIfNeeded(const std::string& key) {
+    if (!key.empty()) {
+        std::lock_guard<std::mutex> lock(dedup_mutex_);
+        in_flight_.erase(key);
+    }
+}
+
+// ---- 业务处理 ----
 
 void MsgService::HandleSendMsg(ConnectionPtr conn, Packet& pkt) {
     uint32_t seq = pkt.seq;
@@ -19,58 +60,77 @@ void MsgService::HandleSendMsg(ConnectionPtr conn, Packet& pkt) {
 
     // 未认证检查
     if (sender_id == 0) {
-        SendPacket(conn, Cmd::kSendMsgAck, seq, 0, proto::SendMsgAck{kNotAuthenticated.code, kNotAuthenticated.msg});
+        SendPacket(conn, Cmd::kSendMsgAck, seq, 0, proto::SendMsgAck{ec::kNotAuthenticated.code, ec::kNotAuthenticated.msg});
         return;
     }
 
     // 1. 反序列化 body → SendMsgReq
     auto req = proto::Deserialize<proto::SendMsgReq>(pkt.body);
     if (!req) {
-        SendPacket(conn, Cmd::kSendMsgAck, seq, uid, proto::SendMsgAck{kInvalidBody.code, kInvalidBody.msg});
+        SendPacket(conn, Cmd::kSendMsgAck, seq, uid, proto::SendMsgAck{ec::kInvalidBody.code, ec::kInvalidBody.msg});
         return;
     }
 
     if (req->content.empty()) {
-        SendPacket(conn, Cmd::kSendMsgAck, seq, uid, proto::SendMsgAck{msg::kContentEmpty.code, msg::kContentEmpty.msg});
+        SendPacket(conn, Cmd::kSendMsgAck, seq, uid, proto::SendMsgAck{ec::msg::kContentEmpty.code, ec::msg::kContentEmpty.msg});
         return;
     }
 
     if (req->content.size() > 4096) {
-        SendPacket(conn, Cmd::kSendMsgAck, seq, uid, proto::SendMsgAck{msg::kContentTooLarge.code, msg::kContentTooLarge.msg});
+        SendPacket(conn, Cmd::kSendMsgAck, seq, uid, proto::SendMsgAck{ec::msg::kContentTooLarge.code, ec::msg::kContentTooLarge.msg});
         return;
     }
 
     if (req->conversation_id <= 0) {
-        SendPacket(conn, Cmd::kSendMsgAck, seq, uid, proto::SendMsgAck{msg::kInvalidConversation.code, msg::kInvalidConversation.msg});
+        SendPacket(conn, Cmd::kSendMsgAck, seq, uid, proto::SendMsgAck{ec::msg::kInvalidConversation.code, ec::msg::kInvalidConversation.msg});
         return;
     }
 
     // 幂等去重：如果 client_msg_id 已处理过，直接返回缓存的 Ack
+    // 若正在处理中（in-flight），视为重复提交并丢弃，客户端会超时重试并命中缓存
     if (!req->client_msg_id.empty()) {
         std::lock_guard<std::mutex> lock(dedup_mutex_);
-        auto it = dedup_cache_.find(req->client_msg_id);
-        if (it != dedup_cache_.end()) {
-            SendPacket(conn, Cmd::kSendMsgAck, seq, uid, it->second);
+        if (auto* cached = DedupFind(req->client_msg_id)) {
+            SendPacket(conn, Cmd::kSendMsgAck, seq, uid, *cached);
+            return;
+        }
+        // 防止 TOCTOU 竞态：查找未命中时立即标记 in-flight，其他线程会看到此标记
+        if (!in_flight_.insert(req->client_msg_id).second) {
+            // 已有线程正在处理同一 client_msg_id，丢弃本次请求
             return;
         }
     }
 
     // 检查发送者是否为会话成员
     if (!ctx_.dao().Conversation().IsMember(req->conversation_id, sender_id)) {
-        SendPacket(conn, Cmd::kSendMsgAck, seq, uid, proto::SendMsgAck{msg::kNotMember.code, msg::kNotMember.msg});
+        DedupRemoveInflightIfNeeded(req->client_msg_id);
+        SendPacket(conn, Cmd::kSendMsgAck, seq, uid, proto::SendMsgAck{ec::msg::kNotMember.code, ec::msg::kNotMember.msg});
         return;
     }
 
     // 2. 生成 seq（原子递增 conversation.max_seq）
     int64_t server_seq = GenerateSeq(req->conversation_id);
     if (server_seq < 0) {
-        SendPacket(conn, Cmd::kSendMsgAck, seq, uid, proto::SendMsgAck{msg::kConversationNotFound.code, msg::kConversationNotFound.msg});
+        DedupRemoveInflightIfNeeded(req->client_msg_id);
+        SendPacket(conn, Cmd::kSendMsgAck, seq, uid, proto::SendMsgAck{ec::msg::kConversationNotFound.code, ec::msg::kConversationNotFound.msg});
         return;
     }
 
     // 3. 构建消息写入 DB
+    auto now_tp = std::chrono::system_clock::now();
     auto epoch_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::system_clock::now().time_since_epoch()).count();
+        now_tp.time_since_epoch()).count();
+
+    // 生成 ISO-8601 时间戳，确保 Ack 返回的 epoch_ms 与 DB 记录一致
+    auto now_t = std::chrono::system_clock::to_time_t(now_tp);
+    char time_buf[32];
+    struct tm tm_buf{};
+#ifdef _MSC_VER
+    gmtime_s(&tm_buf, &now_t);
+#else
+    gmtime_r(&now_t, &tm_buf);
+#endif
+    std::strftime(time_buf, sizeof(time_buf), "%Y-%m-%d %H:%M:%S", &tm_buf);
 
     Message msg;
     msg.conversation_id = req->conversation_id;
@@ -80,23 +140,23 @@ void MsgService::HandleSendMsg(ConnectionPtr conn, Packet& pkt) {
     msg.content         = req->content;
     msg.client_msg_id   = req->client_msg_id;
     msg.status          = 0;
+    msg.created_at      = time_buf;
 
     if (!ctx_.dao().Message().Insert(msg)) {
         NOVA_NLOG_ERROR(kLogTag, "failed to insert message conv={} sender={}",
                         req->conversation_id, sender_id);
-        SendPacket(conn, Cmd::kSendMsgAck, seq, uid, proto::SendMsgAck{kDatabaseError.code, kDatabaseError.msg});
+        DedupRemoveInflightIfNeeded(req->client_msg_id);
+        SendPacket(conn, Cmd::kSendMsgAck, seq, uid, proto::SendMsgAck{ec::kDatabaseError.code, ec::kDatabaseError.msg});
         return;
     }
 
-    // 4. 构建 Ack 并缓存（幂等去重）
-    proto::SendMsgAck ack{kOk.code, kOk.msg, server_seq, epoch_ms};
+    // 4. 构建 Ack 并缓存（幂等去重 LRU），同时移除 in-flight 标记
+    proto::SendMsgAck ack{ec::kOk.code, ec::kOk.msg, server_seq, epoch_ms};
 
     if (!req->client_msg_id.empty()) {
         std::lock_guard<std::mutex> lock(dedup_mutex_);
-        if (dedup_cache_.size() >= kMaxDedupCacheSize) {
-            dedup_cache_.clear();
-        }
-        dedup_cache_[req->client_msg_id] = ack;
+        in_flight_.erase(req->client_msg_id);
+        DedupInsert(req->client_msg_id, ack);
     }
 
     // 5. 返回 SendMsgAck 给发送方
@@ -148,7 +208,7 @@ void MsgService::HandleReadAck(ConnectionPtr conn, Packet& pkt) {
             ctx_.dao().Conversation().UpdateLastReadSeq(req->conversation_id, user_id, req->read_up_to_seq);
 
             SendPacket(conn, Cmd::kReadAck, pkt.seq,
-                       static_cast<uint64_t>(user_id), proto::RspBase{kOk.code, {}});
+                       static_cast<uint64_t>(user_id), proto::RspBase{ec::kOk.code, {}});
         }
     }
 }

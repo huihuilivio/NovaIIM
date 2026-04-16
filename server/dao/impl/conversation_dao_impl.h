@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../conversation_dao.h"
+#include <array>
 #include <mutex>
 
 namespace nova {
@@ -23,7 +24,13 @@ public:
 
 private:
     DbMgr& db_;
-    std::mutex seq_mutex_;  // serializes IncrMaxSeq to prevent duplicate seq
+
+    // 分片锁：按 conversation_id 分桶，不同会话可并行生成 seq
+    static constexpr size_t kSeqShardCount = 32;
+    std::array<std::mutex, kSeqShardCount> seq_mutexes_;
+    std::mutex& GetSeqMutex(int64_t conversation_id) {
+        return seq_mutexes_[static_cast<size_t>(conversation_id) % kSeqShardCount];
+    }
 };
 
 } // namespace nova

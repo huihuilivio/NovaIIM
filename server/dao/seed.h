@@ -5,27 +5,45 @@
 
 #include <spdlog/spdlog.h>
 
-#include <array>
 #include <string>
 
 namespace nova {
 
 /// 初始化种子数据：权限 + 超管角色 + 超管账户
 /// 仅在表为空时插入（首次运行），幂等安全
+/// 全部在一个事务内完成，失败自动回滚，保证全有全无
 template <typename DbMgr>
 void SeedSuperAdmin(DbMgr& db) {
-    // 如果已有管理员，跳过（非首次运行）
-    auto admin_count = db.DB().template query_s<std::tuple<int64_t>>(
-        "SELECT count(*) FROM admins");
-    if (!admin_count.empty() && std::get<0>(admin_count[0]) > 0) {
+    auto&& db_conn = db.DB();
+
+    // 检查 admin_roles 表（整个 seed 流程的最后一步）
+    // 若已有记录，说明 seed 已完整执行过
+    auto ar_count = db_conn.template query_s<std::tuple<int64_t>>(
+        "SELECT count(*) FROM admin_roles");
+    if (!ar_count.empty() && std::get<0>(ar_count[0]) > 0) {
         return;
     }
 
     SPDLOG_INFO("First run detected, seeding super admin...");
 
+    // 开启事务：任何一步失败则整体回滚
+    if (!db_conn.execute("BEGIN TRANSACTION")) {
+        SPDLOG_ERROR("Failed to seed: cannot begin transaction");
+        return;
+    }
+
+    // RAII 回滚守卫：正常完成后 release，异常退出自动 ROLLBACK
+    bool committed = false;
+    auto rollback_guard = [&] {
+        if (!committed) {
+            db_conn.execute("ROLLBACK");
+            SPDLOG_ERROR("Seed transaction rolled back due to failure");
+        }
+    };
+
     // ---- 1. 插入权限 ----
     struct PermDef { const char* name; const char* code; };
-    static constexpr std::array<PermDef, 10> kPerms = {{
+    static constexpr PermDef kPerms[] = {
         {"管理员登录",   "admin.login"},
         {"仪表盘查看",   "admin.dashboard"},
         {"审计日志查看", "admin.audit"},
@@ -36,13 +54,17 @@ void SeedSuperAdmin(DbMgr& db) {
         {"用户封禁",     "user.ban"},
         {"消息管理",     "msg.delete_all"},
         {"系统配置",     "admin.config"},
-    }};
+    };
 
     for (auto& [name, code] : kPerms) {
         Permission p;
         p.name = name;
         p.code = code;
-        db.DB().insert(p);
+        if (db_conn.insert(p) != 1) {
+            SPDLOG_ERROR("Failed to seed: insert permission '{}' failed", code);
+            rollback_guard();
+            return;
+        }
     }
 
     // ---- 2. 插入超管角色 ----
@@ -50,31 +72,37 @@ void SeedSuperAdmin(DbMgr& db) {
     role.name        = "超级管理员";
     role.code        = "super_admin";
     role.description = "拥有所有权限";
-    db.DB().insert(role);
-
-    // 查询刚插入的 role_id
-    auto role_rows = db.DB().template query_s<std::tuple<int64_t>>(
-        "SELECT id FROM roles WHERE code = ?", std::string("super_admin"));
-    if (role_rows.empty()) {
-        SPDLOG_ERROR("Failed to seed: cannot find super_admin role");
+    auto role_id = static_cast<int64_t>(db_conn.get_insert_id_after_insert(role));
+    if (role_id <= 0) {
+        SPDLOG_ERROR("Failed to seed: insert super_admin role failed");
+        rollback_guard();
         return;
     }
-    int64_t role_id = std::get<0>(role_rows[0]);
 
     // ---- 3. 绑定所有权限到超管角色 ----
-    auto all_perms = db.DB().template query_s<std::tuple<int64_t>>(
+    auto all_perms = db_conn.template query_s<std::tuple<int64_t>>(
         "SELECT id FROM permissions");
+    if (all_perms.empty()) {
+        SPDLOG_ERROR("Failed to seed: no permissions found after insert");
+        rollback_guard();
+        return;
+    }
     for (auto& [perm_id] : all_perms) {
         RolePermission rp;
         rp.role_id       = role_id;
         rp.permission_id = perm_id;
-        db.DB().insert(rp);
+        if (db_conn.insert(rp) != 1) {
+            SPDLOG_ERROR("Failed to seed: bind permission {} to role failed", perm_id);
+            rollback_guard();
+            return;
+        }
     }
 
     // ---- 4. 创建超管账户 ----
     auto hash = PasswordUtils::Hash("nova2024");
     if (hash.empty()) {
         SPDLOG_ERROR("Failed to seed: password hashing failed");
+        rollback_guard();
         return;
     }
 
@@ -82,22 +110,30 @@ void SeedSuperAdmin(DbMgr& db) {
     admin.uid           = "admin";
     admin.password_hash = hash;
     admin.nickname      = "Administrator";
-    db.DB().insert(admin);
-
-    // 查询刚插入的 admin_id
-    auto admin_rows = db.DB().template query_s<std::tuple<int64_t>>(
-        "SELECT id FROM admins WHERE uid = ?", std::string("admin"));
-    if (admin_rows.empty()) {
-        SPDLOG_ERROR("Failed to seed: cannot find admin account");
+    auto admin_id = static_cast<int64_t>(db_conn.get_insert_id_after_insert(admin));
+    if (admin_id <= 0) {
+        SPDLOG_ERROR("Failed to seed: insert admin account failed");
+        rollback_guard();
         return;
     }
-    int64_t admin_id = std::get<0>(admin_rows[0]);
 
     // ---- 5. 绑定超管角色到管理员账户 ----
     AdminRole ar;
     ar.admin_id = admin_id;
     ar.role_id  = role_id;
-    db.DB().insert(ar);
+    if (db_conn.insert(ar) != 1) {
+        SPDLOG_ERROR("Failed to seed: bind role to admin failed");
+        rollback_guard();
+        return;
+    }
+
+    // 提交事务
+    if (!db_conn.execute("COMMIT")) {
+        SPDLOG_ERROR("Failed to seed: COMMIT failed");
+        rollback_guard();
+        return;
+    }
+    committed = true;
 
     SPDLOG_INFO("Super admin seeded: uid=admin (change password after first login!)");
 }
