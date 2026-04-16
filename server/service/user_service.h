@@ -14,6 +14,7 @@ public:
         , login_limiter_(5, std::chrono::seconds(60)) {}
 
     void HandleLogin(ConnectionPtr conn, Packet& pkt);
+    void HandleRegister(ConnectionPtr conn, Packet& pkt);
     void HandleLogout(ConnectionPtr conn, Packet& pkt);
     void HandleHeartbeat(ConnectionPtr conn, Packet& pkt);
 

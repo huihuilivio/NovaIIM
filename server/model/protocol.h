@@ -45,6 +45,20 @@ struct LoginAck {
 
 // S→C  Cmd::kLogout (0x0003)  — 复用 RspBase
 
+// C→S  Cmd::kRegister (0x0004)
+struct RegisterReq {
+    std::string uid;
+    std::string password;
+    std::string nickname;          // 可选
+};
+
+// S→C  Cmd::kRegisterAck (0x0005)
+struct RegisterAck {
+    int32_t     code = 0;
+    std::string msg;
+    int64_t     user_id = 0;
+};
+
 // ============================================================
 //  心跳
 // ============================================================

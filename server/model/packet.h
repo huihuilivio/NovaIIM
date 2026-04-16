@@ -103,6 +103,8 @@ enum class Cmd : uint16_t {
     kLogin          = 0x0001,
     kLoginAck       = 0x0002,
     kLogout         = 0x0003,
+    kRegister       = 0x0004,
+    kRegisterAck    = 0x0005,
 
     // 心跳
     kHeartbeat      = 0x0010,

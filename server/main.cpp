@@ -95,6 +95,7 @@ int main(int argc, char* argv[]) {
     // 注册路由
     Router router;
     router.Register(Cmd::kLogin,      [&](ConnectionPtr c, Packet& p) { user_svc.HandleLogin(c, p); });
+    router.Register(Cmd::kRegister,   [&](ConnectionPtr c, Packet& p) { user_svc.HandleRegister(c, p); });
     router.Register(Cmd::kLogout,     [&](ConnectionPtr c, Packet& p) { user_svc.HandleLogout(c, p); });
     router.Register(Cmd::kHeartbeat,  [&](ConnectionPtr c, Packet& p) { user_svc.HandleHeartbeat(c, p); });
 

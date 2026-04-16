@@ -104,5 +104,20 @@ TEST(RouterTest, AuthGuardAllowsLogin) {
     EXPECT_TRUE(called);  // Login should pass even when unauthenticated
 }
 
+TEST(RouterTest, AuthGuardAllowsRegister) {
+    Router router;
+    bool called = false;
+
+    router.Register(Cmd::kRegister, [&](ConnectionPtr, Packet&) { called = true; });
+    router.Freeze();
+
+    auto conn = std::make_shared<MockConnection>();  // not authenticated
+    Packet pkt;
+    pkt.cmd = static_cast<uint16_t>(Cmd::kRegister);
+
+    router.Dispatch(conn, pkt);
+    EXPECT_TRUE(called);  // Register should pass even when unauthenticated
+}
+
 } // namespace
 } // namespace nova

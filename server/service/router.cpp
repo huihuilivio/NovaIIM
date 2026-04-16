@@ -8,8 +8,8 @@ static constexpr const char* kLogTag = "Router";
 void Router::Dispatch(ConnectionPtr conn, Packet& pkt) {
     auto cmd = static_cast<Cmd>(pkt.cmd);
 
-    // 认证守卫：未登录连接只允许发送 Login 命令
-    if (cmd != Cmd::kLogin && !conn->is_authenticated()) {
+    // 认证守卫：未登录连接只允许发送 Login / Register 命令
+    if (cmd != Cmd::kLogin && cmd != Cmd::kRegister && !conn->is_authenticated()) {
         NOVA_NLOG_WARN(kLogTag, "unauthenticated request cmd=0x{:04X}, dropping", pkt.cmd);
         return;
     }
