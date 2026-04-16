@@ -42,6 +42,12 @@ void SyncService::HandleSyncMsg(ConnectionPtr conn, Packet& pkt) {
         return;
     }
 
+    // 检查用户是否为会话成员
+    if (!ctx_.dao().Conversation().IsMember(req->conversation_id, user_id)) {
+        SendPacket(conn, Cmd::kSyncMsgResp, pkt.seq, uid, proto::SyncMsgResp{3});
+        return;
+    }
+
     int limit = req->limit;
     if (limit <= 0) limit = kDefaultSyncLimit;
     if (limit > kMaxSyncLimit) limit = kMaxSyncLimit;
@@ -96,8 +102,9 @@ void SyncService::HandleSyncUnread(ConnectionPtr conn, Packet& pkt) {
             item.count = unread;
 
             // 拉取最近几条消息作为预览
+            auto preview_from = std::max<int64_t>(0, conv->max_seq - 3);
             auto preview = ctx_.dao().Message().GetAfterSeq(
-                member.conversation_id, conv->max_seq - 3, 3);
+                member.conversation_id, preview_from, 3);
             for (const auto& m : preview) {
                 item.latest_messages.push_back(
                     {m.seq, m.sender_id, m.content, m.msg_type, m.created_at, m.status});

@@ -5,7 +5,20 @@ namespace nova {
 
 void ConnManager::Add(int64_t user_id, ConnectionPtr conn) {
     std::lock_guard<std::mutex> lock(mutex_);
-    conns_[user_id].push_back(std::move(conn));
+    auto& vec = conns_[user_id];
+    // 移除同一 device_id 的旧连接，避免重复推送
+    auto did = conn->device_id();
+    if (!did.empty()) {
+        for (auto it = vec.begin(); it != vec.end(); ) {
+            if ((*it)->device_id() == did) {
+                (*it)->Close();
+                it = vec.erase(it);
+            } else {
+                ++it;
+            }
+        }
+    }
+    vec.push_back(std::move(conn));
 }
 
 void ConnManager::Remove(int64_t user_id, Connection* conn) {

@@ -54,6 +54,12 @@ void MsgService::HandleSendMsg(ConnectionPtr conn, Packet& pkt) {
         return;
     }
 
+    // 检查发送者是否为会话成员
+    if (!ctx_.dao().Conversation().IsMember(req->conversation_id, sender_id)) {
+        SendPacket(conn, Cmd::kSendMsgAck, seq, uid, proto::SendMsgAck{7, "not a member of this conversation"});
+        return;
+    }
+
     // 2. 生成 seq（原子递增 conversation.max_seq）
     int64_t server_seq = GenerateSeq(req->conversation_id);
     if (server_seq < 0) {
@@ -115,7 +121,10 @@ void MsgService::HandleDeliverAck(ConnectionPtr conn, Packet& pkt) {
     if (!req) return;
 
     if (req->conversation_id > 0 && req->server_seq > 0) {
-        ctx_.dao().Conversation().UpdateLastAckSeq(req->conversation_id, user_id, req->server_seq);
+        // 仅处理用户所属会话的 ACK
+        if (ctx_.dao().Conversation().IsMember(req->conversation_id, user_id)) {
+            ctx_.dao().Conversation().UpdateLastAckSeq(req->conversation_id, user_id, req->server_seq);
+        }
     }
 }
 
@@ -127,10 +136,13 @@ void MsgService::HandleReadAck(ConnectionPtr conn, Packet& pkt) {
     if (!req) return;
 
     if (req->conversation_id > 0 && req->read_up_to_seq > 0) {
-        ctx_.dao().Conversation().UpdateLastReadSeq(req->conversation_id, user_id, req->read_up_to_seq);
+        // 仅处理用户所属会话的已读回执
+        if (ctx_.dao().Conversation().IsMember(req->conversation_id, user_id)) {
+            ctx_.dao().Conversation().UpdateLastReadSeq(req->conversation_id, user_id, req->read_up_to_seq);
 
-        SendPacket(conn, Cmd::kReadAck, pkt.seq,
-                   static_cast<uint64_t>(user_id), proto::RspBase{0, {}});
+            SendPacket(conn, Cmd::kReadAck, pkt.seq,
+                       static_cast<uint64_t>(user_id), proto::RspBase{0, {}});
+        }
     }
 }
 

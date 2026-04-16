@@ -10,16 +10,14 @@ namespace nova {
 
 // 多端连接管理（对应架构文档 4.2 ConnManager）
 // unordered_map<user_id, vector<Connection*>>
-// 通过 ServerContext::conn_manager() 访问，不再建议直接使用 Instance()
+// 通过 ServerContext::conn_manager() 访问
 class ConnManager {
 public:
     ConnManager() = default;
 
-    // 保留全局单例用于向后兼容，新代码应通过 ServerContext 注入
-    static ConnManager& Instance() {
-        static ConnManager inst;
-        return inst;
-    }
+    // 禁止拷贝（内含 mutex）
+    ConnManager(const ConnManager&) = delete;
+    ConnManager& operator=(const ConnManager&) = delete;
 
     // 注册连接
     void Add(int64_t user_id, ConnectionPtr conn);

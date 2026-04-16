@@ -83,6 +83,7 @@ void UserService::HandleLogout(ConnectionPtr conn, Packet& pkt) {
     if (user_id != 0) {
         ctx_.conn_manager().Remove(user_id, conn.get());
         ctx_.remove_online_user();
+        conn->set_user_id(0);  // 清零防止 Gateway 断连回调再次 remove_online_user
         NOVA_NLOG_INFO(kLogTag, "user id={} logged out", user_id);
     }
 

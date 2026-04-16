@@ -28,6 +28,9 @@ public:
     // 更新 last_ack_seq（投递确认）
     virtual bool UpdateLastAckSeq(int64_t conversation_id, int64_t user_id, int64_t seq) = 0;
 
+    // 判断用户是否为会话成员
+    virtual bool IsMember(int64_t conversation_id, int64_t user_id) = 0;
+
     // 获取会话信息
     virtual std::optional<Conversation> FindById(int64_t id) = 0;
 };

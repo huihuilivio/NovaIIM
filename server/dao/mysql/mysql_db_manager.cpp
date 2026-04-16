@@ -144,7 +144,9 @@ bool MysqlDbManager::InitSchema() {
                 ormpp_unique{{"admin_id", "role_id"}});
 
     db.execute("CREATE INDEX IF NOT EXISTS idx_msg_conv_time ON messages(conversation_id, created_at)");
+    db.execute("CREATE INDEX IF NOT EXISTS idx_msg_conv_seq ON messages(conversation_id, seq)");
     db.execute("CREATE INDEX IF NOT EXISTS idx_msg_sender ON messages(sender_id)");
+    db.execute("CREATE INDEX IF NOT EXISTS idx_convmember_user ON conversation_members(user_id)");
     db.execute("CREATE INDEX IF NOT EXISTS idx_audit_admin_action ON audit_logs(admin_id, action)");
     db.execute("CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_logs(created_at)");
     db.execute("CREATE INDEX IF NOT EXISTS idx_session_token ON admin_sessions(token_hash)");

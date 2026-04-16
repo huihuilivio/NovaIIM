@@ -18,11 +18,7 @@ public:
 
 class ConnManagerTest : public ::testing::Test {
 protected:
-    void SetUp() override {
-        // 每个测试前清空（ConnManager 是单例，需注意测试隔离）
-    }
-
-    ConnManager& mgr_ = ConnManager::Instance();
+    ConnManager mgr_;  // 每个测试用独立实例，天然隔离
 };
 
 TEST_F(ConnManagerTest, AddAndGetConns) {

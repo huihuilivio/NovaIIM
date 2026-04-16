@@ -43,32 +43,32 @@ std::optional<Conversation> ConversationDaoImplT<DbMgr>::FindById(int64_t id) {
 }
 
 template <typename DbMgr>
-bool ConversationDaoImplT<DbMgr>::UpdateLastReadSeq(int64_t conversation_id, int64_t user_id, int64_t seq) {
-    auto&& conn = db_.DB();  // 单次获取，MySQL 下复用同一池连接
-
-    auto members = conn.query_s<ConversationMember>(
+bool ConversationDaoImplT<DbMgr>::IsMember(int64_t conversation_id, int64_t user_id) {
+    auto res = db_.DB().query_s<ConversationMember>(
         "conversation_id=? AND user_id=?", conversation_id, user_id);
-    if (members.empty()) return false;
+    return !res.empty();
+}
 
-    // 只允许向前推进（不能回退已读位置）
-    if (seq <= members[0].last_read_seq) return true;
-
-    members[0].last_read_seq = seq;
-    return conn.template update_some<&ConversationMember::last_read_seq>(members[0]) == 1;
+template <typename DbMgr>
+bool ConversationDaoImplT<DbMgr>::UpdateLastReadSeq(int64_t conversation_id, int64_t user_id, int64_t seq) {
+    // 原子更新：只允许向前推进（WHERE last_read_seq < ? 防止回退）
+    std::string sql = "UPDATE conversation_members SET last_read_seq = "
+                      + std::to_string(seq)
+                      + " WHERE conversation_id = " + std::to_string(conversation_id)
+                      + " AND user_id = " + std::to_string(user_id)
+                      + " AND last_read_seq < " + std::to_string(seq);
+    return db_.DB().execute(sql);
 }
 
 template <typename DbMgr>
 bool ConversationDaoImplT<DbMgr>::UpdateLastAckSeq(int64_t conversation_id, int64_t user_id, int64_t seq) {
-    auto&& conn = db_.DB();  // 单次获取，MySQL 下复用同一池连接
-
-    auto members = conn.query_s<ConversationMember>(
-        "conversation_id=? AND user_id=?", conversation_id, user_id);
-    if (members.empty()) return false;
-
-    if (seq <= members[0].last_ack_seq) return true;
-
-    members[0].last_ack_seq = seq;
-    return conn.template update_some<&ConversationMember::last_ack_seq>(members[0]) == 1;
+    // 原子更新：只允许向前推进（WHERE last_ack_seq < ? 防止回退）
+    std::string sql = "UPDATE conversation_members SET last_ack_seq = "
+                      + std::to_string(seq)
+                      + " WHERE conversation_id = " + std::to_string(conversation_id)
+                      + " AND user_id = " + std::to_string(user_id)
+                      + " AND last_ack_seq < " + std::to_string(seq);
+    return db_.DB().execute(sql);
 }
 
 // 显式实例化

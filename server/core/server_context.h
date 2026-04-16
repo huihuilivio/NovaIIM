@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <cassert>
 #include <chrono>
 #include <memory>
 #include "app_config.h"
@@ -23,7 +24,7 @@ public:
 
     // --- DAO 工厂（全局唯一）---
     void set_dao(std::unique_ptr<DaoFactory> dao) { dao_ = std::move(dao); }
-    DaoFactory& dao() const { return *dao_; }
+    DaoFactory& dao() const { assert(dao_ && "dao not initialized"); return *dao_; }
 
     // --- 连接管理器（显式依赖注入，避免各模块直接使用单例）---
     ConnManager& conn_manager() { return conn_manager_; }

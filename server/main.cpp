@@ -109,7 +109,16 @@ int main(int argc, char* argv[]) {
     std::signal(SIGTERM, SignalHandler);
 
     // 启动 Worker 线程池
-    ThreadPool worker_pool(cfg.server.worker_threads, cfg.server.queue_capacity);
+    // queue_capacity 必须为 2 的幂，不满足则向上取整
+    auto qcap = static_cast<size_t>(cfg.server.queue_capacity);
+    if (qcap < 2) qcap = 2;
+    if ((qcap & (qcap - 1)) != 0) {
+        size_t p = 1;
+        while (p < qcap) p <<= 1;
+        NOVA_LOG_WARN("queue_capacity {} is not a power of 2, rounding up to {}", qcap, p);
+        qcap = p;
+    }
+    ThreadPool worker_pool(cfg.server.worker_threads, qcap);
 
     // 启动 Gateway
     Gateway gateway(ctx);

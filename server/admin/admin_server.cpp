@@ -3,7 +3,6 @@
 #include "jwt_utils.h"
 #include "password_utils.h"
 #include "../core/server_context.h"
-#include "../net/conn_manager.h"
 #include "../core/logger.h"
 #include "../dao/dao_factory.h"
 #include "../dao/user_dao.h"
@@ -230,6 +229,11 @@ int AdminServer::HandleHealthz(HttpRequest* /*req*/, HttpResponse* resp) {
 // ============================================================
 
 int AdminServer::HandleLogin(HttpRequest* req, HttpResponse* resp) {
+    // body 大小限制（middleware 对 login 路径免鉴权但同样需要限制）
+    if (req->body.size() > kAdminMaxBodySize) {
+        return JsonError(resp, ApiCode::kParamError, "request body too large", 413);
+    }
+
     auto body_opt = ParseJsonBody(req);
     if (!body_opt || !body_opt->contains("uid") || !body_opt->contains("password")) {
         return JsonError(resp, ApiCode::kParamError, "uid and password required", 400);
@@ -369,7 +373,7 @@ int AdminServer::HandleListUsers(HttpRequest* req, HttpResponse* resp) {
             {"nickname",   u.nickname},
             {"avatar",     u.avatar},
             {"status",     u.status},
-            {"is_online",  ConnManager::Instance().IsOnline(u.id)},
+            {"is_online",  ctx_.conn_manager().IsOnline(u.id)},
             {"created_at", u.created_at},
         });
     }
@@ -442,7 +446,7 @@ int AdminServer::HandleGetUser(HttpRequest* req, HttpResponse* resp) {
     data["nickname"]   = user->nickname;
     data["avatar"]     = user->avatar;
     data["status"]     = user->status;
-    data["is_online"]  = ConnManager::Instance().IsOnline(user->id);
+    data["is_online"]  = ctx_.conn_manager().IsOnline(user->id);
     data["created_at"] = user->created_at;
     // devices: 查 user_devices 表
     auto devices = ctx_.dao().User().ListDevicesByUser(id);
@@ -476,7 +480,7 @@ int AdminServer::HandleDeleteUser(HttpRequest* req, HttpResponse* resp) {
     ctx_.dao().User().SoftDelete(id);
 
     // 踢下线
-    auto conns = ConnManager::Instance().GetConns(id);
+    auto conns = ctx_.conn_manager().GetConns(id);
     for (auto& c : conns) c->Close();
 
     int64_t admin_id = GetCurrentAdminId(req);
@@ -538,7 +542,7 @@ int AdminServer::HandleBanUser(HttpRequest* req, HttpResponse* resp) {
     }
 
     // 踢下线
-    auto conns = ConnManager::Instance().GetConns(id);
+    auto conns = ctx_.conn_manager().GetConns(id);
     for (auto& c : conns) c->Close();
 
     int64_t admin_id = GetCurrentAdminId(req);
@@ -578,7 +582,7 @@ int AdminServer::HandleKickUser(HttpRequest* req, HttpResponse* resp) {
         return JsonError(resp, ApiCode::kParamError, "invalid user id");
     }
 
-    auto conns = ConnManager::Instance().GetConns(id);
+    auto conns = ctx_.conn_manager().GetConns(id);
     if (conns.empty()) {
         return JsonError(resp, ApiCode::kNotFound, "user not online");
     }
