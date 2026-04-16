@@ -68,7 +68,9 @@ struct Packet {
     std::string body;
 
     // 编码为二进制帧（小端序，跨平台安全）
+    // body 超过 kMaxBodySize 返回空串（与 Decode 对称）
     std::string Encode() const {
+        if (body.size() > kMaxBodySize) return {};
         uint32_t body_len = static_cast<uint32_t>(body.size());
         std::string buf(kHeaderSize + body_len, '\0');
         char* p = buf.data();

@@ -27,19 +27,23 @@ void SeedSuperAdmin(DbMgr& db) {
     SPDLOG_INFO("First run detected, seeding super admin...");
 
     // 开启事务：任何一步失败则整体回滚
-    if (!db_conn.execute("BEGIN TRANSACTION")) {
+    if (!db_conn.execute("BEGIN")) {
         SPDLOG_ERROR("Failed to seed: cannot begin transaction");
         return;
     }
 
-    // RAII 回滚守卫：正常完成后 release，异常退出自动 ROLLBACK
+    // RAII 回滚守卫：析构时自动 ROLLBACK（除非已 COMMIT）
     bool committed = false;
-    auto rollback_guard = [&] {
-        if (!committed) {
-            db_conn.execute("ROLLBACK");
-            SPDLOG_ERROR("Seed transaction rolled back due to failure");
+    struct RollbackGuard {
+        decltype(db_conn)& conn;
+        bool& committed_ref;
+        ~RollbackGuard() {
+            if (!committed_ref) {
+                conn.execute("ROLLBACK");
+                SPDLOG_ERROR("Seed transaction rolled back due to failure");
+            }
         }
-    };
+    } rollback_guard{db_conn, committed};
 
     // ---- 1. 插入权限 ----
     struct PermDef { const char* name; const char* code; };
@@ -62,7 +66,6 @@ void SeedSuperAdmin(DbMgr& db) {
         p.code = code;
         if (db_conn.insert(p) != 1) {
             SPDLOG_ERROR("Failed to seed: insert permission '{}' failed", code);
-            rollback_guard();
             return;
         }
     }
@@ -75,7 +78,6 @@ void SeedSuperAdmin(DbMgr& db) {
     auto role_id = static_cast<int64_t>(db_conn.get_insert_id_after_insert(role));
     if (role_id <= 0) {
         SPDLOG_ERROR("Failed to seed: insert super_admin role failed");
-        rollback_guard();
         return;
     }
 
@@ -84,7 +86,6 @@ void SeedSuperAdmin(DbMgr& db) {
         "SELECT id FROM permissions");
     if (all_perms.empty()) {
         SPDLOG_ERROR("Failed to seed: no permissions found after insert");
-        rollback_guard();
         return;
     }
     for (auto& [perm_id] : all_perms) {
@@ -93,7 +94,6 @@ void SeedSuperAdmin(DbMgr& db) {
         rp.permission_id = perm_id;
         if (db_conn.insert(rp) != 1) {
             SPDLOG_ERROR("Failed to seed: bind permission {} to role failed", perm_id);
-            rollback_guard();
             return;
         }
     }
@@ -102,7 +102,6 @@ void SeedSuperAdmin(DbMgr& db) {
     auto hash = PasswordUtils::Hash("nova2024");
     if (hash.empty()) {
         SPDLOG_ERROR("Failed to seed: password hashing failed");
-        rollback_guard();
         return;
     }
 
@@ -113,7 +112,6 @@ void SeedSuperAdmin(DbMgr& db) {
     auto admin_id = static_cast<int64_t>(db_conn.get_insert_id_after_insert(admin));
     if (admin_id <= 0) {
         SPDLOG_ERROR("Failed to seed: insert admin account failed");
-        rollback_guard();
         return;
     }
 
@@ -123,15 +121,13 @@ void SeedSuperAdmin(DbMgr& db) {
     ar.role_id  = role_id;
     if (db_conn.insert(ar) != 1) {
         SPDLOG_ERROR("Failed to seed: bind role to admin failed");
-        rollback_guard();
         return;
     }
 
     // 提交事务
     if (!db_conn.execute("COMMIT")) {
         SPDLOG_ERROR("Failed to seed: COMMIT failed");
-        rollback_guard();
-        return;
+        return;  // ~RollbackGuard will ROLLBACK
     }
     committed = true;
 

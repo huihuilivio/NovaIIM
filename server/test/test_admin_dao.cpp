@@ -144,8 +144,9 @@ protected:
     std::unique_ptr<DaoFactory> factory_;
 };
 
-TEST_F(AdminSessionDaoTest, NewTokenIsNotRevoked) {
-    EXPECT_FALSE(dao().AdminSession().IsRevoked("some-token-hash"));
+TEST_F(AdminSessionDaoTest, UnknownTokenIsTreatedAsRevoked) {
+    // Fail-closed: if session was never persisted, treat token as revoked
+    EXPECT_TRUE(dao().AdminSession().IsRevoked("some-token-hash"));
 }
 
 TEST_F(AdminSessionDaoTest, InsertAndIsNotRevokedByDefault) {

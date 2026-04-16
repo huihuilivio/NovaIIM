@@ -1,10 +1,10 @@
 #pragma once
 
 #include "service_base.h"
+#include <chrono>
 #include <list>
 #include <mutex>
 #include <unordered_map>
-#include <unordered_set>
 
 namespace nova {
 
@@ -25,19 +25,24 @@ private:
 
     // ---- 消息幂等去重缓存（LRU：淘汰最旧条目，避免全量清空） ----
     static constexpr size_t kMaxDedupCacheSize = 10000;
+    static constexpr std::chrono::seconds kInflightTimeout{30};  // in-flight 超时
     std::mutex dedup_mutex_;
     // LRU 列表：front = 最旧，back = 最新
     using DedupEntry = std::pair<std::string, proto::SendMsgAck>;  // key, value
     std::list<DedupEntry> dedup_order_;
     std::unordered_map<std::string, std::list<DedupEntry>::iterator> dedup_index_;
 
-    // 正在处理中的 client_msg_id 集合（防止 TOCTOU 竞态）
-    std::unordered_set<std::string> in_flight_;
+    // 正在处理中的 client_msg_id → 标记时间（防止 TOCTOU 竞态）
+    // 超过 kInflightTimeout 的条目视为过期，允许重入
+    std::unordered_map<std::string, std::chrono::steady_clock::time_point> in_flight_;
 
     // 查找（调用方需持锁）
     proto::SendMsgAck* DedupFind(const std::string& key);
     // 插入或更新（调用方需持锁）
     void DedupInsert(const std::string& key, const proto::SendMsgAck& ack);
+    // 尝试标记 in-flight，返回 true 表示成功（调用方需持锁）
+    // 超时的旧条目会被自动覆盖
+    bool TryMarkInflight(const std::string& key);
     // 移除 in-flight 标记（调用方需持锁）
     void DedupRemoveInflight(const std::string& key);
     // 便捷方法：非空 key 时加锁并移除 in-flight 标记

@@ -43,6 +43,18 @@ void MsgService::DedupRemoveInflight(const std::string& key) {
     in_flight_.erase(key);
 }
 
+bool MsgService::TryMarkInflight(const std::string& key) {
+    auto now = std::chrono::steady_clock::now();
+    auto [it, inserted] = in_flight_.emplace(key, now);
+    if (inserted) return true;
+    // 已存在：检查是否超时（防止卡死的线程永久阻塞后续请求）
+    if (now - it->second >= kInflightTimeout) {
+        it->second = now;  // 续期，允许本线程接管
+        return true;
+    }
+    return false;  // 仍在有效期内，视为重复
+}
+
 // 便捷方法：非空 key 时在锁内移除 in-flight 标记
 void MsgService::DedupRemoveInflightIfNeeded(const std::string& key) {
     if (!key.empty()) {
@@ -95,7 +107,8 @@ void MsgService::HandleSendMsg(ConnectionPtr conn, Packet& pkt) {
             return;
         }
         // 防止 TOCTOU 竞态：查找未命中时立即标记 in-flight，其他线程会看到此标记
-        if (!in_flight_.insert(req->client_msg_id).second) {
+        // 超过 kInflightTimeout 的旧标记会被自动覆盖，防止永久阻塞
+        if (!TryMarkInflight(req->client_msg_id)) {
             // 已有线程正在处理同一 client_msg_id，丢弃本次请求
             return;
         }

@@ -14,7 +14,7 @@ bool AdminSessionDaoImplT<DbMgr>::Insert(const AdminSession& session) {
 template <typename DbMgr>
 bool AdminSessionDaoImplT<DbMgr>::IsRevoked(const std::string& token_hash) {
     auto res = db_.DB().query_s<AdminSession>("token_hash=?", token_hash);
-    if (res.empty()) return false;
+    if (res.empty()) return true;   // session not found → treat as revoked (fail-closed)
     return res[0].revoked == 1;
 }
 

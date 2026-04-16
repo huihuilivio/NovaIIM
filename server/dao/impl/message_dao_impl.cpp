@@ -76,21 +76,35 @@ std::vector<Message> MessageDaoImplT<DbMgr>::GetLatestByConversations(
         int limit_per_conv) {
     if (conv_from_seqs.empty()) return {};
 
-    // 构建 UNION ALL 查询：每个会话取最新 limit_per_conv 条
-    // 所有参数都是 int64_t，无注入风险
-    std::string sql = "SELECT * FROM (";
-    for (size_t i = 0; i < conv_from_seqs.size(); ++i) {
-        if (i > 0) sql += " UNION ALL ";
-        sql += "SELECT * FROM messages WHERE conversation_id = "
-             + std::to_string(conv_from_seqs[i].first)
-             + " AND seq > "
-             + std::to_string(conv_from_seqs[i].second)
-             + " ORDER BY seq DESC LIMIT "
-             + std::to_string(limit_per_conv);
-    }
-    sql += ")";
+    // 分批查询：每批最多 100 个会话，防止 UNION ALL SQL 过长
+    // SQLite 默认限制 ~1MB SQL, MySQL max_allowed_packet 也有限
+    static constexpr size_t kBatchSize = 100;
 
-    return db_.DB().template query_s<Message>(sql);
+    std::vector<Message> all_results;
+    for (size_t offset = 0; offset < conv_from_seqs.size(); offset += kBatchSize) {
+        size_t end = std::min(offset + kBatchSize, conv_from_seqs.size());
+
+        // 构建 UNION ALL 查询：每个会话取最新 limit_per_conv 条
+        // 所有参数都是 int64_t，无注入风险
+        std::string sql = "SELECT * FROM (";
+        for (size_t i = offset; i < end; ++i) {
+            if (i > offset) sql += " UNION ALL ";
+            sql += "SELECT * FROM messages WHERE conversation_id = "
+                 + std::to_string(conv_from_seqs[i].first)
+                 + " AND seq > "
+                 + std::to_string(conv_from_seqs[i].second)
+                 + " ORDER BY seq DESC LIMIT "
+                 + std::to_string(limit_per_conv);
+        }
+        sql += ")";
+
+        auto batch = db_.DB().template query_s<Message>(sql);
+        all_results.insert(all_results.end(),
+                           std::make_move_iterator(batch.begin()),
+                           std::make_move_iterator(batch.end()));
+    }
+
+    return all_results;
 }
 
 // 显式实例化

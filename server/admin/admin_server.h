@@ -6,6 +6,8 @@
 #include <hv/HttpServer.h>
 #include <hv/HttpService.h>
 
+#include "../core/rate_limiter.h"
+
 namespace nova {
 
 class ServerContext;
@@ -73,6 +75,7 @@ private:
     Options opts_;
     hv::HttpService service_;
     std::unique_ptr<hv::HttpServer> server_;
+    RateLimiter login_limiter_{5, std::chrono::seconds(60)};  // 5 attempts / 60s per IP
 };
 
 } // namespace nova

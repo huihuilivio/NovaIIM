@@ -237,6 +237,12 @@ int AdminServer::HandleLogin(HttpRequest* req, HttpResponse* resp) {
         return JsonError(resp, ApiCode::kParamError, "request body too large", 413);
     }
 
+    // 频率限制（按客户端 IP）
+    std::string client_ip = GetClientIp(req);
+    if (!login_limiter_.Allow(client_ip)) {
+        return JsonError(resp, ApiCode::kForbidden, "too many login attempts, try again later", 429);
+    }
+
     auto body_opt = ParseJsonBody(req);
     if (!body_opt || !body_opt->contains("uid") || !body_opt->contains("password")) {
         return JsonError(resp, ApiCode::kParamError, "uid and password required", 400);
@@ -252,11 +258,28 @@ int AdminServer::HandleLogin(HttpRequest* req, HttpResponse* resp) {
 
     auto admin = ctx_.dao().AdminAccount().FindByUid(uid);
     if (!admin) {
+        login_limiter_.RecordFailure(client_ip);
+        // 安全：清除内存中的明文密码
+        volatile char* p = reinterpret_cast<volatile char*>(password.data());
+        for (size_t i = 0; i < password.size(); ++i) p[i] = 0;
+        password.clear();
         return JsonError(resp, ApiCode::kUnauthorized, "invalid credentials", 401);
     }
 
     if (!PasswordUtils::Verify(password, admin->password_hash)) {
+        login_limiter_.RecordFailure(client_ip);
+        // 安全：清除内存中的明文密码
+        volatile char* p = reinterpret_cast<volatile char*>(password.data());
+        for (size_t i = 0; i < password.size(); ++i) p[i] = 0;
+        password.clear();
         return JsonError(resp, ApiCode::kUnauthorized, "invalid credentials", 401);
+    }
+
+    // 安全：验证完成后立即清除明文密码
+    {
+        volatile char* p = reinterpret_cast<volatile char*>(password.data());
+        for (size_t i = 0; i < password.size(); ++i) p[i] = 0;
+        password.clear();
     }
 
     if (admin->status != 1) {
@@ -269,6 +292,7 @@ int AdminServer::HandleLogin(HttpRequest* req, HttpResponse* resp) {
     }
 
     // 签发 JWT
+    login_limiter_.Reset(client_ip);
     auto token = JwtUtils::Sign(admin->id, opts_.jwt_secret, opts_.jwt_expires);
     if (token.empty()) {
         return JsonError(resp, ApiCode::kInternal, "failed to sign token");
