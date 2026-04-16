@@ -12,13 +12,15 @@ int64_t ConversationDaoImplT<DbMgr>::IncrMaxSeq(int64_t conversation_id) {
     // 再用 SQL 原子 UPDATE 保证数据库层面的正确性
     std::lock_guard<std::mutex> lock(seq_mutex_);
 
+    auto&& conn = db_.DB();  // 单次获取，MySQL 下复用同一池连接
+
     std::string sql = "UPDATE conversations SET max_seq = max_seq + 1 WHERE id = "
                       + std::to_string(conversation_id);
-    if (!db_.DB().execute(sql)) {
+    if (!conn.execute(sql)) {
         return -1;
     }
 
-    auto convs = db_.DB().query_s<Conversation>("id=?", conversation_id);
+    auto convs = conn.query_s<Conversation>("id=?", conversation_id);
     if (convs.empty()) return -1;
     return convs[0].max_seq;
 }
@@ -42,7 +44,9 @@ std::optional<Conversation> ConversationDaoImplT<DbMgr>::FindById(int64_t id) {
 
 template <typename DbMgr>
 bool ConversationDaoImplT<DbMgr>::UpdateLastReadSeq(int64_t conversation_id, int64_t user_id, int64_t seq) {
-    auto members = db_.DB().query_s<ConversationMember>(
+    auto&& conn = db_.DB();  // 单次获取，MySQL 下复用同一池连接
+
+    auto members = conn.query_s<ConversationMember>(
         "conversation_id=? AND user_id=?", conversation_id, user_id);
     if (members.empty()) return false;
 
@@ -50,19 +54,21 @@ bool ConversationDaoImplT<DbMgr>::UpdateLastReadSeq(int64_t conversation_id, int
     if (seq <= members[0].last_read_seq) return true;
 
     members[0].last_read_seq = seq;
-    return db_.DB().template update_some<&ConversationMember::last_read_seq>(members[0]) == 1;
+    return conn.template update_some<&ConversationMember::last_read_seq>(members[0]) == 1;
 }
 
 template <typename DbMgr>
 bool ConversationDaoImplT<DbMgr>::UpdateLastAckSeq(int64_t conversation_id, int64_t user_id, int64_t seq) {
-    auto members = db_.DB().query_s<ConversationMember>(
+    auto&& conn = db_.DB();  // 单次获取，MySQL 下复用同一池连接
+
+    auto members = conn.query_s<ConversationMember>(
         "conversation_id=? AND user_id=?", conversation_id, user_id);
     if (members.empty()) return false;
 
     if (seq <= members[0].last_ack_seq) return true;
 
     members[0].last_ack_seq = seq;
-    return db_.DB().template update_some<&ConversationMember::last_ack_seq>(members[0]) == 1;
+    return conn.template update_some<&ConversationMember::last_ack_seq>(members[0]) == 1;
 }
 
 // 显式实例化
