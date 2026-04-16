@@ -1,5 +1,6 @@
 #include "conversation_dao_impl.h"
 #include "../sqlite3/sqlite_db_manager.h"
+#include "../../core/defer.h"
 #ifdef ORMPP_ENABLE_MYSQL
 #include "../mysql/mysql_db_manager.h"
 #endif
@@ -20,21 +21,28 @@ int64_t ConversationDaoImplT<DbMgr>::IncrMaxSeq(int64_t conversation_id) {
         return -1;
     }
 
+    // 事务守卫：未 COMMIT 时自动 ROLLBACK
+    bool committed = false;
+    NOVA_DEFER {
+        if (!committed) conn.execute("ROLLBACK");
+    };
+
     std::string sql = "UPDATE conversations SET max_seq = max_seq + 1 WHERE id = "
                       + std::to_string(conversation_id);
     if (!conn.execute(sql)) {
-        conn.execute("ROLLBACK");
         return -1;
     }
 
     auto convs = conn.query_s<Conversation>("id=?", conversation_id);
     if (convs.empty()) {
-        conn.execute("ROLLBACK");
         return -1;
     }
 
     int64_t new_seq = convs[0].max_seq;
-    conn.execute("COMMIT");
+    if (!conn.execute("COMMIT")) {
+        return -1;
+    }
+    committed = true;
     return new_seq;
 }
 

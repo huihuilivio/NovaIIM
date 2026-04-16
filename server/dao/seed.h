@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../admin/password_utils.h"
+#include "../core/defer.h"
 #include "../model/types.h"
 
 #include <spdlog/spdlog.h>
@@ -34,16 +35,12 @@ void SeedSuperAdmin(DbMgr& db) {
 
     // RAII 回滚守卫：析构时自动 ROLLBACK（除非已 COMMIT）
     bool committed = false;
-    struct RollbackGuard {
-        decltype(db_conn)& conn;
-        bool& committed_ref;
-        ~RollbackGuard() {
-            if (!committed_ref) {
-                conn.execute("ROLLBACK");
-                SPDLOG_ERROR("Seed transaction rolled back due to failure");
-            }
+    NOVA_DEFER {
+        if (!committed) {
+            db_conn.execute("ROLLBACK");
+            SPDLOG_ERROR("Seed transaction rolled back due to failure");
         }
-    } rollback_guard{db_conn, committed};
+    };
 
     // ---- 1. 插入权限 ----
     struct PermDef { const char* name; const char* code; };
