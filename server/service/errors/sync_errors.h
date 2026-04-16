@@ -5,6 +5,8 @@
 
 namespace nova::errc::sync {
 
-inline constexpr Error kNotMember          {3,  "not a member of this conversation"};
+// clang-format off
+inline constexpr Error kNotMember {3, "not a member of this conversation"};
+// clang-format on
 
-} // namespace nova::errc::sync
+}  // namespace nova::errc::sync

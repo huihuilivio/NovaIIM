@@ -17,18 +17,18 @@ class DaoFactory;
 class AdminServer {
 public:
     struct Options {
-        int         port        = 9091;
-        std::string jwt_secret;     // JWT HMAC 密钥，空则不鉴权
-        int         jwt_expires = 86400;
+        int port = 9091;
+        std::string jwt_secret;  // JWT HMAC 密钥，空则不鉴权
+        int jwt_expires = 86400;
     };
 
     explicit AdminServer(ServerContext& ctx);
     ~AdminServer();
 
-    AdminServer(const AdminServer&) = delete;
+    AdminServer(const AdminServer&)            = delete;
     AdminServer& operator=(const AdminServer&) = delete;
 
-    int  Start(const Options& opts);
+    int Start(const Options& opts);
     void Stop();
 
 private:
@@ -64,8 +64,7 @@ private:
     int HandleListAuditLogs(HttpRequest* req, HttpResponse* resp);
 
     // 审计日志写入助手
-    void WriteAuditLog(int64_t admin_id, const std::string& action,
-                       const std::string& target_type, int64_t target_id,
+    void WriteAuditLog(int64_t admin_id, const std::string& action, const std::string& target_type, int64_t target_id,
                        const std::string& detail, const std::string& ip);
 
     // 从请求中获取客户端 IP（根据 trust_proxy 配置决定是否信任代理头）
@@ -78,4 +77,4 @@ private:
     RateLimiter login_limiter_{5, std::chrono::seconds(60)};  // 5 attempts / 60s per IP
 };
 
-} // namespace nova
+}  // namespace nova

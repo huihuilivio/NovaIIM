@@ -18,7 +18,7 @@ public:
     ConnManager() = default;
 
     // 禁止拷贝（内含 mutex）
-    ConnManager(const ConnManager&) = delete;
+    ConnManager(const ConnManager&)            = delete;
     ConnManager& operator=(const ConnManager&) = delete;
 
     // 注册连接
@@ -47,11 +47,11 @@ private:
         std::unordered_map<int64_t, std::vector<ConnectionPtr>> conns;
     };
 
-    Shard&       GetShard(int64_t user_id)       { return shards_[static_cast<size_t>(user_id) % kShardCount]; }
+    Shard& GetShard(int64_t user_id) { return shards_[static_cast<size_t>(user_id) % kShardCount]; }
     const Shard& GetShard(int64_t user_id) const { return shards_[static_cast<size_t>(user_id) % kShardCount]; }
 
     std::array<Shard, kShardCount> shards_;
     std::atomic<int> online_count_{0};
 };
 
-} // namespace nova
+}  // namespace nova

@@ -108,4 +108,4 @@ void Gateway::OnMessage(const hv::SocketChannelPtr& channel, hv::Buffer* buf) {
     }
 }
 
-} // namespace nova
+}  // namespace nova

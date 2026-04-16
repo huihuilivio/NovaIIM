@@ -20,4 +20,4 @@ private:
     DbMgr& db_;
 };
 
-} // namespace nova
+}  // namespace nova

@@ -10,13 +10,14 @@ namespace nova {
 
 namespace ec = errc;
 
-static constexpr const char* kLogTag = "SyncService";
+static constexpr const char* kLogTag   = "SyncService";
 static constexpr int kDefaultSyncLimit = 20;
-static constexpr int kMaxSyncLimit = 100;
+static constexpr int kMaxSyncLimit     = 100;
 
 void SyncService::HandleSyncMsg(ConnectionPtr conn, Packet& pkt) {
+    auto session    = ctx_.dao().Session();
     int64_t user_id = conn->user_id();
-    auto uid = static_cast<uint64_t>(user_id);
+    auto uid        = static_cast<uint64_t>(user_id);
 
     if (user_id == 0) {
         SendPacket(conn, Cmd::kSyncMsgResp, pkt.seq, 0, proto::SyncMsgResp{ec::kNotAuthenticated.code});
@@ -42,32 +43,34 @@ void SyncService::HandleSyncMsg(ConnectionPtr conn, Packet& pkt) {
     }
 
     int limit = req->limit;
-    if (limit <= 0) limit = kDefaultSyncLimit;
-    if (limit > kMaxSyncLimit) limit = kMaxSyncLimit;
+    if (limit <= 0)
+        limit = kDefaultSyncLimit;
+    if (limit > kMaxSyncLimit)
+        limit = kMaxSyncLimit;
 
     // 2. 从 DB 拉取 seq > last_seq 的消息
     auto messages = ctx_.dao().Message().GetAfterSeq(req->conversation_id, req->last_seq, limit);
 
     // 3. 构建响应
     proto::SyncMsgResp resp;
-    resp.code = ec::kOk.code;
+    resp.code     = ec::kOk.code;
     resp.has_more = static_cast<int>(messages.size()) >= limit;
     resp.messages.reserve(messages.size());
 
     for (const auto& m : messages) {
-        resp.messages.push_back({m.seq, m.sender_id, m.content,
-                                 m.msg_type, m.created_at, m.status});
+        resp.messages.push_back({m.seq, m.sender_id, m.content, m.msg_type, m.created_at, m.status});
     }
 
     SendPacket(conn, Cmd::kSyncMsgResp, pkt.seq, uid, resp);
 
-    NOVA_NLOG_DEBUG(kLogTag, "sync_msg: user={}, conv={}, from_seq={}, returned={}",
-                    user_id, req->conversation_id, req->last_seq, messages.size());
+    NOVA_NLOG_DEBUG(kLogTag, "sync_msg: user={}, conv={}, from_seq={}, returned={}", user_id, req->conversation_id,
+                    req->last_seq, messages.size());
 }
 
 void SyncService::HandleSyncUnread(ConnectionPtr conn, Packet& pkt) {
+    auto session    = ctx_.dao().Session();
     int64_t user_id = conn->user_id();
-    auto uid = static_cast<uint64_t>(user_id);
+    auto uid        = static_cast<uint64_t>(user_id);
 
     if (user_id == 0) {
         SendPacket(conn, Cmd::kSyncUnreadResp, pkt.seq, 0, proto::SyncUnreadResp{ec::kNotAuthenticated.code});
@@ -100,17 +103,19 @@ void SyncService::HandleSyncUnread(ConnectionPtr conn, Packet& pkt) {
 
     for (const auto& member : memberships) {
         auto it = conv_map.find(member.conversation_id);
-        if (it == conv_map.end()) continue;
+        if (it == conv_map.end())
+            continue;
         const auto& conv = *(it->second);
 
         int64_t unread = conv.max_seq - member.last_read_seq;
-        if (unread < 0) unread = 0;
+        if (unread < 0)
+            unread = 0;
         resp.total_unread += unread;
 
         if (unread > 0) {
             proto::UnreadItem item;
             item.conversation_id = member.conversation_id;
-            item.count = unread;
+            item.count           = unread;
             resp.items.push_back(std::move(item));
 
             auto preview_from = std::max<int64_t>(0, conv.max_seq - 3);
@@ -131,7 +136,8 @@ void SyncService::HandleSyncUnread(ConnectionPtr conn, Packet& pkt) {
         // 填充到对应的 UnreadItem
         for (auto& item : resp.items) {
             auto pit = preview_map.find(item.conversation_id);
-            if (pit == preview_map.end()) continue;
+            if (pit == preview_map.end())
+                continue;
             for (const auto* m : pit->second) {
                 item.latest_messages.push_back(
                     {m->seq, m->sender_id, m->content, m->msg_type, m->created_at, m->status});
@@ -141,8 +147,8 @@ void SyncService::HandleSyncUnread(ConnectionPtr conn, Packet& pkt) {
 
     SendPacket(conn, Cmd::kSyncUnreadResp, pkt.seq, uid, resp);
 
-    NOVA_NLOG_DEBUG(kLogTag, "sync_unread: user={}, conversations={}, total_unread={}",
-                    user_id, memberships.size(), resp.total_unread);
+    NOVA_NLOG_DEBUG(kLogTag, "sync_unread: user={}, conversations={}, total_unread={}", user_id, memberships.size(),
+                    resp.total_unread);
 }
 
-} // namespace nova
+}  // namespace nova

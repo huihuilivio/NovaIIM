@@ -28,19 +28,16 @@ public:
     virtual bool UpdateStatus(int64_t msg_id, int8_t status) = 0;
 
     // 按会话 + 时间范围分页查询（admin 用）
-    virtual MessageListResult ListMessages(int64_t conversation_id,
-                                           const std::string& start_time,
-                                           const std::string& end_time,
-                                           int page, int page_size) = 0;
+    virtual MessageListResult ListMessages(int64_t conversation_id, const std::string& start_time,
+                                           const std::string& end_time, int page, int page_size) = 0;
 
     // 根据 ID 查找
     virtual std::optional<Message> FindById(int64_t id) = 0;
 
     // 批量获取多个会话的最近 N 条消息（用于未读预览，避免 N+1 查询）
     // 返回所有匹配的消息，调用方按 conversation_id 分组
-    virtual std::vector<Message> GetLatestByConversations(
-        const std::vector<std::pair<int64_t, int64_t>>& conv_from_seqs,
-        int limit_per_conv) = 0;
+    virtual std::vector<Message>
+    GetLatestByConversations(const std::vector<std::pair<int64_t, int64_t>>& conv_from_seqs, int limit_per_conv) = 0;
 };
 
-} // namespace nova
+}  // namespace nova

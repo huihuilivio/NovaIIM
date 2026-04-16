@@ -22,14 +22,13 @@
 
 namespace nova {
 
-static constexpr const char* kLogTag = "Admin";
-static constexpr size_t kAdminMaxBodySize = 1 * 1024 * 1024; // 1 MB
+static constexpr const char* kLogTag      = "Admin";
+static constexpr size_t kAdminMaxBodySize = 1 * 1024 * 1024;  // 1 MB
 
 // SHA-256 哈希（用于 token_hash）
 static std::string Sha256Hex(std::string_view data) {
     unsigned char hash[32];
-    mbedtls_sha256(reinterpret_cast<const unsigned char*>(data.data()),
-                   data.size(), hash, 0);
+    mbedtls_sha256(reinterpret_cast<const unsigned char*>(data.data()), data.size(), hash, 0);
     char hex[65];
     for (int i = 0; i < 32; ++i) {
         std::snprintf(hex + i * 2, 3, "%02x", hash[i]);
@@ -39,14 +38,15 @@ static std::string Sha256Hex(std::string_view data) {
 
 // 解析 JSON Body（统一入口，防止重复代码）
 static std::optional<hv::Json> ParseJsonBody(HttpRequest* req) {
-    if (req->content_type != APPLICATION_JSON || req->body.empty()) return std::nullopt;
+    if (req->content_type != APPLICATION_JSON || req->body.empty())
+        return std::nullopt;
     auto j = nlohmann::json::parse(req->body, nullptr, false);
-    if (j.is_discarded()) return std::nullopt;
+    if (j.is_discarded())
+        return std::nullopt;
     return j;
 }
 
-AdminServer::AdminServer(ServerContext& ctx)
-    : ctx_(ctx) {}
+AdminServer::AdminServer(ServerContext& ctx) : ctx_(ctx) {}
 
 AdminServer::~AdminServer() {
     Stop();
@@ -90,38 +90,38 @@ void AdminServer::Stop() {
 
 void AdminServer::RegisterRoutes(const Options& opts) {
     if (!opts.jwt_secret.empty()) {
-        service_.Use([this](HttpRequest* req, HttpResponse* resp) -> int {
-            return AuthMiddleware(req, resp);
-        });
+        service_.Use([this](HttpRequest* req, HttpResponse* resp) -> int { return AuthMiddleware(req, resp); });
     }
 
     // 健康检查
     service_.GET("/healthz", [this](auto* req, auto* resp) { return HandleHealthz(req, resp); });
 
     // 认证
-    service_.POST("/api/v1/auth/login",  [this](auto* req, auto* resp) { return HandleLogin(req, resp); });
+    service_.POST("/api/v1/auth/login", [this](auto* req, auto* resp) { return HandleLogin(req, resp); });
     service_.POST("/api/v1/auth/logout", [this](auto* req, auto* resp) { return HandleLogout(req, resp); });
-    service_.GET("/api/v1/auth/me",      [this](auto* req, auto* resp) { return HandleMe(req, resp); });
+    service_.GET("/api/v1/auth/me", [this](auto* req, auto* resp) { return HandleMe(req, resp); });
 
     // 仪表盘
     service_.GET("/api/v1/dashboard/stats", [this](auto* req, auto* resp) { return HandleStats(req, resp); });
 
     // 用户管理
-    service_.GET("/api/v1/users",    [this](auto* req, auto* resp) { return HandleListUsers(req, resp); });
-    service_.POST("/api/v1/users",   [this](auto* req, auto* resp) { return HandleCreateUser(req, resp); });
+    service_.GET("/api/v1/users", [this](auto* req, auto* resp) { return HandleListUsers(req, resp); });
+    service_.POST("/api/v1/users", [this](auto* req, auto* resp) { return HandleCreateUser(req, resp); });
 
     // libhv 路径参数: /api/v1/users/:id
-    service_.GET("/api/v1/users/:id",    [this](auto* req, auto* resp) { return HandleGetUser(req, resp); });
+    service_.GET("/api/v1/users/:id", [this](auto* req, auto* resp) { return HandleGetUser(req, resp); });
     service_.Delete("/api/v1/users/:id", [this](auto* req, auto* resp) { return HandleDeleteUser(req, resp); });
 
-    service_.POST("/api/v1/users/:id/reset-password", [this](auto* req, auto* resp) { return HandleResetPassword(req, resp); });
-    service_.POST("/api/v1/users/:id/ban",   [this](auto* req, auto* resp) { return HandleBanUser(req, resp); });
+    service_.POST("/api/v1/users/:id/reset-password",
+                  [this](auto* req, auto* resp) { return HandleResetPassword(req, resp); });
+    service_.POST("/api/v1/users/:id/ban", [this](auto* req, auto* resp) { return HandleBanUser(req, resp); });
     service_.POST("/api/v1/users/:id/unban", [this](auto* req, auto* resp) { return HandleUnbanUser(req, resp); });
-    service_.POST("/api/v1/users/:id/kick",  [this](auto* req, auto* resp) { return HandleKickUser(req, resp); });
+    service_.POST("/api/v1/users/:id/kick", [this](auto* req, auto* resp) { return HandleKickUser(req, resp); });
 
     // 消息管理
-    service_.GET("/api/v1/messages",               [this](auto* req, auto* resp) { return HandleListMessages(req, resp); });
-    service_.POST("/api/v1/messages/:id/recall",   [this](auto* req, auto* resp) { return HandleRecallMessage(req, resp); });
+    service_.GET("/api/v1/messages", [this](auto* req, auto* resp) { return HandleListMessages(req, resp); });
+    service_.POST("/api/v1/messages/:id/recall",
+                  [this](auto* req, auto* resp) { return HandleRecallMessage(req, resp); });
 
     // 审计日志
     service_.GET("/api/v1/audit-logs", [this](auto* req, auto* resp) { return HandleListAuditLogs(req, resp); });
@@ -147,7 +147,7 @@ int AdminServer::AuthMiddleware(HttpRequest* req, HttpResponse* resp) {
         return 413;
     }
 
-    std::string auth = req->GetHeader("Authorization");
+    std::string auth                   = req->GetHeader("Authorization");
     constexpr std::string_view kBearer = "Bearer ";
     if (auth.size() <= kBearer.size() || auth.substr(0, kBearer.size()) != kBearer) {
         JsonError(resp, api_err::kMissingToken);
@@ -155,11 +155,13 @@ int AdminServer::AuthMiddleware(HttpRequest* req, HttpResponse* resp) {
     }
 
     auto token_sv = std::string_view(auth).substr(kBearer.size());
-    auto claims = JwtUtils::Verify(token_sv, opts_.jwt_secret);
+    auto claims   = JwtUtils::Verify(token_sv, opts_.jwt_secret);
     if (!claims) {
         JsonError(resp, api_err::kTokenExpired);
         return 401;
     }
+
+    auto session = ctx_.dao().Session();
 
     // 查 admin_sessions 黑名单
     std::string token_hash = Sha256Hex(token_sv);
@@ -175,7 +177,8 @@ int AdminServer::AuthMiddleware(HttpRequest* req, HttpResponse* resp) {
     auto perms = ctx_.dao().Rbac().GetUserPermissions(claims->admin_id);
     std::string perms_str;
     for (size_t i = 0; i < perms.size(); ++i) {
-        if (i > 0) perms_str += ',';
+        if (i > 0)
+            perms_str += ',';
         perms_str += perms[i];
     }
     req->SetHeader("X-Nova-Permissions", perms_str);
@@ -197,14 +200,14 @@ std::string AdminServer::GetClientIp(HttpRequest* req) const {
             return comma != std::string::npos ? xff.substr(0, comma) : xff;
         }
         auto real_ip = req->GetHeader("X-Real-IP");
-        if (!real_ip.empty()) return real_ip;
+        if (!real_ip.empty())
+            return real_ip;
     }
     return req->client_addr.ip;
 }
 
-void AdminServer::WriteAuditLog(int64_t admin_id, const std::string& action,
-                                const std::string& target_type, int64_t target_id,
-                                const std::string& detail, const std::string& ip) {
+void AdminServer::WriteAuditLog(int64_t admin_id, const std::string& action, const std::string& target_type,
+                                int64_t target_id, const std::string& detail, const std::string& ip) {
     AuditLog log;
     log.admin_id    = admin_id;
     log.action      = action;
@@ -223,7 +226,7 @@ void AdminServer::WriteAuditLog(int64_t admin_id, const std::string& action,
 
 int AdminServer::HandleHealthz(HttpRequest* /*req*/, HttpResponse* resp) {
     resp->content_type = APPLICATION_JSON;
-    resp->body = R"({"status":"ok"})";
+    resp->body         = R"({"status":"ok"})";
     return 200;
 }
 
@@ -232,6 +235,8 @@ int AdminServer::HandleHealthz(HttpRequest* /*req*/, HttpResponse* resp) {
 // ============================================================
 
 int AdminServer::HandleLogin(HttpRequest* req, HttpResponse* resp) {
+    auto dao_session = ctx_.dao().Session();
+
     // body 大小限制（middleware 对 login 路径免鉴权但同样需要限制）
     if (req->body.size() > kAdminMaxBodySize) {
         return JsonError(resp, api_err::kBodyTooLarge);
@@ -253,7 +258,7 @@ int AdminServer::HandleLogin(HttpRequest* req, HttpResponse* resp) {
         return JsonError(resp, api_err::kUidPasswordStrings);
     }
 
-    std::string uid = body["uid"].get<std::string>();
+    std::string uid      = body["uid"].get<std::string>();
     std::string password = body["password"].get<std::string>();
 
     auto admin = ctx_.dao().AdminAccount().FindByUid(uid);
@@ -261,7 +266,8 @@ int AdminServer::HandleLogin(HttpRequest* req, HttpResponse* resp) {
         login_limiter_.RecordFailure(client_ip);
         // 安全：清除内存中的明文密码
         volatile char* p = reinterpret_cast<volatile char*>(password.data());
-        for (size_t i = 0; i < password.size(); ++i) p[i] = 0;
+        for (size_t i = 0; i < password.size(); ++i)
+            p[i] = 0;
         password.clear();
         return JsonError(resp, api_err::kInvalidCredentials);
     }
@@ -270,7 +276,8 @@ int AdminServer::HandleLogin(HttpRequest* req, HttpResponse* resp) {
         login_limiter_.RecordFailure(client_ip);
         // 安全：清除内存中的明文密码
         volatile char* p = reinterpret_cast<volatile char*>(password.data());
-        for (size_t i = 0; i < password.size(); ++i) p[i] = 0;
+        for (size_t i = 0; i < password.size(); ++i)
+            p[i] = 0;
         password.clear();
         return JsonError(resp, api_err::kInvalidCredentials);
     }
@@ -278,7 +285,8 @@ int AdminServer::HandleLogin(HttpRequest* req, HttpResponse* resp) {
     // 安全：验证完成后立即清除明文密码
     {
         volatile char* p = reinterpret_cast<volatile char*>(password.data());
-        for (size_t i = 0; i < password.size(); ++i) p[i] = 0;
+        for (size_t i = 0; i < password.size(); ++i)
+            p[i] = 0;
         password.clear();
     }
 
@@ -306,7 +314,7 @@ int AdminServer::HandleLogin(HttpRequest* req, HttpResponse* resp) {
     auto now = std::time(nullptr);
     auto exp = now + opts_.jwt_expires;
     char exp_buf[32];
-    struct tm tm_buf{};
+    struct tm tm_buf {};
 #ifdef _MSC_VER
     gmtime_s(&tm_buf, &exp);
 #else
@@ -315,8 +323,7 @@ int AdminServer::HandleLogin(HttpRequest* req, HttpResponse* resp) {
     std::strftime(exp_buf, sizeof(exp_buf), "%Y-%m-%d %H:%M:%S", &tm_buf);
     session.expires_at = exp_buf;
     if (!ctx_.dao().AdminSession().Insert(session)) {
-        NOVA_NLOG_WARN(kLogTag, "failed to persist session for admin_id={}, token irrevocable until expiry",
-                       admin->id);
+        NOVA_NLOG_WARN(kLogTag, "failed to persist session for admin_id={}, token irrevocable until expiry", admin->id);
     }
 
     // 审计
@@ -326,15 +333,16 @@ int AdminServer::HandleLogin(HttpRequest* req, HttpResponse* resp) {
 }
 
 int AdminServer::HandleLogout(HttpRequest* req, HttpResponse* resp) {
+    auto session     = ctx_.dao().Session();
     int64_t admin_id = GetCurrentAdminId(req);
 
     // 吊销当前 token
-    std::string auth = req->GetHeader("Authorization");
+    std::string auth                   = req->GetHeader("Authorization");
     constexpr std::string_view kBearer = "Bearer ";
     if (auth.size() <= kBearer.size()) {
         return JsonError(resp, api_err::kMissingToken);
     }
-    auto token_sv = std::string_view(auth).substr(kBearer.size());
+    auto token_sv          = std::string_view(auth).substr(kBearer.size());
     std::string token_hash = Sha256Hex(token_sv);
 
     ctx_.dao().AdminSession().RevokeByTokenHash(token_hash);
@@ -345,6 +353,7 @@ int AdminServer::HandleLogout(HttpRequest* req, HttpResponse* resp) {
 }
 
 int AdminServer::HandleMe(HttpRequest* req, HttpResponse* resp) {
+    auto session     = ctx_.dao().Session();
     int64_t admin_id = GetCurrentAdminId(req);
     if (admin_id == 0) {
         return JsonError(resp, api_err::kNotAuthenticated);
@@ -372,7 +381,8 @@ int AdminServer::HandleMe(HttpRequest* req, HttpResponse* resp) {
 
 int AdminServer::HandleStats(HttpRequest* req, HttpResponse* resp) {
     int rc = RequirePermission(req, resp, "admin.dashboard");
-    if (rc != 0) return rc;
+    if (rc != 0)
+        return rc;
 
     nlohmann::json data;
     data["connections"]    = ctx_.connection_count();
@@ -390,15 +400,17 @@ int AdminServer::HandleStats(HttpRequest* req, HttpResponse* resp) {
 
 int AdminServer::HandleListUsers(HttpRequest* req, HttpResponse* resp) {
     int rc = RequirePermission(req, resp, "user.view");
-    if (rc != 0) return rc;
+    if (rc != 0)
+        return rc;
 
-    auto pg = ParsePagination(req);
+    auto pg             = ParsePagination(req);
     std::string keyword = req->GetParam("keyword");
-    int status = -1;  // -1 = no filter
-    auto status_str = req->GetParam("status");
+    int status          = -1;  // -1 = no filter
+    auto status_str     = req->GetParam("status");
     if (!status_str.empty()) {
         int val = std::atoi(status_str.c_str());
-        if (val > 0) status = val;  // 0 = all (same as no filter per API doc)
+        if (val > 0)
+            status = val;  // 0 = all (same as no filter per API doc)
     }
 
     auto result = ctx_.dao().User().ListUsers(keyword, status, pg.page, pg.page_size);
@@ -406,12 +418,12 @@ int AdminServer::HandleListUsers(HttpRequest* req, HttpResponse* resp) {
     nlohmann::json items = nlohmann::json::array();
     for (auto& u : result.items) {
         items.push_back({
-            {"id",         u.id},
-            {"uid",        u.uid},
-            {"nickname",   u.nickname},
-            {"avatar",     u.avatar},
-            {"status",     u.status},
-            {"is_online",  ctx_.conn_manager().IsOnline(u.id)},
+            {"id", u.id},
+            {"uid", u.uid},
+            {"nickname", u.nickname},
+            {"avatar", u.avatar},
+            {"status", u.status},
+            {"is_online", ctx_.conn_manager().IsOnline(u.id)},
             {"created_at", u.created_at},
         });
     }
@@ -420,8 +432,10 @@ int AdminServer::HandleListUsers(HttpRequest* req, HttpResponse* resp) {
 }
 
 int AdminServer::HandleCreateUser(HttpRequest* req, HttpResponse* resp) {
-    int rc = RequirePermission(req, resp, "user.create");
-    if (rc != 0) return rc;
+    auto session = ctx_.dao().Session();
+    int rc       = RequirePermission(req, resp, "user.create");
+    if (rc != 0)
+        return rc;
 
     auto body_opt = ParseJsonBody(req);
     if (!body_opt || !body_opt->contains("uid") || !body_opt->contains("password")) {
@@ -433,7 +447,7 @@ int AdminServer::HandleCreateUser(HttpRequest* req, HttpResponse* resp) {
         return JsonError(resp, api_err::kUidPasswordStrings);
     }
 
-    std::string uid = body["uid"].get<std::string>();
+    std::string uid      = body["uid"].get<std::string>();
     std::string password = body["password"].get<std::string>();
     std::string nickname = body.value("nickname", uid);
 
@@ -461,18 +475,19 @@ int AdminServer::HandleCreateUser(HttpRequest* req, HttpResponse* resp) {
     }
 
     int64_t admin_id = GetCurrentAdminId(req);
-    WriteAuditLog(admin_id, "user.create", "user", user.id,
-                  nlohmann::json({{"uid", uid}}).dump(), GetClientIp(req));
+    WriteAuditLog(admin_id, "user.create", "user", user.id, nlohmann::json({{"uid", uid}}).dump(), GetClientIp(req));
 
     return JsonOk(resp, {{"id", user.id}, {"uid", uid}});
 }
 
 int AdminServer::HandleGetUser(HttpRequest* req, HttpResponse* resp) {
-    int rc = RequirePermission(req, resp, "user.view");
-    if (rc != 0) return rc;
+    auto session = ctx_.dao().Session();
+    int rc       = RequirePermission(req, resp, "user.view");
+    if (rc != 0)
+        return rc;
 
     auto id_str = req->GetParam("id");
-    int64_t id = std::atoll(id_str.c_str());
+    int64_t id  = std::atoll(id_str.c_str());
     if (id <= 0) {
         return JsonError(resp, api_err::kInvalidUserId);
     }
@@ -491,12 +506,12 @@ int AdminServer::HandleGetUser(HttpRequest* req, HttpResponse* resp) {
     data["is_online"]  = ctx_.conn_manager().IsOnline(user->id);
     data["created_at"] = user->created_at;
     // devices: 查 user_devices 表
-    auto devices = ctx_.dao().User().ListDevicesByUser(id);
+    auto devices           = ctx_.dao().User().ListDevicesByUser(id);
     nlohmann::json dev_arr = nlohmann::json::array();
     for (auto& d : devices) {
         dev_arr.push_back({
-            {"device_id",      d.device_id},
-            {"device_type",    d.device_type},
+            {"device_id", d.device_id},
+            {"device_type", d.device_type},
             {"last_active_at", d.last_active_at},
         });
     }
@@ -506,11 +521,13 @@ int AdminServer::HandleGetUser(HttpRequest* req, HttpResponse* resp) {
 }
 
 int AdminServer::HandleDeleteUser(HttpRequest* req, HttpResponse* resp) {
-    int rc = RequirePermission(req, resp, "user.delete");
-    if (rc != 0) return rc;
+    auto session = ctx_.dao().Session();
+    int rc       = RequirePermission(req, resp, "user.delete");
+    if (rc != 0)
+        return rc;
 
     auto id_str = req->GetParam("id");
-    int64_t id = std::atoll(id_str.c_str());
+    int64_t id  = std::atoll(id_str.c_str());
     if (id <= 0) {
         return JsonError(resp, api_err::kInvalidUserId);
     }
@@ -523,7 +540,8 @@ int AdminServer::HandleDeleteUser(HttpRequest* req, HttpResponse* resp) {
 
     // 踢下线
     auto conns = ctx_.conn_manager().GetConns(id);
-    for (auto& c : conns) c->Close();
+    for (auto& c : conns)
+        c->Close();
 
     int64_t admin_id = GetCurrentAdminId(req);
     WriteAuditLog(admin_id, "user.delete", "user", id, "{}", GetClientIp(req));
@@ -532,11 +550,13 @@ int AdminServer::HandleDeleteUser(HttpRequest* req, HttpResponse* resp) {
 }
 
 int AdminServer::HandleResetPassword(HttpRequest* req, HttpResponse* resp) {
-    int rc = RequirePermission(req, resp, "user.edit");
-    if (rc != 0) return rc;
+    auto session = ctx_.dao().Session();
+    int rc       = RequirePermission(req, resp, "user.edit");
+    if (rc != 0)
+        return rc;
 
     auto id_str = req->GetParam("id");
-    int64_t id = std::atoll(id_str.c_str());
+    int64_t id  = std::atoll(id_str.c_str());
     if (id <= 0) {
         return JsonError(resp, api_err::kInvalidUserId);
     }
@@ -571,16 +591,18 @@ int AdminServer::HandleResetPassword(HttpRequest* req, HttpResponse* resp) {
 }
 
 int AdminServer::HandleBanUser(HttpRequest* req, HttpResponse* resp) {
-    int rc = RequirePermission(req, resp, "user.ban");
-    if (rc != 0) return rc;
+    auto session = ctx_.dao().Session();
+    int rc       = RequirePermission(req, resp, "user.ban");
+    if (rc != 0)
+        return rc;
 
     auto id_str = req->GetParam("id");
-    int64_t id = std::atoll(id_str.c_str());
+    int64_t id  = std::atoll(id_str.c_str());
     if (id <= 0) {
         return JsonError(resp, api_err::kInvalidUserId);
     }
 
-    auto body_opt = ParseJsonBody(req);
+    auto body_opt      = ParseJsonBody(req);
     std::string reason = body_opt ? body_opt->value("reason", "") : "";
 
     if (!ctx_.dao().User().UpdateStatus(id, 2)) {
@@ -589,21 +611,23 @@ int AdminServer::HandleBanUser(HttpRequest* req, HttpResponse* resp) {
 
     // 踢下线
     auto conns = ctx_.conn_manager().GetConns(id);
-    for (auto& c : conns) c->Close();
+    for (auto& c : conns)
+        c->Close();
 
     int64_t admin_id = GetCurrentAdminId(req);
-    WriteAuditLog(admin_id, "user.ban", "user", id,
-                  nlohmann::json({{"reason", reason}}).dump(), GetClientIp(req));
+    WriteAuditLog(admin_id, "user.ban", "user", id, nlohmann::json({{"reason", reason}}).dump(), GetClientIp(req));
 
     return JsonOk(resp);
 }
 
 int AdminServer::HandleUnbanUser(HttpRequest* req, HttpResponse* resp) {
-    int rc = RequirePermission(req, resp, "user.ban");
-    if (rc != 0) return rc;
+    auto session = ctx_.dao().Session();
+    int rc       = RequirePermission(req, resp, "user.ban");
+    if (rc != 0)
+        return rc;
 
     auto id_str = req->GetParam("id");
-    int64_t id = std::atoll(id_str.c_str());
+    int64_t id  = std::atoll(id_str.c_str());
     if (id <= 0) {
         return JsonError(resp, api_err::kInvalidUserId);
     }
@@ -620,10 +644,11 @@ int AdminServer::HandleUnbanUser(HttpRequest* req, HttpResponse* resp) {
 
 int AdminServer::HandleKickUser(HttpRequest* req, HttpResponse* resp) {
     int rc = RequirePermission(req, resp, "user.ban");
-    if (rc != 0) return rc;
+    if (rc != 0)
+        return rc;
 
     auto id_str = req->GetParam("id");
-    int64_t id = std::atoll(id_str.c_str());
+    int64_t id  = std::atoll(id_str.c_str());
     if (id <= 0) {
         return JsonError(resp, api_err::kInvalidUserId);
     }
@@ -633,7 +658,8 @@ int AdminServer::HandleKickUser(HttpRequest* req, HttpResponse* resp) {
         return JsonError(resp, api_err::kUserNotOnline);
     }
 
-    for (auto& c : conns) c->Close();
+    for (auto& c : conns)
+        c->Close();
 
     int64_t admin_id = GetCurrentAdminId(req);
     WriteAuditLog(admin_id, "user.kick", "user", id, "{}", GetClientIp(req));
@@ -647,13 +673,16 @@ int AdminServer::HandleKickUser(HttpRequest* req, HttpResponse* resp) {
 // ============================================================
 
 int AdminServer::HandleListMessages(HttpRequest* req, HttpResponse* resp) {
-    int rc = RequirePermission(req, resp, "msg.delete_all");
-    if (rc != 0) return rc;
+    auto session = ctx_.dao().Session();
+    int rc       = RequirePermission(req, resp, "msg.delete_all");
+    if (rc != 0)
+        return rc;
 
-    auto pg = ParsePagination(req);
+    auto pg                 = ParsePagination(req);
     int64_t conversation_id = 0;
-    auto cid_str = req->GetParam("conversation_id");
-    if (!cid_str.empty()) conversation_id = std::atoll(cid_str.c_str());
+    auto cid_str            = req->GetParam("conversation_id");
+    if (!cid_str.empty())
+        conversation_id = std::atoll(cid_str.c_str());
 
     std::string start_time = req->GetParam("start_time");
     std::string end_time   = req->GetParam("end_time");
@@ -665,7 +694,7 @@ int AdminServer::HandleListMessages(HttpRequest* req, HttpResponse* resp) {
     auto resolve_uid = [&](int64_t id) -> const std::string& {
         auto [it, inserted] = uid_cache.try_emplace(id);
         if (inserted) {
-            auto u = ctx_.dao().User().FindById(id);
+            auto u     = ctx_.dao().User().FindById(id);
             it->second = u ? u->uid : "";
         }
         return it->second;
@@ -690,16 +719,18 @@ int AdminServer::HandleListMessages(HttpRequest* req, HttpResponse* resp) {
 }
 
 int AdminServer::HandleRecallMessage(HttpRequest* req, HttpResponse* resp) {
-    int rc = RequirePermission(req, resp, "msg.delete_all");
-    if (rc != 0) return rc;
+    auto session = ctx_.dao().Session();
+    int rc       = RequirePermission(req, resp, "msg.delete_all");
+    if (rc != 0)
+        return rc;
 
     auto id_str = req->GetParam("id");
-    int64_t id = std::atoll(id_str.c_str());
+    int64_t id  = std::atoll(id_str.c_str());
     if (id <= 0) {
         return JsonError(resp, api_err::kInvalidMessageId);
     }
 
-    auto body_opt = ParseJsonBody(req);
+    auto body_opt      = ParseJsonBody(req);
     std::string reason = body_opt ? body_opt->value("reason", "") : "";
 
     auto msg = ctx_.dao().Message().FindById(id);
@@ -724,13 +755,16 @@ int AdminServer::HandleRecallMessage(HttpRequest* req, HttpResponse* resp) {
 // ============================================================
 
 int AdminServer::HandleListAuditLogs(HttpRequest* req, HttpResponse* resp) {
-    int rc = RequirePermission(req, resp, "admin.audit");
-    if (rc != 0) return rc;
+    auto session = ctx_.dao().Session();
+    int rc       = RequirePermission(req, resp, "admin.audit");
+    if (rc != 0)
+        return rc;
 
-    auto pg = ParsePagination(req);
+    auto pg          = ParsePagination(req);
     int64_t admin_id = 0;
-    auto aid_str = req->GetParam("admin_id");
-    if (!aid_str.empty()) admin_id = std::atoll(aid_str.c_str());
+    auto aid_str     = req->GetParam("admin_id");
+    if (!aid_str.empty())
+        admin_id = std::atoll(aid_str.c_str());
 
     std::string action     = req->GetParam("action");
     std::string start_time = req->GetParam("start_time");
@@ -743,7 +777,7 @@ int AdminServer::HandleListAuditLogs(HttpRequest* req, HttpResponse* resp) {
     auto resolve_uid = [&](int64_t id) -> const std::string& {
         auto [it, inserted] = uid_cache.try_emplace(id);
         if (inserted) {
-            auto a = ctx_.dao().AdminAccount().FindById(id);
+            auto a     = ctx_.dao().AdminAccount().FindById(id);
             it->second = a ? a->uid : "";
         }
         return it->second;
@@ -760,7 +794,8 @@ int AdminServer::HandleListAuditLogs(HttpRequest* req, HttpResponse* resp) {
         item["target_id"]    = log.target_id;
         // detail 是 JSON 字符串，解析后嵌入
         item["detail"] = nlohmann::json::parse(log.detail, nullptr, false);
-        if (item["detail"].is_discarded()) item["detail"] = nlohmann::json::object();
+        if (item["detail"].is_discarded())
+            item["detail"] = nlohmann::json::object();
         item["ip"]         = log.ip;
         item["created_at"] = log.created_at;
         items.push_back(item);
@@ -769,4 +804,4 @@ int AdminServer::HandleListAuditLogs(HttpRequest* req, HttpResponse* resp) {
     return JsonOk(resp, PaginatedResult(items, result.total, pg));
 }
 
-} // namespace nova
+}  // namespace nova

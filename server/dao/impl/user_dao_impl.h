@@ -13,8 +13,7 @@ public:
 
     std::optional<User> FindByUid(const std::string& uid) override;
     std::optional<User> FindById(int64_t id) override;
-    UserListResult ListUsers(const std::string& keyword, int status,
-                             int page, int page_size) override;
+    UserListResult ListUsers(const std::string& keyword, int status, int page, int page_size) override;
     bool Insert(User& user) override;
     bool UpdateStatus(int64_t id, int8_t status) override;
     bool UpdatePassword(int64_t id, const std::string& password_hash) override;
@@ -25,4 +24,4 @@ private:
     DbMgr& db_;
 };
 
-} // namespace nova
+}  // namespace nova

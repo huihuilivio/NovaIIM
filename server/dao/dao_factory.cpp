@@ -21,4 +21,4 @@ std::unique_ptr<DaoFactory> CreateDaoFactory(const DatabaseConfig& config) {
     throw std::runtime_error("unsupported database type: " + config.type);
 }
 
-} // namespace nova
+}  // namespace nova

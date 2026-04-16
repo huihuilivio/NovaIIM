@@ -9,20 +9,21 @@ namespace nova {
 template <typename DbMgr>
 std::optional<User> UserDaoImplT<DbMgr>::FindByUid(const std::string& uid) {
     auto res = db_.DB().query_s<User>("uid=? AND status!=3", uid);
-    if (res.empty()) return std::nullopt;
+    if (res.empty())
+        return std::nullopt;
     return res[0];
 }
 
 template <typename DbMgr>
 std::optional<User> UserDaoImplT<DbMgr>::FindById(int64_t id) {
     auto res = db_.DB().query_s<User>("id=? AND status!=3", id);
-    if (res.empty()) return std::nullopt;
+    if (res.empty())
+        return std::nullopt;
     return res[0];
 }
 
 template <typename DbMgr>
-UserListResult UserDaoImplT<DbMgr>::ListUsers(const std::string& keyword, int status,
-                                       int page, int page_size) {
+UserListResult UserDaoImplT<DbMgr>::ListUsers(const std::string& keyword, int status, int page, int page_size) {
     UserListResult result;
     int offset = (page - 1) * page_size;
 
@@ -33,7 +34,8 @@ UserListResult UserDaoImplT<DbMgr>::ListUsers(const std::string& keyword, int st
     if (!keyword.empty()) {
         escaped.reserve(keyword.size());
         for (char c : keyword) {
-            if (c == '%' || c == '_' || c == '\\') escaped += '\\';
+            if (c == '%' || c == '_' || c == '\\')
+                escaped += '\\';
             escaped += c;
         }
     }
@@ -50,14 +52,14 @@ UserListResult UserDaoImplT<DbMgr>::ListUsers(const std::string& keyword, int st
         "AND (? = '' OR uid LIKE ? ESCAPE '\\' OR nickname LIKE ? ESCAPE '\\') "
         "ORDER BY id DESC LIMIT ? OFFSET ?";
 
-    auto count_res = db_.DB().query_s<std::tuple<int64_t>>(
-        kCountSql, status, status, like, like, like);
+    auto&& conn = db_.DB();
+
+    auto count_res = conn.query_s<std::tuple<int64_t>>(kCountSql, status, status, like, like, like);
     if (!count_res.empty()) {
         result.total = std::get<0>(count_res[0]);
     }
 
-    result.items = db_.DB().query_s<User>(
-        kWhere, status, status, like, like, like, page_size, offset);
+    result.items = conn.query_s<User>(kWhere, status, status, like, like, like, page_size, offset);
 
     return result;
 }
@@ -65,25 +67,30 @@ UserListResult UserDaoImplT<DbMgr>::ListUsers(const std::string& keyword, int st
 template <typename DbMgr>
 bool UserDaoImplT<DbMgr>::Insert(User& user) {
     auto id = db_.DB().get_insert_id_after_insert(user);
-    if (id == 0) return false;
+    if (id == 0)
+        return false;
     user.id = static_cast<int64_t>(id);
     return true;
 }
 
 template <typename DbMgr>
 bool UserDaoImplT<DbMgr>::UpdateStatus(int64_t id, int8_t status) {
-    auto res = db_.DB().query_s<User>("id=?", id);
-    if (res.empty()) return false;
+    auto&& conn = db_.DB();
+    auto res    = conn.query_s<User>("id=?", id);
+    if (res.empty())
+        return false;
     res[0].status = status;
-    return db_.DB().update_some<&User::status>(res[0]) == 1;
+    return conn.update_some<&User::status>(res[0]) == 1;
 }
 
 template <typename DbMgr>
 bool UserDaoImplT<DbMgr>::UpdatePassword(int64_t id, const std::string& password_hash) {
-    auto res = db_.DB().query_s<User>("id=?", id);
-    if (res.empty()) return false;
+    auto&& conn = db_.DB();
+    auto res    = conn.query_s<User>("id=?", id);
+    if (res.empty())
+        return false;
     res[0].password_hash = password_hash;
-    return db_.DB().update_some<&User::password_hash>(res[0]) == 1;
+    return conn.update_some<&User::password_hash>(res[0]) == 1;
 }
 
 template <typename DbMgr>
@@ -102,4 +109,4 @@ template class UserDaoImplT<SqliteDbManager>;
 template class UserDaoImplT<MysqlDbManager>;
 #endif
 
-} // namespace nova
+}  // namespace nova

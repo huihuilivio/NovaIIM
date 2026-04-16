@@ -27,11 +27,11 @@ namespace nova::log {
 struct LogOptions {
     spdlog::level::level_enum level       = spdlog::level::debug;
     spdlog::level::level_enum flush_level = spdlog::level::warn;
-    std::string pattern    = "[%Y-%m-%d %H:%M:%S.%e] [%^%l%$] [%n] [%s:%#] %v";
-    std::string file;                            // 空则不写文件
-    std::size_t max_size   = 10 * 1024 * 1024;   // 单文件最大字节
-    std::size_t max_files  = 3;                   // 保留文件数
-    bool rotate_on_open    = false;               // 启动时立即轮转
+    std::string pattern                   = "[%Y-%m-%d %H:%M:%S.%e] [%^%l%$] [%n] [%s:%#] %v";
+    std::string file;                          // 空则不写文件
+    std::size_t max_size  = 10 * 1024 * 1024;  // 单文件最大字节
+    std::size_t max_files = 3;                 // 保留文件数
+    bool rotate_on_open   = false;             // 启动时立即轮转
 };
 
 // 初始化日志系统（控制台 + 可选文件轮转）

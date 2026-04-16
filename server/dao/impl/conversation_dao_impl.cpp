@@ -24,11 +24,11 @@ int64_t ConversationDaoImplT<DbMgr>::IncrMaxSeq(int64_t conversation_id) {
     // 事务守卫：未 COMMIT 时自动 ROLLBACK
     bool committed = false;
     NOVA_DEFER {
-        if (!committed) conn.execute("ROLLBACK");
+        if (!committed)
+            conn.execute("ROLLBACK");
     };
 
-    std::string sql = "UPDATE conversations SET max_seq = max_seq + 1 WHERE id = "
-                      + std::to_string(conversation_id);
+    std::string sql = "UPDATE conversations SET max_seq = max_seq + 1 WHERE id = " + std::to_string(conversation_id);
     if (!conn.execute(sql)) {
         return -1;
     }
@@ -59,18 +59,21 @@ std::vector<ConversationMember> ConversationDaoImplT<DbMgr>::GetMembersByConvers
 template <typename DbMgr>
 std::optional<Conversation> ConversationDaoImplT<DbMgr>::FindById(int64_t id) {
     auto res = db_.DB().query_s<Conversation>("id=?", id);
-    if (res.empty()) return std::nullopt;
+    if (res.empty())
+        return std::nullopt;
     return res[0];
 }
 
 template <typename DbMgr>
 std::vector<Conversation> ConversationDaoImplT<DbMgr>::FindByIds(const std::vector<int64_t>& ids) {
-    if (ids.empty()) return {};
+    if (ids.empty())
+        return {};
 
     // 构建 IN 子句（int64_t 转字符串，无注入风险）
     std::string in_clause = "id IN (";
     for (size_t i = 0; i < ids.size(); ++i) {
-        if (i > 0) in_clause += ",";
+        if (i > 0)
+            in_clause += ",";
         in_clause += std::to_string(ids[i]);
     }
     in_clause += ")";
@@ -80,30 +83,25 @@ std::vector<Conversation> ConversationDaoImplT<DbMgr>::FindByIds(const std::vect
 
 template <typename DbMgr>
 bool ConversationDaoImplT<DbMgr>::IsMember(int64_t conversation_id, int64_t user_id) {
-    auto res = db_.DB().query_s<ConversationMember>(
-        "conversation_id=? AND user_id=?", conversation_id, user_id);
+    auto res = db_.DB().query_s<ConversationMember>("conversation_id=? AND user_id=?", conversation_id, user_id);
     return !res.empty();
 }
 
 template <typename DbMgr>
 bool ConversationDaoImplT<DbMgr>::UpdateLastReadSeq(int64_t conversation_id, int64_t user_id, int64_t seq) {
     // 原子更新：只允许向前推进（WHERE last_read_seq < ? 防止回退）
-    std::string sql = "UPDATE conversation_members SET last_read_seq = "
-                      + std::to_string(seq)
-                      + " WHERE conversation_id = " + std::to_string(conversation_id)
-                      + " AND user_id = " + std::to_string(user_id)
-                      + " AND last_read_seq < " + std::to_string(seq);
+    std::string sql = "UPDATE conversation_members SET last_read_seq = " + std::to_string(seq) +
+                      " WHERE conversation_id = " + std::to_string(conversation_id) +
+                      " AND user_id = " + std::to_string(user_id) + " AND last_read_seq < " + std::to_string(seq);
     return db_.DB().execute(sql);
 }
 
 template <typename DbMgr>
 bool ConversationDaoImplT<DbMgr>::UpdateLastAckSeq(int64_t conversation_id, int64_t user_id, int64_t seq) {
     // 原子更新：只允许向前推进（WHERE last_ack_seq < ? 防止回退）
-    std::string sql = "UPDATE conversation_members SET last_ack_seq = "
-                      + std::to_string(seq)
-                      + " WHERE conversation_id = " + std::to_string(conversation_id)
-                      + " AND user_id = " + std::to_string(user_id)
-                      + " AND last_ack_seq < " + std::to_string(seq);
+    std::string sql = "UPDATE conversation_members SET last_ack_seq = " + std::to_string(seq) +
+                      " WHERE conversation_id = " + std::to_string(conversation_id) +
+                      " AND user_id = " + std::to_string(user_id) + " AND last_ack_seq < " + std::to_string(seq);
     return db_.DB().execute(sql);
 }
 
@@ -113,4 +111,4 @@ template class ConversationDaoImplT<SqliteDbManager>;
 template class ConversationDaoImplT<MysqlDbManager>;
 #endif
 
-} // namespace nova
+}  // namespace nova

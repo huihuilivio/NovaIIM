@@ -17,4 +17,4 @@ public:
     virtual bool HasPermission(int64_t user_id, const std::string& code) = 0;
 };
 
-} // namespace nova
+}  // namespace nova

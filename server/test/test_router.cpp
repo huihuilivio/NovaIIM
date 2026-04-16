@@ -15,11 +15,11 @@ public:
 
 TEST(RouterTest, DispatchRegisteredCmd) {
     Router router;
-    bool called = false;
+    bool called           = false;
     uint16_t received_cmd = 0;
 
     router.Register(Cmd::kSendMsg, [&](ConnectionPtr /*conn*/, Packet& pkt) {
-        called = true;
+        called       = true;
         received_cmd = pkt.cmd;
     });
     router.Freeze();
@@ -42,7 +42,7 @@ TEST(RouterTest, DispatchUnknownCmdDoesNotCrash) {
 
     auto conn = std::make_shared<MockConnection>();
     Packet pkt;
-    pkt.cmd = 0xFFFF; // 未注册命令
+    pkt.cmd = 0xFFFF;  // 未注册命令
 
     // 不应崩溃
     EXPECT_NO_THROW(router.Dispatch(conn, pkt));
@@ -51,7 +51,7 @@ TEST(RouterTest, DispatchUnknownCmdDoesNotCrash) {
 TEST(RouterTest, MultipleHandlers) {
     Router router;
     int login_count = 0;
-    int msg_count = 0;
+    int msg_count   = 0;
 
     router.Register(Cmd::kLogin, [&](ConnectionPtr, Packet&) { ++login_count; });
     router.Register(Cmd::kSendMsg, [&](ConnectionPtr, Packet&) { ++msg_count; });
@@ -119,5 +119,5 @@ TEST(RouterTest, AuthGuardAllowsRegister) {
     EXPECT_TRUE(called);  // Register should pass even when unauthenticated
 }
 
-} // namespace
-} // namespace nova
+}  // namespace
+}  // namespace nova

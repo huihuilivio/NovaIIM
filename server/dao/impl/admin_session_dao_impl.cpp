@@ -14,23 +14,26 @@ bool AdminSessionDaoImplT<DbMgr>::Insert(const AdminSession& session) {
 template <typename DbMgr>
 bool AdminSessionDaoImplT<DbMgr>::IsRevoked(const std::string& token_hash) {
     auto res = db_.DB().query_s<AdminSession>("token_hash=?", token_hash);
-    if (res.empty()) return true;   // session not found → treat as revoked (fail-closed)
+    if (res.empty())
+        return true;  // session not found → treat as revoked (fail-closed)
     return res[0].revoked == 1;
 }
 
 template <typename DbMgr>
 bool AdminSessionDaoImplT<DbMgr>::RevokeByAdmin(int64_t admin_id) {
-    std::string sql = "UPDATE admin_sessions SET revoked = 1 WHERE admin_id = "
-                      + std::to_string(admin_id) + " AND revoked = 0";
+    std::string sql = "UPDATE admin_sessions SET revoked = 1 WHERE admin_id = " + std::to_string(admin_id) +
+                      " AND revoked = 0";
     return db_.DB().execute(sql);
 }
 
 template <typename DbMgr>
 bool AdminSessionDaoImplT<DbMgr>::RevokeByTokenHash(const std::string& token_hash) {
-    auto sessions = db_.DB().query_s<AdminSession>("token_hash=?", token_hash);
-    if (sessions.empty()) return false;
+    auto&& conn   = db_.DB();
+    auto sessions = conn.query_s<AdminSession>("token_hash=?", token_hash);
+    if (sessions.empty())
+        return false;
     sessions[0].revoked = 1;
-    return db_.DB().update_some<&AdminSession::revoked>(sessions[0]) == 1;
+    return conn.update_some<&AdminSession::revoked>(sessions[0]) == 1;
 }
 
 // 显式实例化
@@ -39,4 +42,4 @@ template class AdminSessionDaoImplT<SqliteDbManager>;
 template class AdminSessionDaoImplT<MysqlDbManager>;
 #endif
 
-} // namespace nova
+}  // namespace nova

@@ -16,13 +16,15 @@ public:
     explicit MysqlDaoFactory(const DatabaseConfig& config);
     ~MysqlDaoFactory() override;
 
-    UserDao&         User()         override;
-    MessageDao&      Message()      override;
+    UserDao& User() override;
+    MessageDao& Message() override;
     ConversationDao& Conversation() override;
-    AuditLogDao&     AuditLog()     override;
+    AuditLogDao& AuditLog() override;
     AdminSessionDao& AdminSession() override;
     AdminAccountDao& AdminAccount() override;
-    RbacDao&         Rbac()         override;
+    RbacDao& Rbac() override;
+
+    std::unique_ptr<DaoScopedConn> Session() override;
 
 private:
     struct Impl;

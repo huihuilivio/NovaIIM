@@ -16,7 +16,8 @@ static constexpr const char* kLogTag = "MsgService";
 
 proto::SendMsgAck* MsgService::DedupFind(const std::string& key) {
     auto it = dedup_index_.find(key);
-    if (it == dedup_index_.end()) return nullptr;
+    if (it == dedup_index_.end())
+        return nullptr;
     // 移到最新（back）
     dedup_order_.splice(dedup_order_.end(), dedup_order_, it->second);
     return &it->second->second;
@@ -44,9 +45,10 @@ void MsgService::DedupRemoveInflight(const std::string& key) {
 }
 
 bool MsgService::TryMarkInflight(const std::string& key) {
-    auto now = std::chrono::steady_clock::now();
+    auto now            = std::chrono::steady_clock::now();
     auto [it, inserted] = in_flight_.emplace(key, now);
-    if (inserted) return true;
+    if (inserted)
+        return true;
     // 已存在：检查是否超时（防止卡死的线程永久阻塞后续请求）
     if (now - it->second >= kInflightTimeout) {
         it->second = now;  // 续期，允许本线程接管
@@ -66,13 +68,15 @@ void MsgService::DedupRemoveInflightIfNeeded(const std::string& key) {
 // ---- 业务处理 ----
 
 void MsgService::HandleSendMsg(ConnectionPtr conn, Packet& pkt) {
-    uint32_t seq = pkt.seq;
+    auto session      = ctx_.dao().Session();
+    uint32_t seq      = pkt.seq;
     int64_t sender_id = conn->user_id();
-    auto uid = static_cast<uint64_t>(sender_id);
+    auto uid          = static_cast<uint64_t>(sender_id);
 
     // 未认证检查
     if (sender_id == 0) {
-        SendPacket(conn, Cmd::kSendMsgAck, seq, 0, proto::SendMsgAck{ec::kNotAuthenticated.code, ec::kNotAuthenticated.msg});
+        SendPacket(conn, Cmd::kSendMsgAck, seq, 0,
+                   proto::SendMsgAck{ec::kNotAuthenticated.code, ec::kNotAuthenticated.msg});
         return;
     }
 
@@ -84,17 +88,20 @@ void MsgService::HandleSendMsg(ConnectionPtr conn, Packet& pkt) {
     }
 
     if (req->content.empty()) {
-        SendPacket(conn, Cmd::kSendMsgAck, seq, uid, proto::SendMsgAck{ec::msg::kContentEmpty.code, ec::msg::kContentEmpty.msg});
+        SendPacket(conn, Cmd::kSendMsgAck, seq, uid,
+                   proto::SendMsgAck{ec::msg::kContentEmpty.code, ec::msg::kContentEmpty.msg});
         return;
     }
 
     if (req->content.size() > 4096) {
-        SendPacket(conn, Cmd::kSendMsgAck, seq, uid, proto::SendMsgAck{ec::msg::kContentTooLarge.code, ec::msg::kContentTooLarge.msg});
+        SendPacket(conn, Cmd::kSendMsgAck, seq, uid,
+                   proto::SendMsgAck{ec::msg::kContentTooLarge.code, ec::msg::kContentTooLarge.msg});
         return;
     }
 
     if (req->conversation_id <= 0) {
-        SendPacket(conn, Cmd::kSendMsgAck, seq, uid, proto::SendMsgAck{ec::msg::kInvalidConversation.code, ec::msg::kInvalidConversation.msg});
+        SendPacket(conn, Cmd::kSendMsgAck, seq, uid,
+                   proto::SendMsgAck{ec::msg::kInvalidConversation.code, ec::msg::kInvalidConversation.msg});
         return;
     }
 
@@ -117,7 +124,8 @@ void MsgService::HandleSendMsg(ConnectionPtr conn, Packet& pkt) {
     // 检查发送者是否为会话成员
     if (!ctx_.dao().Conversation().IsMember(req->conversation_id, sender_id)) {
         DedupRemoveInflightIfNeeded(req->client_msg_id);
-        SendPacket(conn, Cmd::kSendMsgAck, seq, uid, proto::SendMsgAck{ec::msg::kNotMember.code, ec::msg::kNotMember.msg});
+        SendPacket(conn, Cmd::kSendMsgAck, seq, uid,
+                   proto::SendMsgAck{ec::msg::kNotMember.code, ec::msg::kNotMember.msg});
         return;
     }
 
@@ -125,19 +133,19 @@ void MsgService::HandleSendMsg(ConnectionPtr conn, Packet& pkt) {
     int64_t server_seq = GenerateSeq(req->conversation_id);
     if (server_seq < 0) {
         DedupRemoveInflightIfNeeded(req->client_msg_id);
-        SendPacket(conn, Cmd::kSendMsgAck, seq, uid, proto::SendMsgAck{ec::msg::kConversationNotFound.code, ec::msg::kConversationNotFound.msg});
+        SendPacket(conn, Cmd::kSendMsgAck, seq, uid,
+                   proto::SendMsgAck{ec::msg::kConversationNotFound.code, ec::msg::kConversationNotFound.msg});
         return;
     }
 
     // 3. 构建消息写入 DB
-    auto now_tp = std::chrono::system_clock::now();
-    auto epoch_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-        now_tp.time_since_epoch()).count();
+    auto now_tp   = std::chrono::system_clock::now();
+    auto epoch_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now_tp.time_since_epoch()).count();
 
     // 生成 ISO-8601 时间戳，确保 Ack 返回的 epoch_ms 与 DB 记录一致
     auto now_t = std::chrono::system_clock::to_time_t(now_tp);
     char time_buf[32];
-    struct tm tm_buf{};
+    struct tm tm_buf {};
 #ifdef _MSC_VER
     gmtime_s(&tm_buf, &now_t);
 #else
@@ -156,10 +164,10 @@ void MsgService::HandleSendMsg(ConnectionPtr conn, Packet& pkt) {
     msg.created_at      = time_buf;
 
     if (!ctx_.dao().Message().Insert(msg)) {
-        NOVA_NLOG_ERROR(kLogTag, "failed to insert message conv={} sender={}",
-                        req->conversation_id, sender_id);
+        NOVA_NLOG_ERROR(kLogTag, "failed to insert message conv={} sender={}", req->conversation_id, sender_id);
         DedupRemoveInflightIfNeeded(req->client_msg_id);
-        SendPacket(conn, Cmd::kSendMsgAck, seq, uid, proto::SendMsgAck{ec::kDatabaseError.code, ec::kDatabaseError.msg});
+        SendPacket(conn, Cmd::kSendMsgAck, seq, uid,
+                   proto::SendMsgAck{ec::kDatabaseError.code, ec::kDatabaseError.msg});
         return;
     }
 
@@ -176,29 +184,30 @@ void MsgService::HandleSendMsg(ConnectionPtr conn, Packet& pkt) {
     SendPacket(conn, Cmd::kSendMsgAck, seq, uid, ack);
 
     // 6. 构建 PushMsg 并一次性编码，广播时避免重复编码
-    proto::PushMsg push{req->conversation_id, sender_id, req->content,
-                        server_seq, epoch_ms, req->msg_type};
+    proto::PushMsg push{req->conversation_id, sender_id, req->content, server_seq, epoch_ms, req->msg_type};
 
     Packet push_pkt;
-    push_pkt.cmd = static_cast<uint16_t>(Cmd::kPushMsg);
-    push_pkt.seq = 0;
-    push_pkt.uid = 0;
+    push_pkt.cmd  = static_cast<uint16_t>(Cmd::kPushMsg);
+    push_pkt.seq  = 0;
+    push_pkt.uid  = 0;
     push_pkt.body = proto::Serialize(push);
 
     std::string encoded = push_pkt.Encode();
 
     BroadcastEncoded(sender_id, conn->device_id(), req->conversation_id, encoded);
 
-    NOVA_NLOG_DEBUG(kLogTag, "msg sent: conv={}, sender={}, seq={}",
-                    req->conversation_id, sender_id, server_seq);
+    NOVA_NLOG_DEBUG(kLogTag, "msg sent: conv={}, sender={}, seq={}", req->conversation_id, sender_id, server_seq);
 }
 
 void MsgService::HandleDeliverAck(ConnectionPtr conn, Packet& pkt) {
     int64_t user_id = conn->user_id();
-    if (user_id == 0) return;
+    if (user_id == 0)
+        return;
 
-    auto req = proto::Deserialize<proto::DeliverAckReq>(pkt.body);
-    if (!req) return;
+    auto session = ctx_.dao().Session();
+    auto req     = proto::Deserialize<proto::DeliverAckReq>(pkt.body);
+    if (!req)
+        return;
 
     if (req->conversation_id > 0 && req->server_seq > 0) {
         // 仅处理用户所属会话的 ACK
@@ -210,18 +219,20 @@ void MsgService::HandleDeliverAck(ConnectionPtr conn, Packet& pkt) {
 
 void MsgService::HandleReadAck(ConnectionPtr conn, Packet& pkt) {
     int64_t user_id = conn->user_id();
-    if (user_id == 0) return;
+    if (user_id == 0)
+        return;
 
-    auto req = proto::Deserialize<proto::ReadAckReq>(pkt.body);
-    if (!req) return;
+    auto session = ctx_.dao().Session();
+    auto req     = proto::Deserialize<proto::ReadAckReq>(pkt.body);
+    if (!req)
+        return;
 
     if (req->conversation_id > 0 && req->read_up_to_seq > 0) {
         // 仅处理用户所属会话的已读回执
         if (ctx_.dao().Conversation().IsMember(req->conversation_id, user_id)) {
             ctx_.dao().Conversation().UpdateLastReadSeq(req->conversation_id, user_id, req->read_up_to_seq);
 
-            SendPacket(conn, Cmd::kReadAck, pkt.seq,
-                       static_cast<uint64_t>(user_id), proto::RspBase{ec::kOk.code, {}});
+            SendPacket(conn, Cmd::kReadAck, pkt.seq, static_cast<uint64_t>(user_id), proto::RspBase{ec::kOk.code, {}});
         }
     }
 }
@@ -230,8 +241,8 @@ int64_t MsgService::GenerateSeq(int64_t conversation_id) {
     return ctx_.dao().Conversation().IncrMaxSeq(conversation_id);
 }
 
-void MsgService::BroadcastEncoded(int64_t sender_id, const std::string& exclude_device,
-                                  int64_t conversation_id, const std::string& encoded) {
+void MsgService::BroadcastEncoded(int64_t sender_id, const std::string& exclude_device, int64_t conversation_id,
+                                  const std::string& encoded) {
     auto members = ctx_.dao().Conversation().GetMembersByConversation(conversation_id);
     for (const auto& member : members) {
         auto conns = ctx_.conn_manager().GetConns(member.user_id);
@@ -246,4 +257,4 @@ void MsgService::BroadcastEncoded(int64_t sender_id, const std::string& exclude_
     }
 }
 
-} // namespace nova
+}  // namespace nova

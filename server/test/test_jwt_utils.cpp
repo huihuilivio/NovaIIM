@@ -11,7 +11,7 @@ namespace nova {
 namespace {
 
 static constexpr const char* kSecret = "test-secret-key-32bytes-minimum!";
-static constexpr int64_t kAdminId = 42;
+static constexpr int64_t kAdminId    = 42;
 
 // ============================================================
 // Sign / Verify 正流程
@@ -25,7 +25,7 @@ TEST(JwtUtilsTest, SignProducesNonEmptyToken) {
 }
 
 TEST(JwtUtilsTest, VerifyValidTokenReturnsCorrectAdminId) {
-    auto token = JwtUtils::Sign(kAdminId, kSecret, 3600);
+    auto token  = JwtUtils::Sign(kAdminId, kSecret, 3600);
     auto claims = JwtUtils::Verify(token, kSecret);
     ASSERT_TRUE(claims.has_value());
     EXPECT_EQ(claims->admin_id, kAdminId);
@@ -33,8 +33,8 @@ TEST(JwtUtilsTest, VerifyValidTokenReturnsCorrectAdminId) {
 
 TEST(JwtUtilsTest, VerifyPopulatesIatAndExp) {
     auto before = std::time(nullptr);
-    auto token = JwtUtils::Sign(kAdminId, kSecret, 300);
-    auto after = std::time(nullptr);
+    auto token  = JwtUtils::Sign(kAdminId, kSecret, 300);
+    auto after  = std::time(nullptr);
 
     auto claims = JwtUtils::Verify(token, kSecret);
     ASSERT_TRUE(claims.has_value());
@@ -65,7 +65,7 @@ TEST(JwtUtilsTest, DifferentAdminIdsProduceDifferentTokens) {
 // ============================================================
 
 TEST(JwtUtilsTest, WrongSecretReturnsNullopt) {
-    auto token = JwtUtils::Sign(kAdminId, kSecret);
+    auto token  = JwtUtils::Sign(kAdminId, kSecret);
     auto claims = JwtUtils::Verify(token, "wrong-secret!!!!!!!!!!!!!!!!!!");
     EXPECT_FALSE(claims.has_value());
 }
@@ -93,8 +93,8 @@ TEST(JwtUtilsTest, TamperedPayloadReturnsNullopt) {
 
     // 将 payload 最后一个字符改掉（base64url 字符替换）
     std::string tampered = token;
-    char& c = tampered[dot2 - 1];
-    c = (c == 'A') ? 'B' : 'A';
+    char& c              = tampered[dot2 - 1];
+    c                    = (c == 'A') ? 'B' : 'A';
 
     auto claims = JwtUtils::Verify(tampered, kSecret);
     EXPECT_FALSE(claims.has_value());
@@ -139,10 +139,10 @@ TEST(JwtUtilsTest, HS512RoundTrip) {
 
 TEST(JwtUtilsTest, AlgorithmMismatchReturnsNullopt) {
     // 用 HS256 签发，用 HS512 验证 → 应失败
-    auto token = JwtUtils::Sign(kAdminId, kSecret, 3600, JwtAlgorithm::HS256);
+    auto token  = JwtUtils::Sign(kAdminId, kSecret, 3600, JwtAlgorithm::HS256);
     auto claims = JwtUtils::Verify(token, kSecret, JwtAlgorithm::HS512);
     EXPECT_FALSE(claims.has_value());
 }
 
-} // namespace
-} // namespace nova
+}  // namespace
+}  // namespace nova

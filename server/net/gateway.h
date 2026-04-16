@@ -21,7 +21,7 @@ public:
     ~Gateway();
 
     // 禁止拷贝/移动（回调中捕获了 this）
-    Gateway(const Gateway&) = delete;
+    Gateway(const Gateway&)            = delete;
     Gateway& operator=(const Gateway&) = delete;
 
     // 设置数据包处理回调（由 Router 注册，必须在 Start 之前调用）
@@ -44,8 +44,8 @@ private:
     PacketHandler handler_;
     std::unique_ptr<hv::TcpServer> server_;
     ServerContext& ctx_;
-    int  worker_threads_ = 4;
-    int  heartbeat_ms_   = 30000;  // 30s 心跳超时
+    int worker_threads_ = 4;
+    int heartbeat_ms_   = 30000;  // 30s 心跳超时
 };
 
-} // namespace nova
+}  // namespace nova

@@ -33,4 +33,4 @@ private:
     }
 };
 
-} // namespace nova
+}  // namespace nova

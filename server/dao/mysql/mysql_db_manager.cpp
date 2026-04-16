@@ -10,21 +10,48 @@
 
 namespace nova {
 
+// ---- 线程级连接固定 ----
+static thread_local ormpp::dbng<ormpp::mysql>* g_pinned = nullptr;
+
+/// RAII 会话实现：固定一条连接到当前线程
+class MysqlScopedConn final : public DaoScopedConn {
+public:
+    explicit MysqlScopedConn(MysqlDbManager& mgr) : mgr_(mgr) {
+        if (!g_pinned) {
+            owned_   = mgr_.AcquireFromPool();
+            g_pinned = owned_.get();
+        }
+    }
+
+    ~MysqlScopedConn() override {
+        if (owned_) {
+            g_pinned = nullptr;
+            mgr_.ReturnConn(std::move(owned_));
+        }
+    }
+
+private:
+    MysqlDbManager& mgr_;
+    std::unique_ptr<ormpp::dbng<ormpp::mysql>> owned_;
+};
+
 // ---- ConnGuard ----
 
-MysqlDbManager::ConnGuard::ConnGuard(MysqlDbManager* mgr,
-                                      std::unique_ptr<ormpp::dbng<ormpp::mysql>> conn)
-    : mgr_(mgr), conn_(std::move(conn)) {}
+MysqlDbManager::ConnGuard::ConnGuard(MysqlDbManager* mgr, std::unique_ptr<ormpp::dbng<ormpp::mysql>> conn)
+    : mgr_(mgr), owned_(std::move(conn)), conn_(owned_.get()) {}
+
+MysqlDbManager::ConnGuard::ConnGuard(ormpp::dbng<ormpp::mysql>* borrowed) : conn_(borrowed) {}
 
 MysqlDbManager::ConnGuard::~ConnGuard() {
-    if (conn_ && mgr_) {
-        mgr_->ReturnConn(std::move(conn_));
+    if (owned_ && mgr_) {
+        mgr_->ReturnConn(std::move(owned_));
     }
 }
 
 MysqlDbManager::ConnGuard::ConnGuard(ConnGuard&& o) noexcept
-    : mgr_(o.mgr_), conn_(std::move(o.conn_)) {
-    o.mgr_ = nullptr;
+    : mgr_(o.mgr_), owned_(std::move(o.owned_)), conn_(o.conn_) {
+    o.mgr_  = nullptr;
+    o.conn_ = nullptr;
 }
 
 // ---- MysqlDbManager ----
@@ -35,11 +62,8 @@ MysqlDbManager::~MysqlDbManager() {
 
 std::unique_ptr<ormpp::dbng<ormpp::mysql>> MysqlDbManager::NewConn() {
     auto conn = std::make_unique<ormpp::dbng<ormpp::mysql>>();
-    if (!conn->connect(host_, user_, passwd_, dbname_,
-                       std::optional<int>(10),
-                       std::optional<int>(port_))) {
-        SPDLOG_ERROR("MySQL connect failed: {}:{}@{}:{}/{}",
-                     user_, "***", host_, port_, dbname_);
+    if (!conn->connect(host_, user_, passwd_, dbname_, std::optional<int>(10), std::optional<int>(port_))) {
+        SPDLOG_ERROR("MySQL connect failed: {}:{}@{}:{}/{}", user_, "***", host_, port_, dbname_);
         return nullptr;
     }
     return conn;
@@ -63,8 +87,7 @@ bool MysqlDbManager::Open(const DatabaseConfig& config) {
         }
         pool_.push_back(std::move(conn));
     }
-    SPDLOG_INFO("MySQL connection pool initialized: {}:{}/{} (pool_size={})",
-                host_, port_, dbname_, pool_size_);
+    SPDLOG_INFO("MySQL connection pool initialized: {}:{}/{} (pool_size={})", host_, port_, dbname_, pool_size_);
     return true;
 }
 
@@ -77,10 +100,12 @@ void MysqlDbManager::Close() {
 }
 
 void MysqlDbManager::ReturnConn(std::unique_ptr<ormpp::dbng<ormpp::mysql>> conn) {
-    if (!conn) return;
+    if (!conn)
+        return;
     {
         std::scoped_lock lock(mutex_);
-        if (closed_) return;
+        if (closed_)
+            return;
         if (!conn->ping()) {
             SPDLOG_WARN("MySQL connection lost, discarding");
             return;
@@ -91,11 +116,19 @@ void MysqlDbManager::ReturnConn(std::unique_ptr<ormpp::dbng<ormpp::mysql>> conn)
 }
 
 MysqlDbManager::ConnGuard MysqlDbManager::DB() {
+    // 若当前线程已固定连接（Session 作用域内），返回 borrowed 守卫
+    if (g_pinned) {
+        return ConnGuard(g_pinned);
+    }
+    // 否则从池中获取 owning 守卫
+    return ConnGuard(this, AcquireFromPool());
+}
+
+std::unique_ptr<ormpp::dbng<ormpp::mysql>> MysqlDbManager::AcquireFromPool() {
     std::unique_lock lock(mutex_);
 
     if (pool_.empty()) {
-        if (!cv_.wait_for(lock, std::chrono::seconds(3),
-                          [this] { return !pool_.empty() || closed_; })) {
+        if (!cv_.wait_for(lock, std::chrono::seconds(3), [this] { return !pool_.empty() || closed_; })) {
             throw std::runtime_error("MySQL connection pool exhausted (timeout 3s)");
         }
     }
@@ -115,33 +148,30 @@ MysqlDbManager::ConnGuard MysqlDbManager::DB() {
         }
     }
 
-    return ConnGuard(this, std::move(conn));
+    return conn;
+}
+
+std::unique_ptr<DaoScopedConn> MysqlDbManager::CreateSession() {
+    return std::make_unique<MysqlScopedConn>(*this);
 }
 
 bool MysqlDbManager::InitSchema() {
     auto db = DB();
     bool ok = true;
 
-    ok = ok && db.create_datatable<User>(ormpp_auto_key{"id"},
-                ormpp_unique{{"uid"}});
-    ok = ok && db.create_datatable<Admin>(ormpp_auto_key{"id"},
-                ormpp_unique{{"uid"}});
-    ok = ok && db.create_datatable<UserDevice>(ormpp_auto_key{"id"},
-                ormpp_unique{{"user_id", "device_id"}});
+    ok = ok && db.create_datatable<User>(ormpp_auto_key{"id"}, ormpp_unique{{"uid"}});
+    ok = ok && db.create_datatable<Admin>(ormpp_auto_key{"id"}, ormpp_unique{{"uid"}});
+    ok = ok && db.create_datatable<UserDevice>(ormpp_auto_key{"id"}, ormpp_unique{{"user_id", "device_id"}});
     ok = ok && db.create_datatable<Message>(ormpp_auto_key{"id"});
     ok = ok && db.create_datatable<Conversation>(ormpp_auto_key{"id"});
-    ok = ok && db.create_datatable<ConversationMember>(ormpp_auto_key{"id"},
-                ormpp_unique{{"conversation_id", "user_id"}});
+    ok = ok &&
+         db.create_datatable<ConversationMember>(ormpp_auto_key{"id"}, ormpp_unique{{"conversation_id", "user_id"}});
     ok = ok && db.create_datatable<AuditLog>(ormpp_auto_key{"id"});
     ok = ok && db.create_datatable<AdminSession>(ormpp_auto_key{"id"});
-    ok = ok && db.create_datatable<Role>(ormpp_auto_key{"id"},
-                ormpp_unique{{"code"}});
-    ok = ok && db.create_datatable<Permission>(ormpp_auto_key{"id"},
-                ormpp_unique{{"code"}});
-    ok = ok && db.create_datatable<RolePermission>(ormpp_auto_key{"id"},
-                ormpp_unique{{"role_id", "permission_id"}});
-    ok = ok && db.create_datatable<AdminRole>(ormpp_auto_key{"id"},
-                ormpp_unique{{"admin_id", "role_id"}});
+    ok = ok && db.create_datatable<Role>(ormpp_auto_key{"id"}, ormpp_unique{{"code"}});
+    ok = ok && db.create_datatable<Permission>(ormpp_auto_key{"id"}, ormpp_unique{{"code"}});
+    ok = ok && db.create_datatable<RolePermission>(ormpp_auto_key{"id"}, ormpp_unique{{"role_id", "permission_id"}});
+    ok = ok && db.create_datatable<AdminRole>(ormpp_auto_key{"id"}, ormpp_unique{{"admin_id", "role_id"}});
 
     db.execute("CREATE INDEX IF NOT EXISTS idx_msg_conv_time ON messages(conversation_id, created_at)");
     db.execute("CREATE INDEX IF NOT EXISTS idx_msg_conv_seq ON messages(conversation_id, seq)");

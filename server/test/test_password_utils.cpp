@@ -41,10 +41,10 @@ TEST(PasswordUtilsTest, HashHasExpectedFormat) {
 TEST(PasswordUtilsTest, HashContainsIterations) {
     auto h = PasswordUtils::Hash("x");
     // iterations 字段在 "pbkdf2:sha256:" 之后，"$" 之前
-    auto prefix_len = std::string("pbkdf2:sha256:").size();
-    auto d1 = h.find('$');
+    auto prefix_len      = std::string("pbkdf2:sha256:").size();
+    auto d1              = h.find('$');
     std::string iter_str = h.substr(prefix_len, d1 - prefix_len);
-    int iter = std::stoi(iter_str);
+    int iter             = std::stoi(iter_str);
     EXPECT_GE(iter, 10000);  // 至少 10k 次迭代，不低于最低安全标准
 }
 
@@ -54,7 +54,7 @@ TEST(PasswordUtilsTest, HashContainsIterations) {
 
 TEST(PasswordUtilsTest, VerifyCorrectPassword) {
     const std::string pw = "correct-horse-battery-staple";
-    auto hash = PasswordUtils::Hash(pw);
+    auto hash            = PasswordUtils::Hash(pw);
     EXPECT_TRUE(PasswordUtils::Verify(pw, hash));
 }
 
@@ -72,7 +72,7 @@ TEST(PasswordUtilsTest, VerifyCaseSensitive) {
 
 TEST(PasswordUtilsTest, VerifySpecialCharacters) {
     const std::string pw = "p@$$w0rd!#&*()\n\t";
-    auto hash = PasswordUtils::Hash(pw);
+    auto hash            = PasswordUtils::Hash(pw);
     EXPECT_TRUE(PasswordUtils::Verify(pw, hash));
     EXPECT_FALSE(PasswordUtils::Verify("p@$$w0rd!#&*()", hash));
 }
@@ -83,8 +83,8 @@ TEST(PasswordUtilsTest, VerifySpecialCharacters) {
 
 TEST(PasswordUtilsTest, TwoHashesOfSamePasswordDiffer) {
     const std::string pw = "same-password";
-    auto h1 = PasswordUtils::Hash(pw);
-    auto h2 = PasswordUtils::Hash(pw);
+    auto h1              = PasswordUtils::Hash(pw);
+    auto h2              = PasswordUtils::Hash(pw);
     // 随机盐导致两个哈希不同
     EXPECT_NE(h1, h2);
     // 但两者都能验证通过
@@ -118,5 +118,5 @@ TEST(PasswordUtilsTest, VerifyMalformedHashReturnsFalse) {
     EXPECT_FALSE(PasswordUtils::Verify("pw", "md5:plain_text_hash!"));
 }
 
-} // namespace
-} // namespace nova
+}  // namespace
+}  // namespace nova

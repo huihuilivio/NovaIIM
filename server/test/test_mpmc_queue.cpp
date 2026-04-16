@@ -25,13 +25,13 @@ TEST(MPMCQueueTest, EmptyPopFails) {
 }
 
 TEST(MPMCQueueTest, FullPushFails) {
-    MPMCQueue<int> q(4); // capacity = 4
+    MPMCQueue<int> q(4);  // capacity = 4
 
     EXPECT_TRUE(q.Push(1));
     EXPECT_TRUE(q.Push(2));
     EXPECT_TRUE(q.Push(3));
     EXPECT_TRUE(q.Push(4));
-    EXPECT_FALSE(q.Push(5)); // 满了
+    EXPECT_FALSE(q.Push(5));  // 满了
 }
 
 TEST(MPMCQueueTest, FIFO) {
@@ -49,7 +49,7 @@ TEST(MPMCQueueTest, FIFO) {
 }
 
 TEST(MPMCQueueTest, ConcurrentProducerConsumer) {
-    constexpr int kCapacity = 1024;
+    constexpr int kCapacity  = 1024;
     constexpr int kItemCount = 10000;
     constexpr int kProducers = 4;
     constexpr int kConsumers = 4;
@@ -96,12 +96,14 @@ TEST(MPMCQueueTest, ConcurrentProducerConsumer) {
         });
     }
 
-    for (auto& t : producers) t.join();
-    for (auto& t : consumers) t.join();
+    for (auto& t : producers)
+        t.join();
+    for (auto& t : consumers)
+        t.join();
 
     EXPECT_EQ(consumed.load(), kProducers * kItemCount);
     EXPECT_EQ(sum_produced.load(), sum_consumed.load());
 }
 
-} // namespace
-} // namespace nova
+}  // namespace
+}  // namespace nova

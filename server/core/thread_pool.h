@@ -25,13 +25,12 @@ public:
         }
     }
 
-    ~ThreadPool() {
-        Stop();
-    }
+    ~ThreadPool() { Stop(); }
 
     // 提交任务到队列
     bool Submit(Task task) {
-        if (stop_) return false;
+        if (stop_)
+            return false;
         bool ok = queue_.Push(std::move(task));
         if (ok) {
             sem_.release();
@@ -40,13 +39,15 @@ public:
     }
 
     void Stop() {
-        if (stop_.exchange(true)) return;  // 重入安全
+        if (stop_.exchange(true))
+            return;  // 重入安全
         // 唤醒所有等待中的 worker
         for (size_t i = 0; i < workers_.size(); ++i) {
             sem_.release();
         }
         for (auto& t : workers_) {
-            if (t.joinable()) t.join();
+            if (t.joinable())
+                t.join();
         }
         workers_.clear();
     }
@@ -55,7 +56,8 @@ private:
     void WorkerLoop() {
         while (true) {
             sem_.acquire();
-            if (stop_) break;
+            if (stop_)
+                break;
             Task task;
             if (queue_.Pop(task)) {
                 try {
@@ -76,10 +78,10 @@ private:
         }
     }
 
-    MPMCQueue<Task>          queue_;
+    MPMCQueue<Task> queue_;
     std::vector<std::thread> workers_;
-    std::atomic<bool>        stop_;
+    std::atomic<bool> stop_;
     std::counting_semaphore<65536> sem_;
 };
 
-} // namespace nova
+}  // namespace nova

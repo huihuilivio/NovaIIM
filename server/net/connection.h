@@ -39,11 +39,11 @@ public:
     virtual void Close() = 0;
 
 private:
-    std::atomic<int64_t>  user_id_{0};
-    mutable std::mutex    device_mutex_;
-    std::string           device_id_;
+    std::atomic<int64_t> user_id_{0};
+    mutable std::mutex device_mutex_;
+    std::string device_id_;
 };
 
 using ConnectionPtr = std::shared_ptr<Connection>;
 
-} // namespace nova
+}  // namespace nova

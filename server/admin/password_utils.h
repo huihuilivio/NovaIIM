@@ -18,4 +18,4 @@ public:
     PasswordUtils() = delete;
 };
 
-} // namespace nova
+}  // namespace nova

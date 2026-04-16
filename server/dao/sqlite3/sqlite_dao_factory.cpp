@@ -15,18 +15,17 @@
 namespace nova {
 
 struct SqliteDaoFactory::Impl {
-    SqliteDbManager                       db;
-    UserDaoImplT<SqliteDbManager>         user;
-    MessageDaoImplT<SqliteDbManager>      message;
+    SqliteDbManager db;
+    UserDaoImplT<SqliteDbManager> user;
+    MessageDaoImplT<SqliteDbManager> message;
     ConversationDaoImplT<SqliteDbManager> conversation;
-    AuditLogDaoImplT<SqliteDbManager>     audit_log;
+    AuditLogDaoImplT<SqliteDbManager> audit_log;
     AdminSessionDaoImplT<SqliteDbManager> admin_session;
     AdminAccountDaoImplT<SqliteDbManager> admin_account;
-    RbacDaoImplT<SqliteDbManager>         rbac;
+    RbacDaoImplT<SqliteDbManager> rbac;
 
     explicit Impl(const std::string& path)
-        : user(db), message(db), conversation(db), audit_log(db),
-          admin_session(db), admin_account(db), rbac(db) {
+        : user(db), message(db), conversation(db), audit_log(db), admin_session(db), admin_account(db), rbac(db) {
         if (!db.Open(path)) {
             throw std::runtime_error("failed to open sqlite database: " + path);
         }
@@ -37,22 +36,33 @@ struct SqliteDaoFactory::Impl {
         SPDLOG_INFO("SQLite DaoFactory initialized: {}", path);
     }
 
-    ~Impl() {
-        db.Close();
-    }
+    ~Impl() { db.Close(); }
 };
 
-SqliteDaoFactory::SqliteDaoFactory(const std::string& db_path)
-    : impl_(std::make_unique<Impl>(db_path)) {}
+SqliteDaoFactory::SqliteDaoFactory(const std::string& db_path) : impl_(std::make_unique<Impl>(db_path)) {}
 
 SqliteDaoFactory::~SqliteDaoFactory() = default;
 
-UserDao&         SqliteDaoFactory::User()         { return impl_->user; }
-MessageDao&      SqliteDaoFactory::Message()      { return impl_->message; }
-ConversationDao& SqliteDaoFactory::Conversation() { return impl_->conversation; }
-AuditLogDao&     SqliteDaoFactory::AuditLog()     { return impl_->audit_log; }
-AdminSessionDao& SqliteDaoFactory::AdminSession() { return impl_->admin_session; }
-AdminAccountDao& SqliteDaoFactory::AdminAccount() { return impl_->admin_account; }
-RbacDao&         SqliteDaoFactory::Rbac()         { return impl_->rbac; }
+UserDao& SqliteDaoFactory::User() {
+    return impl_->user;
+}
+MessageDao& SqliteDaoFactory::Message() {
+    return impl_->message;
+}
+ConversationDao& SqliteDaoFactory::Conversation() {
+    return impl_->conversation;
+}
+AuditLogDao& SqliteDaoFactory::AuditLog() {
+    return impl_->audit_log;
+}
+AdminSessionDao& SqliteDaoFactory::AdminSession() {
+    return impl_->admin_session;
+}
+AdminAccountDao& SqliteDaoFactory::AdminAccount() {
+    return impl_->admin_account;
+}
+RbacDao& SqliteDaoFactory::Rbac() {
+    return impl_->rbac;
+}
 
-} // namespace nova
+}  // namespace nova

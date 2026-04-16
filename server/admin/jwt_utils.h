@@ -33,9 +33,7 @@ public:
     /// @param alg       签名算法，默认 HS256
     /// @return token 字符串；签发失败返回空字符串
     [[nodiscard]]
-    static std::string Sign(int64_t admin_id,
-                            std::string_view secret,
-                            int expires_seconds = 86400,
+    static std::string Sign(int64_t admin_id, std::string_view secret, int expires_seconds = 86400,
                             JwtAlgorithm alg = JwtAlgorithm::HS256);
 
     /// 验证并解码 JWT
@@ -44,11 +42,10 @@ public:
     /// @param alg    签名算法（需与签发时一致）
     /// @return 验证通过返回 JwtClaims；过期/签名错误/格式非法返回 nullopt
     [[nodiscard]]
-    static std::optional<JwtClaims> Verify(std::string_view token,
-                                           std::string_view secret,
+    static std::optional<JwtClaims> Verify(std::string_view token, std::string_view secret,
                                            JwtAlgorithm alg = JwtAlgorithm::HS256);
 
     JwtUtils() = delete;
 };
 
-} // namespace nova
+}  // namespace nova

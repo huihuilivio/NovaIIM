@@ -15,9 +15,9 @@ protected:
     template <typename T>
     void SendPacket(const ConnectionPtr& conn, Cmd cmd, uint32_t seq, uint64_t uid, const T& body) {
         Packet pkt;
-        pkt.cmd = static_cast<uint16_t>(cmd);
-        pkt.seq = seq;
-        pkt.uid = uid;
+        pkt.cmd  = static_cast<uint16_t>(cmd);
+        pkt.seq  = seq;
+        pkt.uid  = uid;
         pkt.body = proto::Serialize(body);
         conn->Send(pkt);
         ctx_.incr_messages_out();
@@ -26,4 +26,4 @@ protected:
     ServerContext& ctx_;
 };
 
-} // namespace nova
+}  // namespace nova

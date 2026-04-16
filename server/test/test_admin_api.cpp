@@ -36,7 +36,7 @@ namespace {
 // 测试常量
 // ============================================================
 
-static constexpr int         kPort      = 19091;
+static constexpr int kPort              = 19091;
 static constexpr const char* kBase      = "http://127.0.0.1:19091";
 static constexpr const char* kSecret    = "integration-test-secret-32bytes!";
 static constexpr const char* kAdminUid  = "admin";
@@ -57,14 +57,13 @@ static std::string Url(const char* path) {
 
 static nlohmann::json ParseJson(const requests::Response& resp) {
     EXPECT_NE(resp, nullptr);
-    if (!resp) return {};
+    if (!resp)
+        return {};
     return nlohmann::json::parse(resp->body, nullptr, false);
 }
 
-static requests::Response AuthPost(const std::string& url,
-                                   const std::string& token,
-                                   const nlohmann::json& body = {}) {
-    auto req = std::make_shared<HttpRequest>();
+static requests::Response AuthPost(const std::string& url, const std::string& token, const nlohmann::json& body = {}) {
+    auto req    = std::make_shared<HttpRequest>();
     req->method = HTTP_POST;
     req->url    = url;
     req->SetHeader("Authorization", "Bearer " + token);
@@ -76,7 +75,7 @@ static requests::Response AuthPost(const std::string& url,
 }
 
 static requests::Response AuthGet(const std::string& url, const std::string& token) {
-    auto req = std::make_shared<HttpRequest>();
+    auto req    = std::make_shared<HttpRequest>();
     req->method = HTTP_GET;
     req->url    = url;
     req->SetHeader("Authorization", "Bearer " + token);
@@ -98,7 +97,7 @@ public:
         AppConfig app_cfg;
 
         app_cfg.db = db_cfg;
-        ctx_ = std::make_unique<ServerContext>(app_cfg);
+        ctx_       = std::make_unique<ServerContext>(app_cfg);
         ctx_->set_dao(CreateDaoFactory(db_cfg));
 
         // 启动 AdminServer
@@ -108,7 +107,7 @@ public:
         opts.jwt_expires = 3600;
 
         server_ = std::make_unique<AdminServer>(*ctx_);
-        int rc = server_->Start(opts);
+        int rc  = server_->Start(opts);
         ASSERT_EQ(rc, 0) << "AdminServer failed to start on port " << kPort;
 
         // 等待服务器就绪
@@ -116,39 +115,39 @@ public:
     }
 
     static void TearDownTestSuite() {
-        if (server_) server_->Stop();
+        if (server_)
+            server_->Stop();
         server_.reset();
         ctx_.reset();
     }
 
 protected:
     // 登录并返回 token（测试辅助）
-    static std::string Login(const char* uid = kAdminUid,
-                             const char* pass = kAdminPass) {
+    static std::string Login(const char* uid = kAdminUid, const char* pass = kAdminPass) {
         nlohmann::json body = {{"uid", uid}, {"password", pass}};
-        auto url = Url("/api/v1/auth/login");
-        auto resp = requests::post(url.c_str(),
-                                   body.dump(),
-                                   {{"Content-Type", "application/json"}});
-        if (!resp || resp->status_code != 200) return {};
+        auto url            = Url("/api/v1/auth/login");
+        auto resp           = requests::post(url.c_str(), body.dump(), {{"Content-Type", "application/json"}});
+        if (!resp || resp->status_code != 200)
+            return {};
         auto j = ParseJson(resp);
-        if (!j.contains("data") || !j["data"].contains("token")) return {};
+        if (!j.contains("data") || !j["data"].contains("token"))
+            return {};
         return j["data"]["token"].get<std::string>();
     }
 
     static std::unique_ptr<ServerContext> ctx_;
-    static std::unique_ptr<AdminServer>   server_;
+    static std::unique_ptr<AdminServer> server_;
 };
 
 std::unique_ptr<ServerContext> AdminApiTest::ctx_;
-std::unique_ptr<AdminServer>   AdminApiTest::server_;
+std::unique_ptr<AdminServer> AdminApiTest::server_;
 
 // ============================================================
 // 1. 健康检查
 // ============================================================
 
 TEST_F(AdminApiTest, HealthzReturnsOk) {
-    auto url = Url("/healthz");
+    auto url  = Url("/healthz");
     auto resp = requests::get(url.c_str());
     ASSERT_NE(resp, nullptr);
     EXPECT_EQ(resp->status_code, 200);
@@ -158,7 +157,7 @@ TEST_F(AdminApiTest, HealthzReturnsOk) {
 
 TEST_F(AdminApiTest, HealthzDoesNotRequireAuth) {
     // 无 Authorization 头仍应返回 200
-    auto url = Url("/healthz");
+    auto url  = Url("/healthz");
     auto resp = requests::get(url.c_str());
     ASSERT_NE(resp, nullptr);
     EXPECT_EQ(resp->status_code, 200);
@@ -170,9 +169,8 @@ TEST_F(AdminApiTest, HealthzDoesNotRequireAuth) {
 
 TEST_F(AdminApiTest, LoginSuccess) {
     nlohmann::json body = {{"uid", kAdminUid}, {"password", kAdminPass}};
-    auto url = Url("/api/v1/auth/login");
-    auto resp = requests::post(url.c_str(), body.dump(),
-                               {{"Content-Type", "application/json"}});
+    auto url            = Url("/api/v1/auth/login");
+    auto resp           = requests::post(url.c_str(), body.dump(), {{"Content-Type", "application/json"}});
     ASSERT_NE(resp, nullptr);
     EXPECT_EQ(resp->status_code, 200);
 
@@ -185,9 +183,8 @@ TEST_F(AdminApiTest, LoginSuccess) {
 
 TEST_F(AdminApiTest, LoginWrongPassword) {
     nlohmann::json body = {{"uid", kAdminUid}, {"password", "wrong-password"}};
-    auto url = Url("/api/v1/auth/login");
-    auto resp = requests::post(url.c_str(), body.dump(),
-                               {{"Content-Type", "application/json"}});
+    auto url            = Url("/api/v1/auth/login");
+    auto resp           = requests::post(url.c_str(), body.dump(), {{"Content-Type", "application/json"}});
     ASSERT_NE(resp, nullptr);
     EXPECT_EQ(resp->status_code, 401);
     auto j = ParseJson(resp);
@@ -196,9 +193,8 @@ TEST_F(AdminApiTest, LoginWrongPassword) {
 
 TEST_F(AdminApiTest, LoginNonExistentUser) {
     nlohmann::json body = {{"uid", "ghost"}, {"password", "anything"}};
-    auto url = Url("/api/v1/auth/login");
-    auto resp = requests::post(url.c_str(), body.dump(),
-                               {{"Content-Type", "application/json"}});
+    auto url            = Url("/api/v1/auth/login");
+    auto resp           = requests::post(url.c_str(), body.dump(), {{"Content-Type", "application/json"}});
     ASSERT_NE(resp, nullptr);
     EXPECT_EQ(resp->status_code, 401);
 }
@@ -206,17 +202,15 @@ TEST_F(AdminApiTest, LoginNonExistentUser) {
 TEST_F(AdminApiTest, LoginMissingFields) {
     // 缺少 password 字段
     nlohmann::json body = {{"uid", kAdminUid}};
-    auto url = Url("/api/v1/auth/login");
-    auto resp = requests::post(url.c_str(), body.dump(),
-                               {{"Content-Type", "application/json"}});
+    auto url            = Url("/api/v1/auth/login");
+    auto resp           = requests::post(url.c_str(), body.dump(), {{"Content-Type", "application/json"}});
     ASSERT_NE(resp, nullptr);
     EXPECT_NE(resp->status_code, 200);
 }
 
 TEST_F(AdminApiTest, LoginEmptyBody) {
-    auto url = Url("/api/v1/auth/login");
-    auto resp = requests::post(url.c_str(), std::string{},
-                               {{"Content-Type", "application/json"}});
+    auto url  = Url("/api/v1/auth/login");
+    auto resp = requests::post(url.c_str(), std::string{}, {{"Content-Type", "application/json"}});
     ASSERT_NE(resp, nullptr);
     EXPECT_NE(resp->status_code, 200);
 }
@@ -226,14 +220,14 @@ TEST_F(AdminApiTest, LoginEmptyBody) {
 // ============================================================
 
 TEST_F(AdminApiTest, RequestWithoutTokenReturns401) {
-    auto url = Url("/api/v1/auth/me");
+    auto url  = Url("/api/v1/auth/me");
     auto resp = requests::get(url.c_str());
     ASSERT_NE(resp, nullptr);
     EXPECT_EQ(resp->status_code, 401);
 }
 
 TEST_F(AdminApiTest, RequestWithInvalidTokenReturns401) {
-    auto req = std::make_shared<HttpRequest>();
+    auto req    = std::make_shared<HttpRequest>();
     req->method = HTTP_GET;
     req->url    = Url("/api/v1/auth/me");
     req->SetHeader("Authorization", "Bearer not.a.valid.jwt");
@@ -243,7 +237,7 @@ TEST_F(AdminApiTest, RequestWithInvalidTokenReturns401) {
 }
 
 TEST_F(AdminApiTest, RequestWithMalformedAuthHeaderReturns401) {
-    auto req = std::make_shared<HttpRequest>();
+    auto req    = std::make_shared<HttpRequest>();
     req->method = HTTP_GET;
     req->url    = Url("/api/v1/auth/me");
     req->SetHeader("Authorization", "Token abc123");  // 非 Bearer 格式
@@ -313,11 +307,14 @@ TEST_F(AdminApiTest, MePermissionsContainLoginPermission) {
     ASSERT_NE(resp, nullptr);
     ASSERT_EQ(resp->status_code, 200);
 
-    auto j = ParseJson(resp);
-    auto perms = j["data"]["permissions"];
+    auto j         = ParseJson(resp);
+    auto perms     = j["data"]["permissions"];
     bool has_login = false;
     for (auto& p : perms) {
-        if (p.get<std::string>() == "admin.login") { has_login = true; break; }
+        if (p.get<std::string>() == "admin.login") {
+            has_login = true;
+            break;
+        }
     }
     EXPECT_TRUE(has_login);
 }
@@ -337,8 +334,7 @@ TEST_F(AdminApiTest, StatsReturnsData) {
     auto j = ParseJson(resp);
     EXPECT_EQ(j["code"], 0);
     // 基本字段存在性检查
-    EXPECT_TRUE(j["data"].contains("online_users")   ||
-                j["data"].contains("user_count")     ||
+    EXPECT_TRUE(j["data"].contains("online_users") || j["data"].contains("user_count") ||
                 j["data"].contains("uptime_seconds"));
 }
 
@@ -356,20 +352,15 @@ TEST_F(AdminApiTest, ListUsersReturnsEmptyInitially) {
 
     auto j = ParseJson(resp);
     EXPECT_EQ(j["code"], 0);
-    EXPECT_TRUE(j["data"].contains("items") || j["data"].contains("list") ||
-                j["data"].is_array());
+    EXPECT_TRUE(j["data"].contains("items") || j["data"].contains("list") || j["data"].is_array());
 }
 
 TEST_F(AdminApiTest, CreateUserSuccess) {
     auto token = Login();
     ASSERT_FALSE(token.empty());
 
-    nlohmann::json body = {
-        {"uid",      "testuser1"},
-        {"nickname", "测试用户"},
-        {"password", "testpass123"}
-    };
-    auto resp = AuthPost(Url("/api/v1/users"), token, body);
+    nlohmann::json body = {{"uid", "testuser1"}, {"nickname", "测试用户"}, {"password", "testpass123"}};
+    auto resp           = AuthPost(Url("/api/v1/users"), token, body);
     ASSERT_NE(resp, nullptr);
     EXPECT_EQ(resp->status_code, 200);
 
@@ -381,11 +372,7 @@ TEST_F(AdminApiTest, CreateUserDuplicateUidFails) {
     auto token = Login();
     ASSERT_FALSE(token.empty());
 
-    nlohmann::json body = {
-        {"uid",      "dupuser"},
-        {"nickname", "Dup1"},
-        {"password", "pass"}
-    };
+    nlohmann::json body = {{"uid", "dupuser"}, {"nickname", "Dup1"}, {"password", "pass"}};
     // 第一次成功
     AuthPost(Url("/api/v1/users"), token, body);
 
@@ -400,7 +387,7 @@ TEST_F(AdminApiTest, CreateUserMissingUidFails) {
     ASSERT_FALSE(token.empty());
 
     nlohmann::json body = {{"nickname", "NoUid"}, {"password", "pass"}};
-    auto resp = AuthPost(Url("/api/v1/users"), token, body);
+    auto resp           = AuthPost(Url("/api/v1/users"), token, body);
     ASSERT_NE(resp, nullptr);
     EXPECT_NE(resp->status_code, 200);
 }
@@ -410,11 +397,7 @@ TEST_F(AdminApiTest, ListUsersReflectsCreatedUser) {
     ASSERT_FALSE(token.empty());
 
     // 创建用户
-    nlohmann::json body = {
-        {"uid",      "listme_user"},
-        {"nickname", "列表可见"},
-        {"password", "pass"}
-    };
+    nlohmann::json body = {{"uid", "listme_user"}, {"nickname", "列表可见"}, {"password", "pass"}};
     AuthPost(Url("/api/v1/users"), token, body);
 
     // 列表中应能返回数据（code=0）
@@ -441,13 +424,13 @@ TEST_F(AdminApiTest, AuditLogsReturnAfterLogin) {
     auto j = ParseJson(resp);
     EXPECT_EQ(j["code"], 0);
     // 应至少有一条记录（来自 Login 动作）
-    auto& data = j["data"];
-    bool has_items = data.contains("items") ? !data["items"].empty()
-                   : data.is_array()        ? !data.empty()
-                   : data.contains("list")  ? !data["list"].empty()
-                   : false;
+    auto& data     = j["data"];
+    bool has_items = data.contains("items")  ? !data["items"].empty()
+                     : data.is_array()       ? !data.empty()
+                     : data.contains("list") ? !data["list"].empty()
+                                             : false;
     EXPECT_TRUE(has_items);
 }
 
-} // namespace
-} // namespace nova
+}  // namespace
+}  // namespace nova

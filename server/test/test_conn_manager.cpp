@@ -13,8 +13,8 @@ public:
     void SendEncoded(const std::string& /*data*/) override { ++send_count; }
     void Close() override { closed = true; }
 
-    int  send_count = 0;
-    bool closed = false;
+    int send_count = 0;
+    bool closed    = false;
 };
 
 class ConnManagerTest : public ::testing::Test {
@@ -83,5 +83,5 @@ TEST_F(ConnManagerTest, RemoveNonExistent) {
     EXPECT_FALSE(mgr_.IsOnline(3001));
 }
 
-} // namespace
-} // namespace nova
+}  // namespace
+}  // namespace nova

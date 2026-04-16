@@ -20,10 +20,8 @@ public:
 
     // 分页查询审计日志
     // admin_id=0 表示不过滤，action="" 表示不过滤
-    virtual AuditLogListResult List(int64_t admin_id, const std::string& action,
-                                    const std::string& start_time,
-                                    const std::string& end_time,
-                                    int page, int page_size) = 0;
+    virtual AuditLogListResult List(int64_t admin_id, const std::string& action, const std::string& start_time,
+                                    const std::string& end_time, int page, int page_size) = 0;
 };
 
-} // namespace nova
+}  // namespace nova

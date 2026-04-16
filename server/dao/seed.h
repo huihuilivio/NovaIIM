@@ -19,8 +19,7 @@ void SeedSuperAdmin(DbMgr& db) {
 
     // 检查 admin_roles 表（整个 seed 流程的最后一步）
     // 若已有记录，说明 seed 已完整执行过
-    auto ar_count = db_conn.template query_s<std::tuple<int64_t>>(
-        "SELECT count(*) FROM admin_roles");
+    auto ar_count = db_conn.template query_s<std::tuple<int64_t>>("SELECT count(*) FROM admin_roles");
     if (!ar_count.empty() && std::get<0>(ar_count[0]) > 0) {
         return;
     }
@@ -43,18 +42,15 @@ void SeedSuperAdmin(DbMgr& db) {
     };
 
     // ---- 1. 插入权限 ----
-    struct PermDef { const char* name; const char* code; };
+    struct PermDef {
+        const char* name;
+        const char* code;
+    };
     static constexpr PermDef kPerms[] = {
-        {"管理员登录",   "admin.login"},
-        {"仪表盘查看",   "admin.dashboard"},
-        {"审计日志查看", "admin.audit"},
-        {"用户查看",     "user.view"},
-        {"用户创建",     "user.create"},
-        {"用户编辑",     "user.edit"},
-        {"用户删除",     "user.delete"},
-        {"用户封禁",     "user.ban"},
-        {"消息管理",     "msg.delete_all"},
-        {"系统配置",     "admin.config"},
+        {"管理员登录", "admin.login"}, {"仪表盘查看", "admin.dashboard"}, {"审计日志查看", "admin.audit"},
+        {"用户查看", "user.view"},     {"用户创建", "user.create"},       {"用户编辑", "user.edit"},
+        {"用户删除", "user.delete"},   {"用户封禁", "user.ban"},          {"消息管理", "msg.delete_all"},
+        {"系统配置", "admin.config"},
     };
 
     for (auto& [name, code] : kPerms) {
@@ -72,15 +68,14 @@ void SeedSuperAdmin(DbMgr& db) {
     role.name        = "超级管理员";
     role.code        = "super_admin";
     role.description = "拥有所有权限";
-    auto role_id = static_cast<int64_t>(db_conn.get_insert_id_after_insert(role));
+    auto role_id     = static_cast<int64_t>(db_conn.get_insert_id_after_insert(role));
     if (role_id <= 0) {
         SPDLOG_ERROR("Failed to seed: insert super_admin role failed");
         return;
     }
 
     // ---- 3. 绑定所有权限到超管角色 ----
-    auto all_perms = db_conn.template query_s<std::tuple<int64_t>>(
-        "SELECT id FROM permissions");
+    auto all_perms = db_conn.template query_s<std::tuple<int64_t>>("SELECT id FROM permissions");
     if (all_perms.empty()) {
         SPDLOG_ERROR("Failed to seed: no permissions found after insert");
         return;
@@ -106,7 +101,7 @@ void SeedSuperAdmin(DbMgr& db) {
     admin.uid           = "admin";
     admin.password_hash = hash;
     admin.nickname      = "Administrator";
-    auto admin_id = static_cast<int64_t>(db_conn.get_insert_id_after_insert(admin));
+    auto admin_id       = static_cast<int64_t>(db_conn.get_insert_id_after_insert(admin));
     if (admin_id <= 0) {
         SPDLOG_ERROR("Failed to seed: insert admin account failed");
         return;

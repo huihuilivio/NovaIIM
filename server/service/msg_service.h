@@ -20,8 +20,8 @@ public:
 
 private:
     int64_t GenerateSeq(int64_t conversation_id);
-    void BroadcastEncoded(int64_t sender_id, const std::string& exclude_device,
-                          int64_t conversation_id, const std::string& encoded);
+    void BroadcastEncoded(int64_t sender_id, const std::string& exclude_device, int64_t conversation_id,
+                          const std::string& encoded);
 
     // ---- 消息幂等去重缓存（LRU：淘汰最旧条目，避免全量清空） ----
     static constexpr size_t kMaxDedupCacheSize = 10000;
@@ -49,4 +49,4 @@ private:
     void DedupRemoveInflightIfNeeded(const std::string& key);
 };
 
-} // namespace nova
+}  // namespace nova

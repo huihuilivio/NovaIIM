@@ -13,17 +13,17 @@ public:
     explicit SqliteDaoFactory(const std::string& db_path);
     ~SqliteDaoFactory() override;
 
-    UserDao&         User()         override;
-    MessageDao&      Message()      override;
+    UserDao& User() override;
+    MessageDao& Message() override;
     ConversationDao& Conversation() override;
-    AuditLogDao&     AuditLog()     override;
+    AuditLogDao& AuditLog() override;
     AdminSessionDao& AdminSession() override;
     AdminAccountDao& AdminAccount() override;
-    RbacDao&         Rbac()         override;
+    RbacDao& Rbac() override;
 
 private:
     struct Impl;
     std::unique_ptr<Impl> impl_;
 };
 
-} // namespace nova
+}  // namespace nova

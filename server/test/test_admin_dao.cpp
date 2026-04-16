@@ -31,9 +31,7 @@ static std::unique_ptr<DaoFactory> MakeMemoryDb() {
 
 class AdminAccountDaoTest : public ::testing::Test {
 protected:
-    void SetUp() override {
-        factory_ = MakeMemoryDb();
-    }
+    void SetUp() override { factory_ = MakeMemoryDb(); }
 
     DaoFactory& dao() { return *factory_; }
 
@@ -90,7 +88,7 @@ TEST_F(AdminAccountDaoTest, UpdatePassword) {
     ASSERT_TRUE(admin.has_value());
 
     const std::string new_pass = "brand-new-password";
-    std::string new_hash = PasswordUtils::Hash(new_pass);
+    std::string new_hash       = PasswordUtils::Hash(new_pass);
     EXPECT_TRUE(dao().AdminAccount().UpdatePassword(admin->id, new_hash));
 
     // 新密码能验证通过
@@ -135,9 +133,7 @@ TEST_F(AdminAccountDaoTest, DeletedAdminNotVisible) {
 
 class AdminSessionDaoTest : public ::testing::Test {
 protected:
-    void SetUp() override {
-        factory_ = MakeMemoryDb();
-    }
+    void SetUp() override { factory_ = MakeMemoryDb(); }
 
     DaoFactory& dao() { return *factory_; }
 
@@ -223,9 +219,7 @@ TEST_F(AdminSessionDaoTest, RevokeAlreadyRevokedIsIdempotent) {
 
 class RbacDaoTest : public ::testing::Test {
 protected:
-    void SetUp() override {
-        factory_ = MakeMemoryDb();
-    }
+    void SetUp() override { factory_ = MakeMemoryDb(); }
 
     DaoFactory& dao() { return *factory_; }
 
@@ -311,5 +305,5 @@ TEST_F(RbacDaoTest, HasPermissionForNonExistentCodeReturnsFalse) {
     EXPECT_FALSE(dao().Rbac().HasPermission(id, "nonexistent.permission"));
 }
 
-} // namespace
-} // namespace nova
+}  // namespace
+}  // namespace nova

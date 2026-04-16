@@ -30,4 +30,4 @@ private:
     bool frozen_ = false;
 };
 
-} // namespace nova
+}  // namespace nova

@@ -12,7 +12,8 @@ std::vector<std::string> RbacDaoImplT<DbMgr>::GetUserPermissions(int64_t user_id
         "SELECT DISTINCT p.code FROM permissions p "
         "JOIN role_permissions rp ON rp.permission_id = p.id "
         "JOIN admin_roles ar ON ar.role_id = rp.role_id "
-        "WHERE ar.admin_id = ?", user_id);
+        "WHERE ar.admin_id = ?",
+        user_id);
 
     std::vector<std::string> perms;
     perms.reserve(rows.size());
@@ -28,7 +29,8 @@ bool RbacDaoImplT<DbMgr>::HasPermission(int64_t user_id, const std::string& code
         "SELECT 1 FROM permissions p "
         "JOIN role_permissions rp ON rp.permission_id = p.id "
         "JOIN admin_roles ar ON ar.role_id = rp.role_id "
-        "WHERE ar.admin_id = ? AND p.code = ? LIMIT 1", user_id, code);
+        "WHERE ar.admin_id = ? AND p.code = ? LIMIT 1",
+        user_id, code);
     return !rows.empty();
 }
 
@@ -38,4 +40,4 @@ template class RbacDaoImplT<SqliteDbManager>;
 template class RbacDaoImplT<MysqlDbManager>;
 #endif
 
-} // namespace nova
+}  // namespace nova

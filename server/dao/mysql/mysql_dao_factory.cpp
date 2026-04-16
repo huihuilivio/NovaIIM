@@ -18,18 +18,17 @@
 namespace nova {
 
 struct MysqlDaoFactory::Impl {
-    MysqlDbManager                       db;
-    UserDaoImplT<MysqlDbManager>         user;
-    MessageDaoImplT<MysqlDbManager>      message;
+    MysqlDbManager db;
+    UserDaoImplT<MysqlDbManager> user;
+    MessageDaoImplT<MysqlDbManager> message;
     ConversationDaoImplT<MysqlDbManager> conversation;
-    AuditLogDaoImplT<MysqlDbManager>     audit_log;
+    AuditLogDaoImplT<MysqlDbManager> audit_log;
     AdminSessionDaoImplT<MysqlDbManager> admin_session;
     AdminAccountDaoImplT<MysqlDbManager> admin_account;
-    RbacDaoImplT<MysqlDbManager>         rbac;
+    RbacDaoImplT<MysqlDbManager> rbac;
 
     explicit Impl(const DatabaseConfig& config)
-        : user(db), message(db), conversation(db), audit_log(db),
-          admin_session(db), admin_account(db), rbac(db) {
+        : user(db), message(db), conversation(db), audit_log(db), admin_session(db), admin_account(db), rbac(db) {
         if (!db.Open(config)) {
             throw std::runtime_error("failed to open MySQL connection pool");
         }
@@ -37,27 +36,41 @@ struct MysqlDaoFactory::Impl {
             throw std::runtime_error("failed to initialize MySQL schema");
         }
         SeedSuperAdmin(db);
-        SPDLOG_INFO("MySQL DaoFactory initialized: {}:{}/{}",
-                     config.host, config.port, config.database);
+        SPDLOG_INFO("MySQL DaoFactory initialized: {}:{}/{}", config.host, config.port, config.database);
     }
 
-    ~Impl() {
-        db.Close();
-    }
+    ~Impl() { db.Close(); }
 };
 
-MysqlDaoFactory::MysqlDaoFactory(const DatabaseConfig& config)
-    : impl_(std::make_unique<Impl>(config)) {}
+MysqlDaoFactory::MysqlDaoFactory(const DatabaseConfig& config) : impl_(std::make_unique<Impl>(config)) {}
 
 MysqlDaoFactory::~MysqlDaoFactory() = default;
 
-UserDao&         MysqlDaoFactory::User()         { return impl_->user; }
-MessageDao&      MysqlDaoFactory::Message()      { return impl_->message; }
-ConversationDao& MysqlDaoFactory::Conversation() { return impl_->conversation; }
-AuditLogDao&     MysqlDaoFactory::AuditLog()     { return impl_->audit_log; }
-AdminSessionDao& MysqlDaoFactory::AdminSession() { return impl_->admin_session; }
-AdminAccountDao& MysqlDaoFactory::AdminAccount() { return impl_->admin_account; }
-RbacDao&         MysqlDaoFactory::Rbac()         { return impl_->rbac; }
+UserDao& MysqlDaoFactory::User() {
+    return impl_->user;
+}
+MessageDao& MysqlDaoFactory::Message() {
+    return impl_->message;
+}
+ConversationDao& MysqlDaoFactory::Conversation() {
+    return impl_->conversation;
+}
+AuditLogDao& MysqlDaoFactory::AuditLog() {
+    return impl_->audit_log;
+}
+AdminSessionDao& MysqlDaoFactory::AdminSession() {
+    return impl_->admin_session;
+}
+AdminAccountDao& MysqlDaoFactory::AdminAccount() {
+    return impl_->admin_account;
+}
+RbacDao& MysqlDaoFactory::Rbac() {
+    return impl_->rbac;
+}
+
+std::unique_ptr<DaoScopedConn> MysqlDaoFactory::Session() {
+    return impl_->db.CreateSession();
+}
 
 }  // namespace nova
 

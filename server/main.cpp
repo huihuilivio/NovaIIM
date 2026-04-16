@@ -25,7 +25,7 @@ using namespace nova;
 
 // ---- 信号处理 ----
 static std::atomic<bool> g_running{true};
-static std::atomic<int>  g_signal{0};
+static std::atomic<int> g_signal{0};
 
 static void SignalHandler(int sig) {
     // 仅设置原子标志，不调用任何非 async-signal-safe 函数
@@ -39,9 +39,7 @@ int main(int argc, char* argv[]) {
     app.set_version_flag("-v,--version", "0.1.0");
 
     std::string config_path;
-    app.add_option("-c,--config", config_path, "Path to config YAML file")
-        ->required()
-        ->check(CLI::ExistingFile);
+    app.add_option("-c,--config", config_path, "Path to config YAML file")->required()->check(CLI::ExistingFile);
 
     CLI11_PARSE(app, argc, argv);
 
@@ -89,36 +87,38 @@ int main(int argc, char* argv[]) {
 
     // 初始化服务
     UserService user_svc(ctx);
-    MsgService  msg_svc(ctx);
+    MsgService msg_svc(ctx);
     SyncService sync_svc(ctx);
 
     // 注册路由
     Router router;
-    router.Register(Cmd::kLogin,      [&](ConnectionPtr c, Packet& p) { user_svc.HandleLogin(c, p); });
-    router.Register(Cmd::kRegister,   [&](ConnectionPtr c, Packet& p) { user_svc.HandleRegister(c, p); });
-    router.Register(Cmd::kLogout,     [&](ConnectionPtr c, Packet& p) { user_svc.HandleLogout(c, p); });
-    router.Register(Cmd::kHeartbeat,  [&](ConnectionPtr c, Packet& p) { user_svc.HandleHeartbeat(c, p); });
+    router.Register(Cmd::kLogin, [&](ConnectionPtr c, Packet& p) { user_svc.HandleLogin(c, p); });
+    router.Register(Cmd::kRegister, [&](ConnectionPtr c, Packet& p) { user_svc.HandleRegister(c, p); });
+    router.Register(Cmd::kLogout, [&](ConnectionPtr c, Packet& p) { user_svc.HandleLogout(c, p); });
+    router.Register(Cmd::kHeartbeat, [&](ConnectionPtr c, Packet& p) { user_svc.HandleHeartbeat(c, p); });
 
-    router.Register(Cmd::kSendMsg,    [&](ConnectionPtr c, Packet& p) { msg_svc.HandleSendMsg(c, p); });
+    router.Register(Cmd::kSendMsg, [&](ConnectionPtr c, Packet& p) { msg_svc.HandleSendMsg(c, p); });
     router.Register(Cmd::kDeliverAck, [&](ConnectionPtr c, Packet& p) { msg_svc.HandleDeliverAck(c, p); });
-    router.Register(Cmd::kReadAck,    [&](ConnectionPtr c, Packet& p) { msg_svc.HandleReadAck(c, p); });
+    router.Register(Cmd::kReadAck, [&](ConnectionPtr c, Packet& p) { msg_svc.HandleReadAck(c, p); });
 
-    router.Register(Cmd::kSyncMsg,    [&](ConnectionPtr c, Packet& p) { sync_svc.HandleSyncMsg(c, p); });
+    router.Register(Cmd::kSyncMsg, [&](ConnectionPtr c, Packet& p) { sync_svc.HandleSyncMsg(c, p); });
     router.Register(Cmd::kSyncUnread, [&](ConnectionPtr c, Packet& p) { sync_svc.HandleSyncUnread(c, p); });
 
     router.Freeze();  // 禁止后续注册，确保多线程安全
 
     // 注册信号处理（在 Gateway 启动前，避免信号丢失）
-    std::signal(SIGINT,  SignalHandler);
+    std::signal(SIGINT, SignalHandler);
     std::signal(SIGTERM, SignalHandler);
 
     // 启动 Worker 线程池
     // queue_capacity 必须为 2 的幂，不满足则向上取整
     auto qcap = static_cast<size_t>(cfg.server.queue_capacity);
-    if (qcap < 2) qcap = 2;
+    if (qcap < 2)
+        qcap = 2;
     if ((qcap & (qcap - 1)) != 0) {
         size_t p = 1;
-        while (p < qcap) p <<= 1;
+        while (p < qcap)
+            p <<= 1;
         NOVA_LOG_WARN("queue_capacity {} is not a power of 2, rounding up to {}", qcap, p);
         qcap = p;
     }
@@ -128,16 +128,15 @@ int main(int argc, char* argv[]) {
     Gateway gateway(ctx);
     gateway.SetWorkerThreads(cfg.server.worker_threads);
     gateway.SetPacketHandler([&](ConnectionPtr conn, Packet& pkt) {
-        if (!worker_pool.Submit([&router, conn, pkt]() mutable {
-            router.Dispatch(std::move(conn), pkt);
-        })) {
+        if (!worker_pool.Submit([&router, conn, pkt]() mutable { router.Dispatch(std::move(conn), pkt); })) {
             NOVA_LOG_WARN("worker queue full, rejecting cmd=0x{:04X}", pkt.cmd);
             // 返回错误响应而非静默丢弃
             Packet err;
             err.cmd = pkt.cmd;
             err.seq = pkt.seq;
             err.uid = pkt.uid;
-            err.body = nova::proto::Serialize(nova::proto::RspBase{nova::errc::kServerBusy.code, nova::errc::kServerBusy.msg});
+            err.body =
+                nova::proto::Serialize(nova::proto::RspBase{nova::errc::kServerBusy.code, nova::errc::kServerBusy.msg});
             conn->Send(err);
             ctx.incr_bad_packets();
         }
@@ -176,7 +175,8 @@ int main(int argc, char* argv[]) {
     // 3. ThreadPool —— drain 剩余任务并关闭 worker 线程
     //    此时 Router / Services / ServerContext 在栈上仍存活，安全
     NOVA_LOG_INFO("Received signal {}, shutting down...", g_signal.load());
-    if (admin) admin->Stop();
+    if (admin)
+        admin->Stop();
     gateway.Stop();
     worker_pool.Stop();
     NOVA_LOG_INFO("NovaIIM Server stopped");

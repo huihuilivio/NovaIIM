@@ -22,4 +22,4 @@ public:
     virtual bool RevokeByTokenHash(const std::string& token_hash) = 0;
 };
 
-} // namespace nova
+}  // namespace nova

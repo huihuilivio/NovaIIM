@@ -36,7 +36,7 @@ struct DeferHelper {
     }
 };
 
-} // namespace nova::detail
+}  // namespace nova::detail
 
 // 拼接宏：生成唯一变量名
 #define NOVA_DEFER_CAT_(a, b) a##b
@@ -44,5 +44,4 @@ struct DeferHelper {
 
 // NOVA_DEFER { ... };
 // 展开为: auto _defer_42 = nova::detail::DeferHelper{} + [&]() { ... };
-#define NOVA_DEFER \
-    auto NOVA_DEFER_CAT(_nova_defer_, __LINE__) = ::nova::detail::DeferHelper{} + [&]()
+#define NOVA_DEFER auto NOVA_DEFER_CAT(_nova_defer_, __LINE__) = ::nova::detail::DeferHelper{} + [&]()

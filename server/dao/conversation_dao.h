@@ -38,4 +38,4 @@ public:
     virtual std::vector<Conversation> FindByIds(const std::vector<int64_t>& ids) = 0;
 };
 
-} // namespace nova
+}  // namespace nova

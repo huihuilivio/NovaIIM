@@ -11,21 +11,16 @@ namespace nova {
 // 因此多个 Worker 线程并发调用 Send() 不会产生数据竞争。
 class TcpConnection : public Connection {
 public:
-    explicit TcpConnection(const hv::SocketChannelPtr& channel)
-        : channel_(channel) {}
+    explicit TcpConnection(const hv::SocketChannelPtr& channel) : channel_(channel) {}
 
     void Send(const Packet& pkt) override {
         std::string frame = pkt.Encode();
         channel_->write(frame);
     }
 
-    void SendEncoded(const std::string& data) override {
-        channel_->write(data);
-    }
+    void SendEncoded(const std::string& data) override { channel_->write(data); }
 
-    void Close() override {
-        channel_->close();
-    }
+    void Close() override { channel_->close(); }
 
     hv::SocketChannelPtr channel() const { return channel_; }
 
@@ -33,4 +28,4 @@ private:
     hv::SocketChannelPtr channel_;
 };
 
-} // namespace nova
+}  // namespace nova

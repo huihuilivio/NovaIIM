@@ -22,4 +22,4 @@ void Router::Dispatch(ConnectionPtr conn, Packet& pkt) {
     }
 }
 
-} // namespace nova
+}  // namespace nova

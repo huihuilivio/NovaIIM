@@ -14,4 +14,4 @@ public:
     void HandleSyncUnread(ConnectionPtr conn, Packet& pkt);
 };
 
-} // namespace nova
+}  // namespace nova

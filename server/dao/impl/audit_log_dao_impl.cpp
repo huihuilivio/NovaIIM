@@ -13,9 +13,8 @@ bool AuditLogDaoImplT<DbMgr>::Insert(const AuditLog& log) {
 
 template <typename DbMgr>
 AuditLogListResult AuditLogDaoImplT<DbMgr>::List(int64_t user_id, const std::string& action,
-                                          const std::string& start_time,
-                                          const std::string& end_time,
-                                          int page, int page_size) {
+                                                 const std::string& start_time, const std::string& end_time, int page,
+                                                 int page_size) {
     AuditLogListResult result;
     int offset = (page - 1) * page_size;
 
@@ -33,21 +32,15 @@ AuditLogListResult AuditLogDaoImplT<DbMgr>::List(int64_t user_id, const std::str
         "(? = '' OR created_at <= ?) "
         "ORDER BY id DESC LIMIT ? OFFSET ?";
 
-    auto cnt = db_.DB().query_s<std::tuple<int64_t>>(
-        kCountSql,
-        user_id, user_id,
-        action, action,
-        start_time, start_time,
-        end_time, end_time);
-    if (!cnt.empty()) result.total = std::get<0>(cnt[0]);
+    auto&& conn = db_.DB();
 
-    result.items = db_.DB().query_s<AuditLog>(
-        kWhere,
-        user_id, user_id,
-        action, action,
-        start_time, start_time,
-        end_time, end_time,
-        page_size, offset);
+    auto cnt = conn.query_s<std::tuple<int64_t>>(kCountSql, user_id, user_id, action, action, start_time, start_time,
+                                                 end_time, end_time);
+    if (!cnt.empty())
+        result.total = std::get<0>(cnt[0]);
+
+    result.items = conn.query_s<AuditLog>(kWhere, user_id, user_id, action, action, start_time, start_time, end_time,
+                                          end_time, page_size, offset);
 
     return result;
 }
@@ -58,4 +51,4 @@ template class AuditLogDaoImplT<SqliteDbManager>;
 template class AuditLogDaoImplT<MysqlDbManager>;
 #endif
 
-} // namespace nova
+}  // namespace nova

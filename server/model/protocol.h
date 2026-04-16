@@ -19,7 +19,7 @@ namespace nova::proto {
 //  通用应答（所有命令共用的错误/成功响应）
 // ============================================================
 struct RspBase {
-    int32_t     code = 0;          // 0=成功, >0 错误码
+    int32_t code = 0;  // 0=成功, >0 错误码
     std::string msg;
 };
 
@@ -36,9 +36,9 @@ struct LoginReq {
 
 // S→C  Cmd::kLoginAck (0x0002)
 struct LoginAck {
-    int32_t     code = 0;
+    int32_t code = 0;
     std::string msg;
-    int64_t     user_id = 0;
+    int64_t user_id = 0;
     std::string nickname;
     std::string avatar;
 };
@@ -49,14 +49,14 @@ struct LoginAck {
 struct RegisterReq {
     std::string uid;
     std::string password;
-    std::string nickname;          // 可选
+    std::string nickname;  // 可选
 };
 
 // S→C  Cmd::kRegisterAck (0x0005)
 struct RegisterAck {
-    int32_t     code = 0;
+    int32_t code = 0;
     std::string msg;
-    int64_t     user_id = 0;
+    int64_t user_id = 0;
 };
 
 // ============================================================
@@ -72,40 +72,40 @@ struct RegisterAck {
 
 // C→S  Cmd::kSendMsg (0x0100)
 struct SendMsgReq {
-    int64_t     conversation_id = 0;
+    int64_t conversation_id = 0;
     std::string content;
-    int32_t     msg_type = 1;      // 1=text, 2=image, 3=voice ...
-    std::string client_msg_id;     // 客户端生成的去重 ID（可选，用于消息幂等）
+    int32_t msg_type = 1;       // 1=text, 2=image, 3=voice ...
+    std::string client_msg_id;  // 客户端生成的去重 ID（可选，用于消息幂等）
 };
 
 // S→C  Cmd::kSendMsgAck (0x0101)
 struct SendMsgAck {
-    int32_t     code = 0;
+    int32_t code = 0;
     std::string msg;
-    int64_t     server_seq  = 0;
-    int64_t     server_time = 0;   // epoch ms
+    int64_t server_seq  = 0;
+    int64_t server_time = 0;  // epoch ms
 };
 
 // S→C  Cmd::kPushMsg (0x0102)
 struct PushMsg {
-    int64_t     conversation_id = 0;
-    int64_t     sender_id       = 0;
+    int64_t conversation_id = 0;
+    int64_t sender_id       = 0;
     std::string content;
-    int64_t     server_seq  = 0;
-    int64_t     server_time = 0;
-    int32_t     msg_type    = 1;
+    int64_t server_seq  = 0;
+    int64_t server_time = 0;
+    int32_t msg_type    = 1;
 };
 
 // C→S  Cmd::kDeliverAck (0x0103)
 struct DeliverAckReq {
-    int64_t     conversation_id = 0;
-    int64_t     server_seq      = 0;
+    int64_t conversation_id = 0;
+    int64_t server_seq      = 0;
 };
 
 // C→S  Cmd::kReadAck (0x0104)
 struct ReadAckReq {
-    int64_t     conversation_id = 0;
-    int64_t     read_up_to_seq  = 0;
+    int64_t conversation_id = 0;
+    int64_t read_up_to_seq  = 0;
 };
 
 // ============================================================
@@ -114,42 +114,42 @@ struct ReadAckReq {
 
 // C→S  Cmd::kSyncMsg (0x0200)
 struct SyncMsgReq {
-    int64_t     conversation_id = 0;
-    int64_t     last_seq        = 0;
-    int32_t     limit           = 20;
+    int64_t conversation_id = 0;
+    int64_t last_seq        = 0;
+    int32_t limit           = 20;
 };
 
 // 同步消息条目（嵌套在 SyncMsgResp 中）
 struct SyncMsgItem {
-    int64_t     server_seq  = 0;
-    int64_t     sender_id   = 0;
+    int64_t server_seq = 0;
+    int64_t sender_id  = 0;
     std::string content;
-    int32_t     msg_type    = 0;
-    std::string server_time;       // 数据库时间字符串
-    int32_t     status      = 0;
+    int32_t msg_type = 0;
+    std::string server_time;  // 数据库时间字符串
+    int32_t status = 0;
 };
 
 // S→C  Cmd::kSyncMsgResp (0x0201)
 struct SyncMsgResp {
-    int32_t                  code = 0;
+    int32_t code = 0;
     std::vector<SyncMsgItem> messages;
-    bool                     has_more = false;
+    bool has_more = false;
 };
 
 // C→S  Cmd::kSyncUnread (0x0202)  — body 可为空
 
 // 会话未读条目
 struct UnreadItem {
-    int64_t                  conversation_id = 0;
-    int64_t                  count           = 0;
+    int64_t conversation_id = 0;
+    int64_t count           = 0;
     std::vector<SyncMsgItem> latest_messages;
 };
 
 // S→C  Cmd::kSyncUnreadResp (0x0203)
 struct SyncUnreadResp {
-    int32_t                 code = 0;
+    int32_t code = 0;
     std::vector<UnreadItem> items;
-    int64_t                 total_unread = 0;
+    int64_t total_unread = 0;
 };
 
 // ============================================================
@@ -167,8 +167,9 @@ inline std::string Serialize(const T& obj) {
 template <typename T>
 inline std::optional<T> Deserialize(const std::string& data) {
     auto result = struct_pack::deserialize<T>(data.data(), data.size());
-    if (!result) return std::nullopt;
+    if (!result)
+        return std::nullopt;
     return std::move(*result);
 }
 
-} // namespace nova::proto
+}  // namespace nova::proto
