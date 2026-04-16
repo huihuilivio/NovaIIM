@@ -78,19 +78,22 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 
 ### 错误码
 
-| code | 含义 |
-|------|------|
-| 0 | 成功 |
-| 1 | 参数错误 |
-| 2 | 未登录 |
-| 3 | 无权限 |
-| 4 | 资源不存在 |
-| 5 | 内部错误 |
+| code | 含义 | HTTP 状态码 |
+|------|------|----------|
+| 0 | 成功 | 200 |
+| 1 | 参数错误 | 200/400/409/413 |
+| 2 | 未登录 | 401 |
+| 3 | 无权限 | 403/429 |
+| 4 | 资源不存在 | 200 |
+| 5 | 内部错误 | 200 |
+
+> 所有错误响应均已提取为 `api_err` 命名空间的 28 个 `constexpr ApiError` 常量，
+> 定义在 `server/admin/http_helper.h` 中，消除了所有 hardcode 字符串。
 
 ### 鉴权
 
 - `Authorization: Bearer <JWT>` (HS256)
-- JWT payload: `{sub: "user_id", iss: "nova", iat: ..., exp: ...}`
+- JWT payload: `{sub: "admin_id", iss: "nova", iat: ..., exp: ...}`
 - 免鉴权路径: `/healthz`, `/api/v1/auth/login`
 
 ### 分页

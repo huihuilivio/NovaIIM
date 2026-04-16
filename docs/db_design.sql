@@ -12,10 +12,20 @@ SET FOREIGN_KEY_CHECKS = 0;
 CREATE TABLE users (
     id BIGINT PRIMARY KEY AUTO_INCREMENT, -- 内部关联主键，不对外暴露
     uid VARCHAR(64) NOT NULL UNIQUE,      -- 对外业务 ID（协议/接口层使用）
-    password_hash VARCHAR(255) NOT NULL,  -- bcrypt/argon2, 禁止明文
+    password_hash VARCHAR(255) NOT NULL,  -- PBKDF2-SHA256, 禁止明文
     nickname VARCHAR(100),
     avatar VARCHAR(255),
-    status TINYINT DEFAULT 1,
+    status TINYINT DEFAULT 1,             -- 1=正常 2=禁用 3=软删除
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE admins (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    uid VARCHAR(64) NOT NULL UNIQUE,      -- 管理员登录用户名
+    password_hash VARCHAR(255) NOT NULL,  -- PBKDF2-SHA256
+    nickname VARCHAR(100),
+    status TINYINT DEFAULT 1,             -- 1=正常 2=禁用 3=软删除
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
@@ -185,11 +195,14 @@ CREATE TABLE role_permissions (
     UNIQUE KEY uk_role_perm (role_id, permission_id)
 );
 
-CREATE TABLE user_roles (
+CREATE TABLE admin_roles (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    user_id BIGINT NOT NULL,
+    admin_id BIGINT NOT NULL,             -- 管理员 ID（来自 admins.id）
     role_id BIGINT NOT NULL,
-    UNIQUE KEY uk_user_role (user_id, role_id)
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_admin_role (admin_id, role_id),
+    FOREIGN KEY(admin_id) REFERENCES admins(id) ON DELETE CASCADE,
+    FOREIGN KEY(role_id) REFERENCES roles(id) ON DELETE CASCADE
 );
 
 -- =========================================================
@@ -231,15 +244,16 @@ CREATE TABLE conversation_member_roles (
 
 CREATE TABLE audit_logs (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    user_id BIGINT,
+    admin_id BIGINT NOT NULL,             -- 操作者（来自 admins.id）
     action VARCHAR(100) NOT NULL,
-    target_type VARCHAR(50), -- user / group / conversation / message
+    target_type VARCHAR(50),              -- user / message / conversation
     target_id BIGINT,
-    detail JSON, -- 操作详情
-    ip VARCHAR(45), -- 支持 IPv6
+    detail JSON,                          -- 操作详情
+    ip_address VARCHAR(45),              -- 支持 IPv6
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    KEY idx_user_action (user_id, action),
-    KEY idx_created_at (created_at)
+    KEY idx_admin_action (admin_id, action),
+    KEY idx_created_at (created_at),
+    FOREIGN KEY(admin_id) REFERENCES admins(id)
 );
 
 -- =========================================================
@@ -248,14 +262,15 @@ CREATE TABLE audit_logs (
 
 CREATE TABLE admin_sessions (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    user_id BIGINT NOT NULL,
+    admin_id BIGINT NOT NULL,            -- 管理员 ID
     token_hash VARCHAR(128) NOT NULL,    -- SHA-256(JWT)，用于黑名单比对
     expires_at DATETIME NOT NULL,
-    revoked TINYINT DEFAULT 0,           -- 0有效 1已吊销
+    revoked TINYINT DEFAULT 0,           -- 0有效 1已吐销
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     KEY idx_session_token (token_hash),
-    KEY idx_session_user (user_id),
-    KEY idx_session_expires (expires_at)
+    KEY idx_session_admin (admin_id),
+    KEY idx_session_expires (expires_at),
+    FOREIGN KEY(admin_id) REFERENCES admins(id)
 );
 
 -- =========================================================

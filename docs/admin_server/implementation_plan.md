@@ -1,6 +1,6 @@
 # Admin 模块实现计划
 
-**最后更新：2026-04-15 | 项目状态：核心功能 95% 完成 | 编译状态：0 errors**
+**最后更新：2026-04-16 | 项目状态：核心功能 95% 完成 | 编译状态：0 errors | 测试：83/83**
 
 ## 🎯 当前进度概览
 
@@ -10,7 +10,7 @@
 | JwtUtils | ✅ 完成 | Sign / Verify, 可选算法，admin_id 字段 |
 | AdminServer 框架 | ✅ 完成 | libhv HttpServer, JWT 中间件, X-Nova-Admin-Id 防伪造 |
 | ServerContext | ✅ 完成 | 原子计数器, AppConfig 按值存储, DaoFactory 所有权 |
-| http_helper | ✅ 完成 | JsonOk/JsonError, Pagination(int64_t Offset), HasPermission(精确分割匹配) |
+| http_helper | ✅ 完成 | JsonOk/JsonError, ApiError 28个constexpr常量, Pagination(int64_t Offset), HasPermission(精确分割匹配) |
 | PasswordUtils | ✅ 完成 | PBKDF2-SHA256 (MbedTLS), 100k iterations, 全部 mbedtls 返回值检查 |
 | DaoFactory 抽象工厂 | ✅ 完成 | 统一 DAO 访问入口，支持 SQLite/MySQL 后端切换，ServerContext 中心化 |
 | SqliteDbManager (ormpp+SQLite3) | ✅ 完成 | WAL + FK + busy_timeout, PRAGMA 返回值检查, admins/admin_roles 表 |
@@ -26,7 +26,7 @@
 | 鉴权中间件 | ✅ 完成 | JWT 验签 + X-Nova-Admin-Id 清除/注入 + 黑名单查询 + RBAC 权限注入 |
 | Handler 层 | ✅ 完成 | auth/dashboard/user/message/audit 共 13 个 handler 已实现 |
 | 审计日志写入 | ✅ 完成 | 全部写操作 handler 均集成 WriteAuditLog，明确 admin_id 操作者 |
-| 数据库 Seed | ✅ 完成 | 首次运行自动创建 super admin 账户，admin123 默认密码，幂等逻辑 |
+| 数据库 Seed | ✅ 完成 | 首次运行自动创建 super admin 账户，nova2024 默认密码，幂等逻辑 |
 | DAO 目录重构 | ✅ 完成 | 公共接口 dao/, 模板实现 dao/impl/, 后端 dao/sqlite3/ + dao/mysql/ |
 
 ---
@@ -186,11 +186,11 @@ Phase 0 (基础工具)              ← ✅ 完成
 | 4.2 | 路由注册重构 | RegisterRoutes 注册全部路由(auth/dashboard/user/message/audit) | ✅ 完成 |
 | 4.3 | AdminServer 依赖注入 | 构造函数改为 `explicit AdminServer(ServerContext& ctx)`, 内部通过 ctx.dao() 访问 | ✅ 完成 |
 | 4.4 | main.cpp 完整集成 | CreateDaoFactory → ctx.set_dao(...) 模式, DaoFactory 由 ServerContext 管理 | ✅ 完成 |
-| 4.5 | JWT 单元测试 | Sign → Verify 往返 / 过期 / 篡改 | ⚠️ 待补 |
-| 4.6 | 密码哈希测试 | Hash → Verify / 错误密码 | ⚠️ 待补 |
-| 4.7 | DAO 单元测试 | 各 DAO 操作验证(SQLite 后端) | ⚠️ 待补 |
-| 4.8 | Handler 集成测试 | mock DAO → 验证 HTTP 请求/响应 | ⚠️ 待补 |
-| 4.9 | 端到端测试 | login → 调用各 API → 验证审计记录 | ⚠️ 待补 |
+| 4.5 | JWT 单元测试 | Sign → Verify 往返 / 过期 / 篡改 | ✅ 13用例 |
+| 4.6 | 密码哈希测试 | Hash → Verify / 错误密码 | ✅ 11用例 |
+| 4.7 | DAO 单元测试 | 各 DAO 操作验证(SQLite 后端) | ✅ 24用例 |
+| 4.8 | Handler 集成测试 | 真实 HTTP 请求/响应验证 | ✅ 21用例 |
+| 4.9 | 基础设施测试 | Router/MPMC/ConnManager | ✅ 14用例 |
 | 4.10 | ConversationDao 实现 | 接口已定义, 需补模板实现 + 接入 DaoFactory | ⚠️ 待补 |
 
 ---
@@ -235,7 +235,7 @@ server/
     admin_server.h / .cpp           ← ✅ 路由注册 + JWT中间件(黑名单+RBAC+admin_id) + 13个Handler + 审计写入
     jwt_utils.h / .cpp              ← ✅ JWT 签发/验证 (l8w8jwt), admin_id 字段替代 user_id
     password_utils.h / .cpp         ← ✅ PBKDF2-SHA256 (MbedTLS, 返回值全检查)
-    http_helper.h                   ← ✅ JSON 响应 + 分页(int64_t) + 权限检查 + GetCurrentAdminId()
+    http_helper.h                   ← ✅ JSON 响应 + ApiError 28个constexpr常量 + 分页(int64_t) + 权限检查 + GetCurrentAdminId()
   core/
     app_config.h / .cpp             ← ✅ YAML 配置 (ylt struct_yaml), Config→AppConfig 已重命名
     server_context.h                ← ✅ DaoFactory 所有权中心, set_dao()/dao() 访问器

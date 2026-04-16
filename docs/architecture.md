@@ -65,7 +65,7 @@ server/
   model/                ← 数据模型: Packet (二进制帧) / types.h (DB 实体)
   service/              ← 业务逻辑: Router/UserSvc/MsgSvc/SyncSvc
   dao/                  ← 数据访问: DbManager + 各 DAO 实现 (ormpp)
-  admin/                ← 管理面板: AdminServer/JWT/密码/响应助手/Handlers
+  admin/                ← 管理面板: AdminServer/JWT/密码/响应助手/ApiError常量/Handlers
 ```
 
 ## 安全设计
@@ -73,8 +73,14 @@ server/
 - JWT 鉴权 + RBAC 权限 + admin_sessions 黑名单
 - 全参数化 SQL (ormpp prepared statement)
 - PBKDF2-SHA256 密码哈希 + 常量时间比较
-- AuthMiddleware 清除伪造的 X-Nova-* 请求头
+- AuthMiddleware 清除伪造的 X-Nova-Admin-Id / X-Nova-Permissions 请求头
 - Heartbeat 使用服务端 user_id, 不信任客户端声明
 - 写操作审计日志 (action + target + detail + IP)
+- 登录频率限制 (RateLimiter: 5次/60秒/IP, HTTP 429)
+- 密码内存清除 (volatile memset 清零明文)
+- trust_proxy IP 处理 (X-Forwarded-For 可配信任)
+- ApiError 类型化错误常量 (28 constexpr, 消除 hardcode)
+- NOVA_DEFER scope guard (事务回滚 / 资源清理)
+- in-flight 消息去重超时 (30s timeout 防 TOCTOU)
 
 详细架构设计见 [sever_arch.md](sever_arch.md)，Admin 模块设计见 [admin_server/](admin_server/) 目录。

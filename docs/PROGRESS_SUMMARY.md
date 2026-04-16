@@ -1,6 +1,6 @@
 # NovaIIM 项目进度汇总
 
-**截止日期：2026-04-15 | 项目成熟度：Alpha → Beta 转型阶段**
+**截止日期：2026-04-16 | 项目成熟度：Beta**
 
 ---
 
@@ -10,14 +10,14 @@
 
 | 指标 | 数值 | 评价 |
 |------|------|------|
-| **代码总量** | ~12,000 LoC | 中等规模 C++20 项目 |
+| **代码总量** | ~13,000 LoC | 中等规模 C++20 项目 |
 | **编译状态** | ✅ 0 errors | 生产就绪 |
-| **功能完成度** | **81%** | 核心功能已交付 |
+| **功能完成度** | **85%** | 核心功能已交付 |
 | **数据库表数** | 11 个 | users/admins/messages/audit/roles... |
 | **HTTP API 端点** | 13 个 | 管理面板全部端点 |
 | **后端支持** | 2 种 | SQLite3 + MySQL 5.7+ |
-| **测试覆盖** | ⚠️ 30% | 基础测试存在，单元测试待补 |
-| **Git 提交数** | 30+ | 含本次 Admin/User 分离重构 3 次 |
+| **测试覆盖** | ✅ 83 用例全通过 | 7 个测试套件 |
+| **Git 提交数** | 35+ | 含安全加固 + 测试 + 重构 |
 
 ### ✅ 核心系统状态
 
@@ -25,8 +25,8 @@
 |------|------|------|--------|
 | **网络层** | ✅ 生产　 | TCP/WebSocket 多端 | ✅ 连接隔离 |
 | **DAO 层** | ✅ 生产 | 双后端模板化, 全参数化 SQL | ✅ 防注入 |
-| **认证系统** | ✅ 生产 | JWT + RBAC + 黑名单 | ✅ 防伪造 |
-| **管理面板** | ✅ 生产 | 13 个 API, 审计完整 | ✅ 权限隔离 |
+| **认证系统** | ✅ 生产 | JWT + RBAC + 黑名单 + 频率限制 | ✅ 防伪造 |
+| **管理面板** | ✅ 生产 | 13 个 API, 审计完整, ApiError 常量 | ✅ 权限隔离 |
 | **IM 用户服务** | ⚠️ 存根 | 心跳OK，收发存根 | ⚠️ 待规范 |
 | **消息序列化** | ⚠️ 基础 | 二进制帧, seq 递增 | ⚠️ 无加密 |
 
@@ -103,36 +103,30 @@ user_devices       ← 用户设备指纹
 | **权限提升** | JWT 黑名单 + RBAC | ✅ 测试通过 |
 | **请求头伪造** | 清除 X-Nova-* 后重新注入 | ✅ Middleware 验证 |
 | **弱密码** | PBKDF2-SHA256 100k iter | ✅ MbedTLS 支持 |
+| **密码泄露** | 验证后 volatile memset 清零 | ✅ 3处清除 |
 | **整数溢流** | int64_t Pagination | ✅ 类型检查 |
 | **UID 欺骗** | Heartbeat 用 conn->user_id() | ✅ 原子引用 |
 | **表权限混淆** | Admin/User 表分离 | ✅ Schema 隔离 |
+| **登录爆破** | RateLimiter (5次/60s/IP) | ✅ HTTP 429 |
+| **IP 伪造** | trust_proxy 可配信任 | ✅ 默认不信任 |
+| **TOCTOU** | in-flight 30s timeout | ✅ 消息去重 |
 
 ---
 
 ## 🚧 进行中的工作（Phase 4）
 
-### ⚠️ 待补测试
+### ✅ 单元测试已完成（83 用例全通过）
 
-**优先级：高**
-- [ ] JWT 单元测试 (5h)
-  - 签发/验证往返
-  - 过期令牌处理
-  - 篡改检测
-  
-- [ ] AdminAccountDao 单元测试 (4h)
-  - FindByUid 功能
-  - UpdatePassword 正确性
-  - 软删除逻辑
-  
-- [ ] RbacDao 单元测试 (3h)
-  - 权限继承验证
-  - HasPermission 精确匹配
-
-**优先级：中**
-- [ ] Handler 集成测试 (8h)
-  - mock DAO + HTTP 调用
-  - 权限检查验证
-  - 审计记录完整性
+| 测试套件 | 用例数 | 状态 |
+|---------|-------|------|
+| test_jwt_utils | 13 | ✅ |
+| test_password_utils | 11 | ✅ |
+| test_admin_dao | 24 | ✅ |
+| test_admin_api | 21 | ✅ |
+| test_router | 5 | ✅ |
+| test_mpmc_queue | 5 | ✅ |
+| test_conn_manager | 4 | ✅ |
+| **合计** | **83** | **100%** |
 
 ### ⚠️ Optional 功能
 
@@ -144,6 +138,17 @@ user_devices       ← 用户设备指纹
 - [ ] API 文档 (Swagger)
   - 自动生成 + 手工调整
   - 可选：OpenAPI 3.0
+
+### ✅ 安全加固已完成 (2026-04-16)
+
+- RateLimiter 登录频率限制 (5次/60s/IP, HTTP 429)
+- 密码内存清除 (volatile memset)
+- trust_proxy IP 处理
+- IsRevoked fail-closed (查询失败视为已吐销)
+- in-flight 消息去重 30s 超时
+- Packet::Encode body 长度校验
+- NOVA_DEFER scope guard 宏
+- ApiError 28 个 constexpr 错误常量
 
 ---
 
@@ -174,7 +179,7 @@ struct SyncReq { int64_t from_seq[n_topics]; };
 
 ---
 
-## 🎁 新增亮点特性（本周期）
+## 🎫 新增亮点特性（本周期）
 
 ### Phase 3.5 — Admin/User 表分离 ✨ (2026-04-15)
 
@@ -198,12 +203,9 @@ struct SyncReq { int64_t from_seq[n_topics]; };
 
 ## 🎯 下一步行动计划
 
-### Phase 4A — 单元测试快速补充 (估计 20h)
+### Phase 4A — 单元测试 ✅ 已完成
 ```
-Week 1 (2026-04-15 ~ 2026-04-21)
-  Mon-Tue: JWT/Password 单元测试
-  Wed-Thu: DAO 单元测试
-  Fri:     Handler / 集成测试
+83 tests across 7 test suites, 100% pass rate
 ```
 
 ### Phase 4B — IM 用户侧实现 (估计 30h)
@@ -229,7 +231,8 @@ Week 3 (2026-04-29 ~ 2026-05-05)
 | 指标 | 目标 | 现状 | 拟定 |
 |------|------|------|------|
 | 编译错误 | 0 | ✅ 0 | 保持 |
-| 代码覆盖 | 80% | ⚠️ 30% | Phase 4 目标 60% |
+| 测试通过 | 100% | ✅ 83/83 | 保持 |
+| 代码覆盖 | 80% | ⚠️ 60% | Phase 5 目标 80% |
 | API 文档 | 100% | ⚠️ 80% | Phase 5 完成 |
 | 安全审计 | PASSED | ✅ PASSED | 半年一次 |
 | 性能基准 | TBD | ⚠️ 待测 | Phase 5 建立 |

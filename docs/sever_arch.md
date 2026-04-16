@@ -135,6 +135,7 @@ class Router {
 ```
 GET  /healthz                        ← 无需鉴权
 POST /api/v1/auth/login              ← 无需鉴权
+POST /api/v1/auth/logout             ← 吐销 JWT token
 GET  /api/v1/auth/me
 GET  /api/v1/dashboard/stats
 GET  /api/v1/users
@@ -178,10 +179,11 @@ GET  /api/v1/audit-logs
 | DAO | 说明 |
 |-----|------|
 | UserDaoImpl | CRUD, ListUsers (LIKE 转义), 参数化查询 |
+| AdminAccountDaoImpl | FindByUid/FindById/Insert/UpdatePassword (管理员专属) |
 | AuditLogDaoImpl | Insert + 多条件参数化分页查询 |
 | AdminSessionDaoImpl | JWT 黑名单 (update_some prepared stmt) |
-| RbacDaoImpl | 3表 JOIN 获取用户权限 |
-| MessageDao | 接口已定义，待实现 |
+| RbacDaoImpl | 3表 JOIN 获取用户权限 (admin_roles) |
+| MessageDaoImpl | Insert/GetAfterSeq/UpdateStatus/ListMessages/FindById |
 | ConversationDao | 接口已定义，待实现 |
 
 安全措施：
@@ -291,13 +293,19 @@ class MPMCQueue {
 |------|------|
 | 密码存储 | PBKDF2-SHA256, 100k iterations, 16B random salt, 常量时间比较 |
 | JWT 鉴权 | HS256, 可配过期时间, admin_sessions 黑名单 |
-| 请求头防伪 | AuthMiddleware 入口清除 X-Nova-User-Id / X-Nova-Permissions |
+| 请求头防伪 | AuthMiddleware 入口清除 X-Nova-Admin-Id / X-Nova-Permissions |
 | SQL 注入防护 | ormpp prepared statement, 无字符串拼接 |
 | LIKE 注入防护 | 转义 `%`/`_`/`\` + ESCAPE 子句 |
 | UID 防伪 | Heartbeat 用服务端 conn->user_id(), 不信任 pkt.uid |
 | mbedtls | 所有返回值检查, 失败提前返回 |
 | 配置安全 | 启动时校验 JWT 密钥 (默认值警告 + 长度检查) |
 | 审计 | 写操作记录到 audit_logs (action + target + detail + IP) |
+| 登录频率限制 | RateLimiter 滑动窗口 (5次/60秒/IP, HTTP 429) |
+| 密码内存清除 | 验证后 volatile memset 清零明文密码 |
+| trust_proxy | X-Forwarded-For / X-Real-IP 仅配置启用时信任 |
+| ApiError | 28 个 constexpr 错误常量，消除 hardcode 字符串 |
+| NOVA_DEFER | Go-style scope guard 宏 (事务回滚/资源清理) |
+| 消息去重 | in-flight 30s timeout 防 TOCTOU, LRU dedup cache |
 
 ---
 

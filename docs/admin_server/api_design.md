@@ -3,7 +3,7 @@
 > Base URL: `http://{host}:9091/api/v1`  
 > Auth: `Authorization: Bearer {JWT_TOKEN}`  
 > Content-Type: `application/json`  
-> **Status:** ✅ 100% 实现 | 最后更新：2026-04-15
+> **Status:** ✅ 100% 实现 | 最后更新：2026-04-16
 
 ---
 
@@ -31,11 +31,13 @@
 | 码值 | 说明 | HTTP 状态 |
 |------|------|---------|
 | 0 | 成功 | 200 |
-| 1 | 参数错误 | 400 |
+| 1 | 参数错误 | 200/400/409/413 |
 | 2 | 未登录 / 无效 token | 401 |
-| 3 | 无权限 | 403 |
-| 4 | 资源不存在 | 404 |
-| 5 | 服务器内部错误 | 500 |
+| 3 | 无权限 | 403/429 |
+| 4 | 资源不存在 | 200 |
+| 5 | 服务器内部错误 | 200 |
+
+> 所有错误已提取为 `api_err` 命名空间的 28 个 `constexpr ApiError` 常量，定义在 `server/admin/http_helper.h`。
 
 ---
 
@@ -74,7 +76,7 @@
 ```json
 {
   "uid": "admin",
-  "password": "admin123"
+  "password": "nova2024"
 }
 ```
 

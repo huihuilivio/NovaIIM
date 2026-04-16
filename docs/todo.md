@@ -1,6 +1,6 @@
 # NovaIIM Server 待办列表
 
-**最后更新：2026-04-15 | 项目进度：81% | 编译状态：✅ 0 errors**
+**最后更新：2026-04-16 | 项目进度：85% | 编译状态：✅ 0 errors | 测试：✅ 83/83**
 
 ---
 
@@ -121,13 +121,14 @@
 
 ## ⚠️ 当前进行中 (Phase 4)
 
-### 单元测试 — 待补 ⚠️
-- [ ] JWT 单元测试 (Sign → Verify 往返 / 过期 / 篡改)
-- [ ] PasswordUtils 测试 (Hash → Verify / 错误密码)
-- [ ] AdminAccountDao 单元测试 (CRUD 操作)
-- [ ] RbacDao 单元测试 (权限查询)
-- [ ] Handler 集成测试 (mock DAO + HTTP 请求验证)
-- [ ] 端到端测试 (login → 调用 API → 审计记录完整性)
+### 单元测试 — ✅ 已完成
+- [x] JWT 单元测试 (Sign → Verify 往返 / 过期 / 篡改) — 13 用例
+- [x] PasswordUtils 测试 (Hash → Verify / 错误密码) — 11 用例
+- [x] AdminAccountDao 单元测试 (CRUD 操作) — 7 用例
+- [x] AdminSessionDao 单元测试 — 5 用例
+- [x] RbacDao 单元测试 (权限查询) — 12 用例
+- [x] Handler 集成测试 (HTTP 请求验证) — 21 用例
+- [x] Router / MPMC / ConnManager 基础测试 — 14 用例
 
 ### ConversationDao — 待补 ⚠️
 - [ ] 实现 ConversationDaoImplT 模板
@@ -170,8 +171,14 @@
 - [x] 配置安全: JWT 秘钥启动校验
 - [x] LIKE 注入: 通配符转义 + ESCAPE
 - [x] 整数溢流: Pagination::Offset() → int64_t
-- [x] 权限混淆: Admin/User 表分离, admin_roles 独占管理员
-
+- [x] 权限混淆: Admin/User 表分离, admin_roles 独占管理员- [x] 登录频率限制: RateLimiter 滑动窗口 (5次/60秒/IP, HTTP 429)
+- [x] 密码内存清除: 验证后 volatile memset 清零明文
+- [x] trust_proxy: X-Forwarded-For / X-Real-IP 仅配置启用时信任
+- [x] 消息去重超时: in-flight 30s timeout 防 TOCTOU
+- [x] ApiError 类型化: 28 个 constexpr 常量，消除 hardcode 字符串
+- [x] NOVA_DEFER 宏: Go-style scope guard（事务回滚、资源清理）
+- [x] Packet::Encode 校验: body 长度 ≤ kMaxBodySize
+- [x] IsRevoked fail-closed: 查询失败视为已吐销
 ---
 
 ## 📚 文档

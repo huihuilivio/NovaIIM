@@ -52,7 +52,7 @@ CREATE INDEX idx_admins_status ON admins(status);
 - `status` - 1=可用 2=禁用 3=软删除（支持后续恢复）
 
 **首次启动初始化：**
-- 自动创建 `uid="admin"`, `password="admin123"` (首次运行必改)
+- 自动创建 `uid="admin"`, `password="nova2024"` (首次运行必改)
 - 幂等逻辑：检查 admins 表是否为空，空则插入
 
 ---

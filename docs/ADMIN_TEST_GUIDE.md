@@ -2,14 +2,17 @@
 
 ## 概述
 
-已完成 **Admin模块单元测试** 3/4 个目标，共 48 个测试用例：
+已完成 **全部测试目标**，共83 个测试用例：
 
 | 测试目标 | 用例数 | 状态 | 覆盖范围 |
-|--------|-------|------|---------|
+|--------|-------|------|----------|
 | `test_jwt_utils` | 13 | ✅ 通过 | JWT签发/验证、过期、篡改、多算法 |
 | `test_password_utils` | 11 | ✅ 通过 | PBKDF2哈希、验证、随机盐、边界值 |
-| `test_admin_dao` | 24 | ⚠️ 1失败 | AdminAccountDao/AdminSessionDao/RbacDao + in-mem SQLite |
-| `test_admin_api` | 待运行 | - | HTTP集成测试、真实AdminServer、鉴权中间件 |
+| `test_admin_dao` | 24 | ✅ 通过 | AdminAccountDao/AdminSessionDao/RbacDao + in-mem SQLite |
+| `test_admin_api` | 21 | ✅ 通过 | HTTP集成测试、真实AdminServer、鉴权中间件 |
+| `test_router` | 5 | ✅ 通过 | 命令字路由分发 |
+| `test_mpmc_queue` | 5 | ✅ 通过 | Vyukov 无锁队列 |
+| `test_conn_manager` | 4 | ✅ 通过 | 多端连接管理 |
 
 ## 测试执行脚本
 
@@ -21,20 +24,12 @@ cmake .. -DNOVA_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo
 cmake --build . --target test_jwt_utils test_password_utils test_admin_dao test_admin_api
 ```
 
-### 运行单个测试
+### 运行全部测试
 
 ```bash
-# 所有JwtUtils测试
-d:\livio\NovaIIM\build\output\test\test_jwt_utils.exe
-
-# 所有PasswordUtils测试  
-d:\livio\NovaIIM\build\output\test\test_password_utils.exe
-
-# 所有AdminDao测试
-d:\livio\NovaIIM\build\output\test\test_admin_dao.exe
-
-# 所有AdminAPI集成测试 (需要提前手动启动 IM Server 或使用SetUpTestSuite)
-d:\livio\NovaIIM\build\output\test\test_admin_api.exe
+cd d:\livio\NovaIIM\build
+ctest --output-on-failure
+# 期望输出: 100% tests passed, 0 tests failed out of 83
 ```
 
 ### 运行特定测试

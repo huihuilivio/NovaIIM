@@ -1,7 +1,7 @@
 # NovaIIM 🚀
 
 > A High-Performance Next-Gen Instant Messaging System (C++ / CMake)  
-> **Current Status:** 81% Complete • 0 Compilation Errors • Production Ready
+> **Current Status:** 85% Complete • 0 Compilation Errors • 83 Tests Passing • Production Ready
 
 ---
 
@@ -88,7 +88,13 @@ GET    /permissions             权限列表（всех）
 - ✅ PBKDF2-SHA256 密码哈希（100k iterations，MbedTLS）
 - ✅ RBAC 权限模型（角色继承，精确匹配）
 - ✅ 操作审计追踪（admin_id 明确记录每个操作）
-- ✅ **Admin/User 表分离**（NEW：2026-04-15）
+- ✅ **登录频率限制** — RateLimiter 滑动窗口（5次/60秒/IP，HTTP 429）
+- ✅ **密码内存清除** — 验证后 volatile memset 清零明文密码
+- ✅ **trust_proxy IP 处理** — X-Forwarded-For / X-Real-IP 仅在配置启用时信任
+- ✅ **ApiError 类型化错误** — 28 个 constexpr 错误常量，消除 hardcode 字符串
+- ✅ **NOVA_DEFER 宏** — Go-style scope guard（事务回滚、资源清理）
+- ✅ **消息去重超时** — in-flight 30 秒超时防 TOCTOU 竞态
+- ✅ **Admin/User 表分离**
   - 管理员账户物理隔离（admins 表）
   - IM 用户单独控制（users 表）
   - 权限系统隔离（admin_roles 独占，users 无 admin.* 权限）
@@ -97,7 +103,7 @@ GET    /permissions             权限列表（всех）
   - AuditLog 追踪（admin_id 字段记录操作者）
 
 ### ⚠️ 进行中（Phase 4）
-- 单元测试补充（JWT / DAO / Handler）— 预估 20h
+- ✅ 单元测试：83 个用例全部通过（JWT 13 / Password 11 / DAO 24 / API 21 / Router 5 / MPMC 5 / ConnMgr 4）
 - ConversationDao 模板实现 — 预估 5h
 
 ### ⏳ 待补（Phase 5+）
@@ -211,13 +217,15 @@ NovaIIM/
 │   │   ├── admin_server.h/cpp     # HTTP 路由 + 13 个 Handler
 │   │   ├── jwt_utils.h/cpp        # JWT 签发/验证
 │   │   ├── password_utils.h/cpp   # PBKDF2-SHA256
-│   │   └── http_helper.h          # JSON 响应模板 + 权限检查
+│   │   └── http_helper.h          # JSON 响应模板 + ApiError 常量 + 权限检查
 │   ├── core/                      # 核心服务
 │   │   ├── app_config.h/cpp       # YAML 配置加载
 │   │   ├── server_context.h       # DaoFactory 所有权 + 全局上下文
 │   │   ├── logger.h/cpp
 │   │   ├── thread_pool.h          # Worker threadpool
 │   │   ├── mpmc_queue.h           # Vyukov MPMC
+│   │   ├── rate_limiter.h         # 滑动窗口频率限制
+│   │   ├── defer.h                # NOVA_DEFER scope guard 宏
 │   │   └── formatters.h
 │   ├── dao/                       # 数据访问层
 │   │   ├── dao_factory.h/cpp      # DaoFactory 抽象工厂
@@ -327,9 +335,8 @@ ls -la build/output/bin/NovaIIM
 # [INFO] IM service listening on: 0.0.0.0:9999
 # [INFO] Server started. Press Ctrl+C to shutdown.
 
-# 运行单元测试
-./build/output/test/test_mpmc_queue
-./build/output/test/test_router
+# 运行单元测试 (83 个用例)
+ctest --output-on-failure
 ```
 
 ### 配置文件 (configs/server.yaml)
@@ -366,7 +373,7 @@ server:
 # 1. 登录获取 token
 curl -X POST http://localhost:9091/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"uid":"admin","password":"admin123"}'
+  -d '{"uid":"admin","password":"nova2024"}'
 
 # 响应（复制 token）:
 # {"code":0,"data":{"token":"eyJhbGc...","expires_in":86400}}
@@ -401,6 +408,9 @@ curl "http://localhost:9091/api/v1/users?page=1&page_size=20" \
 - ✅ **权限隔离** — Admin/User 表分离，权限系统独占 admin_roles
 - ✅ **密码安全** — PBKDF2-SHA256 100k iterations (MbedTLS)
 - ✅ **JWT 管理** — 令牌黑名单 + 签名验证 + 过期检查
+- ✅ **登录频率限制** — 滑动窗口 RateLimiter（5次/60秒/IP，HTTP 429）
+- ✅ **密码内存清除** — 验证后 volatile memset 清零明文
+- ✅ **trust_proxy** — X-Forwarded-For / X-Real-IP 可配信任
 - ✅ **请求头防伪造** — X-Nova-Admin-Id 清除和重注入
 - ✅ **审计追踪** — 所有操作记 admin_id + 时间戳 + action
 - ✅ **LIKE 注入防护** — 通配符转义 + ESCAPE 子句
@@ -415,7 +425,7 @@ curl "http://localhost:9091/api/v1/users?page=1&page_size=20" \
 |-------|------|------|-----|
 | 0-3 | 基础工具 + DAO + 认证 + API | ✅ 100% | Q1 2026 |
 | 3.5 | **Admin/User 表分离** | ✅ 100% | 2026-04-15 |
-| **4** | 单元测试 + ConversationDao | 📍 0% | 2026-04-21 |
+| **4** | 单元测试 + ConversationDao | ✅ 83/83 | 2026-04-16 |
 | 5 | IM 用户侧（Login/Message/Sync） | ⏳ 0% | 2026-04-28 |
 | 6 | 性能优化 + 文档完善 | ⏳ 0% | 2026-05-05 |
 
