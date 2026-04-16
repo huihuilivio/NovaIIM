@@ -2,6 +2,7 @@
 
 #include "../net/connection.h"
 #include "../model/packet.h"
+#include "../model/protocol.h"
 
 namespace nova {
 
@@ -13,18 +14,13 @@ class UserService {
 public:
     explicit UserService(ServerContext& ctx) : ctx_(ctx) {}
 
-    // 处理登录
     void HandleLogin(ConnectionPtr conn, Packet& pkt);
-
-    // 处理登出
     void HandleLogout(ConnectionPtr conn, Packet& pkt);
-
-    // 处理心跳
     void HandleHeartbeat(ConnectionPtr conn, Packet& pkt);
 
 private:
-    // 发送应答包
-    void SendReply(ConnectionPtr& conn, Cmd cmd, uint32_t seq, uint64_t uid, const std::string& body);
+    template <typename T>
+    void SendPacket(ConnectionPtr& conn, Cmd cmd, uint32_t seq, uint64_t uid, const T& body);
 
     ServerContext& ctx_;
 };
