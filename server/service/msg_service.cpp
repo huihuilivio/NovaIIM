@@ -93,7 +93,7 @@ void MsgService::HandleSendMsg(ConnectionPtr conn, Packet& pkt) {
         return;
     }
 
-    if (req->content.size() > 4096) {
+    if (req->content.size() > kMaxContentSize) {
         SendPacket(conn, Cmd::kSendMsgAck, seq, uid,
                    proto::SendMsgAck{ec::msg::kContentTooLarge.code, ec::msg::kContentTooLarge.msg});
         return;
@@ -116,7 +116,9 @@ void MsgService::HandleSendMsg(ConnectionPtr conn, Packet& pkt) {
         // 防止 TOCTOU 竞态：查找未命中时立即标记 in-flight，其他线程会看到此标记
         // 超过 kInflightTimeout 的旧标记会被自动覆盖，防止永久阻塞
         if (!TryMarkInflight(req->client_msg_id)) {
-            // 已有线程正在处理同一 client_msg_id，丢弃本次请求
+            // 已有线程正在处理同一 client_msg_id，返回繁忙提示而非静默丢弃
+            SendPacket(conn, Cmd::kSendMsgAck, seq, uid,
+                       proto::SendMsgAck{ec::kServerBusy.code, ec::kServerBusy.msg});
             return;
         }
     }
@@ -241,6 +243,7 @@ int64_t MsgService::GenerateSeq(int64_t conversation_id) {
     return ctx_.dao().Conversation().IncrMaxSeq(conversation_id);
 }
 
+// 注意：必须在持有 DaoScopedConn (Session) 的上下文中调用，内部会访问 ConversationDao
 void MsgService::BroadcastEncoded(int64_t sender_id, const std::string& exclude_device, int64_t conversation_id,
                                   const std::string& encoded) {
     auto members = ctx_.dao().Conversation().GetMembersByConversation(conversation_id);

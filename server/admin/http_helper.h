@@ -35,8 +35,8 @@ namespace api_err {
 // ---- 通用 ----
 inline constexpr ApiError kBodyTooLarge         {ApiCode::kParamError,      "request body too large",                   413};
 inline constexpr ApiError kInvalidParam         {ApiCode::kParamError,      "invalid parameter",                        400};
-inline constexpr ApiError kInvalidUserId        {ApiCode::kParamError,      "invalid user id",                          200};
-inline constexpr ApiError kInvalidMessageId     {ApiCode::kParamError,      "invalid message id",                       200};
+inline constexpr ApiError kInvalidUserId        {ApiCode::kParamError,      "invalid user id",                          400};
+inline constexpr ApiError kInvalidMessageId     {ApiCode::kParamError,      "invalid message id",                       400};
 
 // ---- 认证 ----
 inline constexpr ApiError kMissingToken         {ApiCode::kUnauthorized,    "missing or invalid token",                 401};
@@ -56,9 +56,9 @@ inline constexpr ApiError kUidPasswordRequired  {ApiCode::kParamError,      "uid
 inline constexpr ApiError kUidPasswordStrings   {ApiCode::kParamError,      "uid and password must be strings",         400};
 inline constexpr ApiError kUidPasswordEmpty     {ApiCode::kParamError,      "uid and password cannot be empty",         400};
 inline constexpr ApiError kUidAlreadyExists     {ApiCode::kParamError,      "uid already exists",                       409};
-inline constexpr ApiError kNewPasswordRequired  {ApiCode::kParamError,      "new_password required",                    200};
+inline constexpr ApiError kNewPasswordRequired  {ApiCode::kParamError,      "new_password required",                    400};
 inline constexpr ApiError kNewPasswordString    {ApiCode::kParamError,      "new_password must be a string",            400};
-inline constexpr ApiError kNewPasswordEmpty     {ApiCode::kParamError,      "new_password cannot be empty",             200};
+inline constexpr ApiError kNewPasswordEmpty     {ApiCode::kParamError,      "new_password cannot be empty",             400};
 
 // ---- 资源不存在 ----
 inline constexpr ApiError kUserNotFound         {ApiCode::kNotFound,        "user not found",                           200};
@@ -67,10 +67,10 @@ inline constexpr ApiError kMessageNotFound      {ApiCode::kNotFound,        "mes
 inline constexpr ApiError kUserNotOnline        {ApiCode::kNotFound,        "user not online",                          200};
 
 // ---- 内部错误 ----
-inline constexpr ApiError kHashFailed           {ApiCode::kInternal,        "failed to hash password",                  200};
-inline constexpr ApiError kSignTokenFailed      {ApiCode::kInternal,        "failed to sign token",                     200};
-inline constexpr ApiError kCreateUserFailed     {ApiCode::kInternal,        "failed to create user",                    200};
-inline constexpr ApiError kRecallFailed         {ApiCode::kInternal,        "failed to recall message",                 200};
+inline constexpr ApiError kHashFailed           {ApiCode::kInternal,        "failed to hash password",                  500};
+inline constexpr ApiError kSignTokenFailed      {ApiCode::kInternal,        "failed to sign token",                     500};
+inline constexpr ApiError kCreateUserFailed     {ApiCode::kInternal,        "failed to create user",                    500};
+inline constexpr ApiError kRecallFailed         {ApiCode::kInternal,        "failed to recall message",                 500};
 }  // namespace api_err
 // clang-format on
 

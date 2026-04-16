@@ -399,7 +399,8 @@ int AdminServer::HandleStats(HttpRequest* req, HttpResponse* resp) {
 // ============================================================
 
 int AdminServer::HandleListUsers(HttpRequest* req, HttpResponse* resp) {
-    int rc = RequirePermission(req, resp, "user.view");
+    auto session = ctx_.dao().Session();
+    int rc       = RequirePermission(req, resp, "user.view");
     if (rc != 0)
         return rc;
 
@@ -461,6 +462,13 @@ int AdminServer::HandleCreateUser(HttpRequest* req, HttpResponse* resp) {
     }
 
     auto hash = PasswordUtils::Hash(password);
+    // 安全：哈希完成后立即清除明文密码
+    {
+        volatile char* p = reinterpret_cast<volatile char*>(password.data());
+        for (size_t i = 0; i < password.size(); ++i)
+            p[i] = 0;
+        password.clear();
+    }
     if (hash.empty()) {
         return JsonError(resp, api_err::kHashFailed);
     }
@@ -576,6 +584,13 @@ int AdminServer::HandleResetPassword(HttpRequest* req, HttpResponse* resp) {
     }
 
     auto hash = PasswordUtils::Hash(new_password);
+    // 安全：哈希完成后立即清除明文密码
+    {
+        volatile char* p = reinterpret_cast<volatile char*>(new_password.data());
+        for (size_t i = 0; i < new_password.size(); ++i)
+            p[i] = 0;
+        new_password.clear();
+    }
     if (hash.empty()) {
         return JsonError(resp, api_err::kHashFailed);
     }

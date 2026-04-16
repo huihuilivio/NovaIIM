@@ -24,7 +24,8 @@ private:
                           const std::string& encoded);
 
     // ---- 消息幂等去重缓存（LRU：淘汰最旧条目，避免全量清空） ----
-    static constexpr size_t kMaxDedupCacheSize = 10000;
+    static constexpr size_t kMaxDedupCacheSize                    = 10000;
+    static constexpr size_t kMaxContentSize                       = 4096;
     static constexpr std::chrono::seconds kInflightTimeout{30};  // in-flight 超时
     std::mutex dedup_mutex_;
     // LRU 列表：front = 最旧，back = 最新
