@@ -32,6 +32,7 @@ struct LoginReq {
     std::string uid;
     std::string password;
     std::string device_id;
+    std::string device_type;  // "pc", "mobile", "web" 等
 };
 
 // S→C  Cmd::kLoginAck (0x0002)
@@ -47,15 +48,15 @@ struct LoginAck {
 
 // C→S  Cmd::kRegister (0x0004)
 struct RegisterReq {
-    std::string uid;
+    std::string nickname;  // 必填，可重复
     std::string password;
-    std::string nickname;  // 可选
 };
 
 // S→C  Cmd::kRegisterAck (0x0005)
 struct RegisterAck {
     int32_t code = 0;
     std::string msg;
+    std::string uid;       // 服务端生成的唯一 UID
     int64_t user_id = 0;
 };
 
@@ -150,6 +151,38 @@ struct SyncUnreadResp {
     int32_t code = 0;
     std::vector<UnreadItem> items;
     int64_t total_unread = 0;
+};
+
+// ============================================================
+//  文件 / 个人资料
+// ============================================================
+
+// C→S  Cmd::kUpdateAvatar (0x0300)
+struct UpdateAvatarReq {
+    std::string avatar_path;  // 头像路径或 URL
+    std::string file_hash;    // 可选，文件哈希
+};
+
+// S→C  Cmd::kUpdateAvatarAck (0x0301)
+struct UpdateAvatarAck {
+    int32_t code = 0;
+    std::string msg;
+    std::string avatar_path;  // 更新后的路径（服务端可能做了规范化）
+};
+
+// C→S  Cmd::kGetUserProfile (0x0302)
+struct GetUserProfileReq {
+    int64_t target_user_id = 0;  // 要查询的用户 ID，0 表示查自己
+};
+
+// S→C  Cmd::kGetUserProfileAck (0x0303)
+struct GetUserProfileAck {
+    int32_t code = 0;
+    std::string msg;
+    int64_t user_id = 0;
+    std::string uid;
+    std::string nickname;
+    std::string avatar;
 };
 
 // ============================================================

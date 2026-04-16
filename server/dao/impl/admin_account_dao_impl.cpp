@@ -8,7 +8,7 @@ namespace nova {
 
 template <typename DbMgr>
 std::optional<Admin> AdminAccountDaoImplT<DbMgr>::FindByUid(const std::string& uid) {
-    auto res = db_.DB().query_s<Admin>("uid=? AND status!=3", uid);
+    auto res = db_.DB().query_s<Admin>("uid=? AND status!=3" /* Deleted */, uid);
     if (res.empty())
         return std::nullopt;
     return res[0];
@@ -16,7 +16,7 @@ std::optional<Admin> AdminAccountDaoImplT<DbMgr>::FindByUid(const std::string& u
 
 template <typename DbMgr>
 std::optional<Admin> AdminAccountDaoImplT<DbMgr>::FindById(int64_t id) {
-    auto res = db_.DB().query_s<Admin>("id=? AND status!=3", id);
+    auto res = db_.DB().query_s<Admin>("id=? AND status!=3" /* Deleted */, id);
     if (res.empty())
         return std::nullopt;
     return res[0];

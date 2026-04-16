@@ -50,3 +50,10 @@ nova_add_test(
     SOURCES test_admin_api.cpp
     LIBS    im_server_lib
 )
+
+# UserService 登录链路: Register, Login, Logout, Heartbeat, 设备持久化, 多端踢下线
+nova_add_test(
+    NAME    test_user_service
+    SOURCES test_user_service.cpp
+    LIBS    im_server_lib
+)

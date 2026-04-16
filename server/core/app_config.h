@@ -24,6 +24,7 @@ struct ServerConfig {
     int sync_max           = 100;   // 消息同步最大每页条数
     int login_max_attempts = 5;     // IM 登录频率限制：最大失败次数
     int login_window_secs  = 60;    // IM 登录频率限制：窗口时间（秒）
+    int node_id            = 0;     // Snowflake 节点 ID（0–1023），多实例部署时各节点需不同
 };
 
 struct LogConfig {

@@ -17,8 +17,10 @@ public:
     bool Insert(User& user) override;
     bool UpdateStatus(int64_t id, int8_t status) override;
     bool UpdatePassword(int64_t id, const std::string& password_hash) override;
+    bool UpdateAvatar(int64_t id, const std::string& avatar) override;
     bool SoftDelete(int64_t id) override;
     std::vector<UserDevice> ListDevicesByUser(int64_t user_id) override;
+    void UpsertDevice(int64_t user_id, const std::string& device_id, const std::string& device_type) override;
 
 private:
     DbMgr& db_;

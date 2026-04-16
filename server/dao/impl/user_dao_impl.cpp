@@ -4,11 +4,31 @@
 #include "../mysql/mysql_db_manager.h"
 #endif
 
+#include <chrono>
+#include <ctime>
+
 namespace nova {
+
+namespace {
+// ISO-8601 UTC 时间戳
+inline std::string NowUtcStr() {
+    auto now = std::chrono::system_clock::now();
+    auto t   = std::chrono::system_clock::to_time_t(now);
+    char buf[32];
+    struct tm tm_buf {};
+#ifdef _MSC_VER
+    gmtime_s(&tm_buf, &t);
+#else
+    gmtime_r(&t, &tm_buf);
+#endif
+    std::strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", &tm_buf);
+    return buf;
+}
+}  // namespace
 
 template <typename DbMgr>
 std::optional<User> UserDaoImplT<DbMgr>::FindByUid(const std::string& uid) {
-    auto res = db_.DB().query_s<User>("uid=? AND status!=3", uid);
+    auto res = db_.DB().query_s<User>("uid=? AND status!=3" /* Deleted */, uid);
     if (res.empty())
         return std::nullopt;
     return res[0];
@@ -16,7 +36,7 @@ std::optional<User> UserDaoImplT<DbMgr>::FindByUid(const std::string& uid) {
 
 template <typename DbMgr>
 std::optional<User> UserDaoImplT<DbMgr>::FindById(int64_t id) {
-    auto res = db_.DB().query_s<User>("id=? AND status!=3", id);
+    auto res = db_.DB().query_s<User>("id=? AND status!=3" /* Deleted */, id);
     if (res.empty())
         return std::nullopt;
     return res[0];
@@ -94,13 +114,42 @@ bool UserDaoImplT<DbMgr>::UpdatePassword(int64_t id, const std::string& password
 }
 
 template <typename DbMgr>
+bool UserDaoImplT<DbMgr>::UpdateAvatar(int64_t id, const std::string& avatar) {
+    auto&& conn = db_.DB();
+    auto res    = conn.query_s<User>("id=?", id);
+    if (res.empty())
+        return false;
+    res[0].avatar = avatar;
+    return conn.update_some<&User::avatar>(res[0]) == 1;
+}
+
+template <typename DbMgr>
 bool UserDaoImplT<DbMgr>::SoftDelete(int64_t id) {
-    return UpdateStatus(id, 3);
+    return UpdateStatus(id, static_cast<int>(AccountStatus::Deleted));
 }
 
 template <typename DbMgr>
 std::vector<UserDevice> UserDaoImplT<DbMgr>::ListDevicesByUser(int64_t user_id) {
     return db_.DB().query_s<UserDevice>("user_id=?", user_id);
+}
+
+template <typename DbMgr>
+void UserDaoImplT<DbMgr>::UpsertDevice(int64_t user_id, const std::string& device_id,
+                                       const std::string& device_type) {
+    auto&& conn = db_.DB();
+    auto res    = conn.query_s<UserDevice>("user_id=? AND device_id=?", user_id, device_id);
+    if (res.empty()) {
+        UserDevice dev;
+        dev.user_id        = user_id;
+        dev.device_id      = device_id;
+        dev.device_type    = device_type;
+        dev.last_active_at = NowUtcStr();
+        conn.insert(dev);
+    } else {
+        res[0].device_type    = device_type;
+        res[0].last_active_at = NowUtcStr();
+        conn.update_some<&UserDevice::device_type, &UserDevice::last_active_at>(res[0]);
+    }
 }
 
 // 显式实例化

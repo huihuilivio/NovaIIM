@@ -48,6 +48,7 @@ bool SqliteDbManager::InitSchema() {
     ok = ok && db_.create_datatable<Permission>(ormpp_auto_key{"id"}, ormpp_unique{{"code"}});
     ok = ok && db_.create_datatable<RolePermission>(ormpp_auto_key{"id"}, ormpp_unique{{"role_id", "permission_id"}});
     ok = ok && db_.create_datatable<AdminRole>(ormpp_auto_key{"id"}, ormpp_unique{{"admin_id", "role_id"}});
+    ok = ok && db_.create_datatable<UserFile>(ormpp_auto_key{"id"});
 
     db_.execute("CREATE INDEX IF NOT EXISTS idx_msg_conv_time ON messages(conversation_id, created_at)");
     db_.execute("CREATE INDEX IF NOT EXISTS idx_msg_conv_seq ON messages(conversation_id, seq)");
@@ -57,6 +58,7 @@ bool SqliteDbManager::InitSchema() {
     db_.execute("CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_logs(created_at)");
     db_.execute("CREATE INDEX IF NOT EXISTS idx_session_token ON admin_sessions(token_hash)");
     db_.execute("CREATE INDEX IF NOT EXISTS idx_session_admin ON admin_sessions(admin_id)");
+    db_.execute("CREATE INDEX IF NOT EXISTS idx_userfile_user_type ON user_files(user_id, file_type)");
 
     if (!ok) {
         NOVA_NLOG_ERROR(kLogTag, "Failed to initialize database schema");

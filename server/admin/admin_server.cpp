@@ -217,7 +217,7 @@ void AdminServer::WriteAuditLog(int64_t admin_id, const std::string& action, con
     log.target_type = target_type;
     log.target_id   = target_id;
     log.detail      = detail;
-    log.ip          = ip;
+    log.ip_address  = ip;
     if (!ctx_.dao().AuditLog().Insert(log)) {
         NOVA_NLOG_WARN(kLogTag, "failed to write audit log: action={}", action);
     }
@@ -293,7 +293,7 @@ int AdminServer::HandleLogin(HttpRequest* req, HttpResponse* resp) {
         password.clear();
     }
 
-    if (admin->status != 1) {
+    if (admin->status != static_cast<int>(AccountStatus::Normal)) {
         return JsonError(resp, api_err::kAccountDisabled);
     }
 
@@ -623,7 +623,7 @@ int AdminServer::HandleBanUser(HttpRequest* req, HttpResponse* resp) {
     auto body_opt      = ParseJsonBody(req);
     std::string reason = body_opt ? body_opt->value("reason", "") : "";
 
-    if (!ctx_.dao().User().UpdateStatus(id, 2)) {
+    if (!ctx_.dao().User().UpdateStatus(id, static_cast<int>(AccountStatus::Banned))) {
         return JsonError(resp, api_err::kUserNotFound);
     }
 
@@ -650,7 +650,7 @@ int AdminServer::HandleUnbanUser(HttpRequest* req, HttpResponse* resp) {
         return JsonError(resp, api_err::kInvalidUserId);
     }
 
-    if (!ctx_.dao().User().UpdateStatus(id, 1)) {
+    if (!ctx_.dao().User().UpdateStatus(id, static_cast<int>(AccountStatus::Normal))) {
         return JsonError(resp, api_err::kUserNotFound);
     }
 
@@ -756,7 +756,7 @@ int AdminServer::HandleRecallMessage(HttpRequest* req, HttpResponse* resp) {
         return JsonError(resp, api_err::kMessageNotFound);
     }
 
-    if (!ctx_.dao().Message().UpdateStatus(id, 1)) {
+    if (!ctx_.dao().Message().UpdateStatus(id, static_cast<int>(MsgStatus::Recalled))) {
         return JsonError(resp, api_err::kRecallFailed);
     }
 
@@ -814,7 +814,7 @@ int AdminServer::HandleListAuditLogs(HttpRequest* req, HttpResponse* resp) {
         item["detail"] = nlohmann::json::parse(log.detail, nullptr, false);
         if (item["detail"].is_discarded())
             item["detail"] = nlohmann::json::object();
-        item["ip"]         = log.ip;
+        item["ip"]         = log.ip_address;
         item["created_at"] = log.created_at;
         items.push_back(item);
     }

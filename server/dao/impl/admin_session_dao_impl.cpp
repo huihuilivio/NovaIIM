@@ -16,13 +16,13 @@ bool AdminSessionDaoImplT<DbMgr>::IsRevoked(const std::string& token_hash) {
     auto res = db_.DB().query_s<AdminSession>("token_hash=?", token_hash);
     if (res.empty())
         return true;  // session not found → treat as revoked (fail-closed)
-    return res[0].revoked == 1;
+    return res[0].revoked == static_cast<int>(SessionRevoked::Revoked);
 }
 
 template <typename DbMgr>
 bool AdminSessionDaoImplT<DbMgr>::RevokeByAdmin(int64_t admin_id) {
-    std::string sql = "UPDATE admin_sessions SET revoked = 1 WHERE admin_id = " + std::to_string(admin_id) +
-                      " AND revoked = 0";
+    std::string sql = "UPDATE admin_sessions SET revoked = 1 WHERE admin_id = " + std::to_string(admin_id) +  // Revoked
+                      " AND revoked = 0";  // Valid
     return db_.DB().execute(sql);
 }
 
@@ -32,7 +32,7 @@ bool AdminSessionDaoImplT<DbMgr>::RevokeByTokenHash(const std::string& token_has
     auto sessions = conn.query_s<AdminSession>("token_hash=?", token_hash);
     if (sessions.empty())
         return false;
-    sessions[0].revoked = 1;
+    sessions[0].revoked = static_cast<int>(SessionRevoked::Revoked);
     return conn.update_some<&AdminSession::revoked>(sessions[0]) == 1;
 }
 

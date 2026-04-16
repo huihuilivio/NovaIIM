@@ -20,6 +20,7 @@ public:
     AdminSessionDao& AdminSession() override;
     AdminAccountDao& AdminAccount() override;
     RbacDao& Rbac() override;
+    FileDao& File() override;
 
 private:
     struct Impl;

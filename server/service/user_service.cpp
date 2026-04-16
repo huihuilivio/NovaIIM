@@ -13,13 +13,6 @@ namespace ec = errc;
 
 static constexpr const char* kLogTag = "UserService";
 
-// uid 合法性校验：3-32 字符，仅允许 a-z 0-9 _ -
-static bool IsValidUid(const std::string& uid) {
-    if (uid.size() < 3 || uid.size() > 32)
-        return false;
-    return std::all_of(uid.begin(), uid.end(), [](unsigned char c) { return std::isalnum(c) || c == '_' || c == '-'; });
-}
-
 void UserService::HandleRegister(ConnectionPtr conn, Packet& pkt) {
     auto session = ctx_.dao().Session();
     uint32_t seq = pkt.seq;
@@ -31,25 +24,10 @@ void UserService::HandleRegister(ConnectionPtr conn, Packet& pkt) {
         return;
     }
 
-    // 2. 校验 uid
-    if (req->uid.empty()) {
+    // 2. 校验 nickname（必填）
+    if (req->nickname.empty()) {
         SendPacket(conn, Cmd::kRegisterAck, seq, 0,
-                   proto::RegisterAck{ec::user::kUidRequired.code, ec::user::kUidRequired.msg});
-        return;
-    }
-    if (req->uid.size() < 3) {
-        SendPacket(conn, Cmd::kRegisterAck, seq, 0,
-                   proto::RegisterAck{ec::user::kUidTooShort.code, ec::user::kUidTooShort.msg});
-        return;
-    }
-    if (req->uid.size() > 32) {
-        SendPacket(conn, Cmd::kRegisterAck, seq, 0,
-                   proto::RegisterAck{ec::user::kUidTooLong.code, ec::user::kUidTooLong.msg});
-        return;
-    }
-    if (!IsValidUid(req->uid)) {
-        SendPacket(conn, Cmd::kRegisterAck, seq, 0,
-                   proto::RegisterAck{ec::user::kUidInvalidChars.code, ec::user::kUidInvalidChars.msg});
+                   proto::RegisterAck{ec::user::kNicknameRequired.code, ec::user::kNicknameRequired.msg});
         return;
     }
 
@@ -65,14 +43,7 @@ void UserService::HandleRegister(ConnectionPtr conn, Packet& pkt) {
         return;
     }
 
-    // 4. 检查 uid 是否已存在
-    if (ctx_.dao().User().FindByUid(req->uid)) {
-        SendPacket(conn, Cmd::kRegisterAck, seq, 0,
-                   proto::RegisterAck{ec::user::kUidAlreadyExists.code, ec::user::kUidAlreadyExists.msg});
-        return;
-    }
-
-    // 5. 哈希密码
+    // 4. 哈希密码
     auto hash = PasswordUtils::Hash(req->password);
 
     // 安全：清除明文密码
@@ -89,23 +60,23 @@ void UserService::HandleRegister(ConnectionPtr conn, Packet& pkt) {
         return;
     }
 
-    // 6. 创建用户
+    // 5. 生成唯一 UID（Snowflake 算法，全局唯一无碰撞）
     User user;
-    user.uid           = req->uid;
-    user.password_hash = std::move(hash);
-    user.nickname      = req->nickname.empty() ? req->uid : req->nickname;
-    user.status        = 1;
+    user.uid           = ctx_.snowflake().NextIdStr();
+    user.password_hash = hash;
+    user.nickname      = req->nickname;
+    user.status        = static_cast<int>(AccountStatus::Normal);
 
-    if (!ctx_.dao().User().Insert(user)) {
-        // Insert 失败可能是并发 uid 竞争
+    if (ctx_.dao().User().Insert(user)) {
+        NOVA_NLOG_INFO(kLogTag, "user registered: uid={}, id={}, nickname={}", user.uid, user.id, user.nickname);
         SendPacket(conn, Cmd::kRegisterAck, seq, 0,
-                   proto::RegisterAck{ec::user::kUidAlreadyExists.code, ec::user::kUidAlreadyExists.msg});
+                   proto::RegisterAck{ec::kOk.code, ec::kOk.msg, user.uid, user.id});
         return;
     }
 
-    NOVA_NLOG_INFO(kLogTag, "user registered: uid={}, id={}", req->uid, user.id);
-
-    SendPacket(conn, Cmd::kRegisterAck, seq, 0, proto::RegisterAck{ec::kOk.code, ec::kOk.msg, user.id});
+    // 插入失败（数据库错误）
+    SendPacket(conn, Cmd::kRegisterAck, seq, 0,
+               proto::RegisterAck{ec::user::kRegisterFailed.code, ec::user::kRegisterFailed.msg});
 }
 
 void UserService::HandleLogin(ConnectionPtr conn, Packet& pkt) {
@@ -163,7 +134,7 @@ void UserService::HandleLogin(ConnectionPtr conn, Packet& pkt) {
     auto& user = *user_opt;
 
     // 4. 检查用户状态
-    if (user.status == 2) {
+    if (user.status == static_cast<int>(AccountStatus::Banned)) {
         SendPacket(conn, Cmd::kLoginAck, seq, 0,
                    proto::LoginAck{ec::user::kUserBanned.code, ec::user::kUserBanned.msg});
         conn->Close();
@@ -204,9 +175,15 @@ void UserService::HandleLogin(ConnectionPtr conn, Packet& pkt) {
     // 7. 注册到连接管理器（ConnManager 自动维护在线计数）
     ctx_.conn_manager().Add(user.id, conn);
 
-    NOVA_NLOG_INFO(kLogTag, "user {} (id={}) logged in, device={}", req->uid, user.id, req->device_id);
+    // 8. 持久化设备信息（upsert user_devices 表，供 Admin 查询）
+    if (!req->device_id.empty()) {
+        ctx_.dao().User().UpsertDevice(user.id, req->device_id, req->device_type);
+    }
 
-    // 8. 返回 LoginAck
+    NOVA_NLOG_INFO(kLogTag, "user {} (id={}) logged in, device={} type={}", req->uid, user.id, req->device_id,
+                   req->device_type);
+
+    // 9. 返回 LoginAck
     SendPacket(conn, Cmd::kLoginAck, seq, static_cast<uint64_t>(user.id),
                proto::LoginAck{ec::kOk.code, ec::kOk.msg, user.id, user.nickname, user.avatar});
 }

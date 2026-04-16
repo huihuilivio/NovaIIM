@@ -43,7 +43,7 @@ TEST_F(AdminAccountDaoTest, SeedCreatesDefaultAdmin) {
     auto admin = dao().AdminAccount().FindByUid("admin");
     ASSERT_TRUE(admin.has_value());
     EXPECT_EQ(admin->uid, "admin");
-    EXPECT_EQ(admin->status, 1);
+    EXPECT_EQ(admin->status, static_cast<int>(AccountStatus::Normal));
 }
 
 TEST_F(AdminAccountDaoTest, FindByUidNotFound) {
@@ -56,7 +56,7 @@ TEST_F(AdminAccountDaoTest, InsertAndFindByUid) {
     a.uid           = "operator1";
     a.nickname      = "运营员";
     a.password_hash = PasswordUtils::Hash("pass123");
-    a.status        = 1;
+    a.status        = static_cast<int>(AccountStatus::Normal);
 
     EXPECT_TRUE(dao().AdminAccount().Insert(a));
     EXPECT_GT(a.id, 0);  // id 被填充
@@ -107,7 +107,7 @@ TEST_F(AdminAccountDaoTest, DuplicateUidInsertFails) {
     a.uid           = "admin";  // 与种子数据冲突
     a.nickname      = "dup";
     a.password_hash = PasswordUtils::Hash("x");
-    a.status        = 1;
+    a.status        = static_cast<int>(AccountStatus::Normal);
 
     // UNIQUE 约束应导致插入失败
     EXPECT_FALSE(dao().AdminAccount().Insert(a));
@@ -118,7 +118,7 @@ TEST_F(AdminAccountDaoTest, DeletedAdminNotVisible) {
     a.uid           = "todelete";
     a.nickname      = "To Delete";
     a.password_hash = PasswordUtils::Hash("pass");
-    a.status        = 3;  // status=3 表示已删除
+    a.status        = static_cast<int>(AccountStatus::Deleted);
 
     dao().AdminAccount().Insert(a);
 
@@ -150,7 +150,7 @@ TEST_F(AdminSessionDaoTest, InsertAndIsNotRevokedByDefault) {
     s.admin_id   = 1;
     s.token_hash = "hash-abc123";
     s.expires_at = "2099-12-31 00:00:00";
-    s.revoked    = 0;
+    s.revoked    = static_cast<int>(SessionRevoked::Valid);
 
     EXPECT_TRUE(dao().AdminSession().Insert(s));
     EXPECT_FALSE(dao().AdminSession().IsRevoked("hash-abc123"));
@@ -161,7 +161,7 @@ TEST_F(AdminSessionDaoTest, RevokeByTokenHash) {
     s.admin_id   = 1;
     s.token_hash = "hash-to-revoke";
     s.expires_at = "2099-12-31 00:00:00";
-    s.revoked    = 0;
+    s.revoked    = static_cast<int>(SessionRevoked::Valid);
     dao().AdminSession().Insert(s);
 
     EXPECT_TRUE(dao().AdminSession().RevokeByTokenHash("hash-to-revoke"));
@@ -180,7 +180,7 @@ TEST_F(AdminSessionDaoTest, RevokeByAdminRevokesAllSessions) {
         s.admin_id   = kAdminId;
         s.token_hash = "hash-" + std::to_string(i);
         s.expires_at = "2099-12-31 00:00:00";
-        s.revoked    = 0;
+        s.revoked    = static_cast<int>(SessionRevoked::Valid);
         dao().AdminSession().Insert(s);
     }
 
@@ -189,7 +189,7 @@ TEST_F(AdminSessionDaoTest, RevokeByAdminRevokesAllSessions) {
     other.admin_id   = 999;
     other.token_hash = "other-hash";
     other.expires_at = "2099-12-31 00:00:00";
-    other.revoked    = 0;
+    other.revoked    = static_cast<int>(SessionRevoked::Valid);
     dao().AdminSession().Insert(other);
 
     EXPECT_TRUE(dao().AdminSession().RevokeByAdmin(kAdminId));
@@ -205,7 +205,7 @@ TEST_F(AdminSessionDaoTest, RevokeAlreadyRevokedIsIdempotent) {
     s.admin_id   = 1;
     s.token_hash = "double-revoke";
     s.expires_at = "2099-12-31 00:00:00";
-    s.revoked    = 0;
+    s.revoked    = static_cast<int>(SessionRevoked::Valid);
     dao().AdminSession().Insert(s);
 
     dao().AdminSession().RevokeByTokenHash("double-revoke");
@@ -290,7 +290,7 @@ TEST_F(RbacDaoTest, AdminWithNoRoleHasNoPermissions) {
     a.uid           = "norole";
     a.nickname      = "NoRole";
     a.password_hash = PasswordUtils::Hash("x");
-    a.status        = 1;
+    a.status        = static_cast<int>(AccountStatus::Normal);
     dao().AdminAccount().Insert(a);
 
     auto perms = dao().Rbac().GetUserPermissions(a.id);

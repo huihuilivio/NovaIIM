@@ -167,7 +167,7 @@ void MsgService::HandleSendMsg(ConnectionPtr conn, Packet& pkt) {
     msg.msg_type        = req->msg_type;
     msg.content         = req->content;
     msg.client_msg_id   = req->client_msg_id;
-    msg.status          = 0;
+    msg.status          = static_cast<int>(MsgStatus::Normal);
     msg.created_at      = time_buf;
 
     if (!ctx_.dao().Message().Insert(msg)) {

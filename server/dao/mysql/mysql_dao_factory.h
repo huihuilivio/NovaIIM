@@ -23,6 +23,7 @@ public:
     AdminSessionDao& AdminSession() override;
     AdminAccountDao& AdminAccount() override;
     RbacDao& Rbac() override;
+    FileDao& File() override;
 
     std::unique_ptr<DaoScopedConn> Session() override;
 

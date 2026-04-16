@@ -5,6 +5,7 @@
 #include <chrono>
 #include <memory>
 #include "app_config.h"
+#include "snowflake.h"
 #include "../dao/dao_factory.h"
 #include "../net/conn_manager.h"
 
@@ -15,10 +16,16 @@ namespace nova {
 // 所有计数器使用 atomic，可从任意线程安全读写
 class ServerContext {
 public:
-    explicit ServerContext(const AppConfig& cfg) : config_(cfg), start_time_(std::chrono::steady_clock::now()) {}
+    explicit ServerContext(const AppConfig& cfg)
+        : config_(cfg),
+          snowflake_(cfg.server.node_id),
+          start_time_(std::chrono::steady_clock::now()) {}
 
     // --- 配置（只读）---
     const AppConfig& config() const { return config_; }
+
+    // --- Snowflake ID 生成器（线程安全）---
+    Snowflake& snowflake() { return snowflake_; }
 
     // --- DAO 工厂（全局唯一）---
     void set_dao(std::unique_ptr<DaoFactory> dao) { dao_ = std::move(dao); }
@@ -58,6 +65,7 @@ public:
 
 private:
     AppConfig config_;
+    Snowflake snowflake_;
     std::unique_ptr<DaoFactory> dao_;
     ConnManager conn_manager_;
     std::chrono::steady_clock::time_point start_time_;

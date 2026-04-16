@@ -9,6 +9,7 @@
 #include "../impl/admin_session_dao_impl.h"
 #include "../impl/admin_account_dao_impl.h"
 #include "../impl/rbac_dao_impl.h"
+#include "../impl/file_dao_impl.h"
 #include "../seed.h"
 #include "../../core/app_config.h"
 
@@ -26,9 +27,10 @@ struct MysqlDaoFactory::Impl {
     AdminSessionDaoImplT<MysqlDbManager> admin_session;
     AdminAccountDaoImplT<MysqlDbManager> admin_account;
     RbacDaoImplT<MysqlDbManager> rbac;
+    FileDaoImplT<MysqlDbManager> file;
 
     explicit Impl(const DatabaseConfig& config)
-        : user(db), message(db), conversation(db), audit_log(db), admin_session(db), admin_account(db), rbac(db) {
+        : user(db), message(db), conversation(db), audit_log(db), admin_session(db), admin_account(db), rbac(db), file(db) {
         if (!db.Open(config)) {
             throw std::runtime_error("failed to open MySQL connection pool");
         }
@@ -66,6 +68,9 @@ AdminAccountDao& MysqlDaoFactory::AdminAccount() {
 }
 RbacDao& MysqlDaoFactory::Rbac() {
     return impl_->rbac;
+}
+FileDao& MysqlDaoFactory::File() {
+    return impl_->file;
 }
 
 std::unique_ptr<DaoScopedConn> MysqlDaoFactory::Session() {

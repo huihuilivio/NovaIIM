@@ -132,6 +132,12 @@ enum class Cmd : uint16_t {
     kSyncMsgResp    = 0x0201,
     kSyncUnread     = 0x0202,
     kSyncUnreadResp = 0x0203,
+
+    // 文件 / 个人资料
+    kUpdateAvatar      = 0x0300,
+    kUpdateAvatarAck   = 0x0301,
+    kGetUserProfile    = 0x0302,
+    kGetUserProfileAck = 0x0303,
 };
 
 }  // namespace nova
