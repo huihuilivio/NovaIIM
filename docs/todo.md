@@ -1,6 +1,6 @@
 # NovaIIM Server 待办列表
 
-**最后更新：2026-04-17 | 编译状态：✅ 0 errors | 测试：✅ 120/120**
+**最后更新：2026-04-17 | 编译状态：✅ 0 errors | 测试：✅ 199/199**
 
 ---
 
@@ -52,6 +52,8 @@
 - [x] AdminSessionDaoImpl (INSERT / IsRevoked / RevokeByAdmin / RevokeByTokenHash)
 - [x] RbacDaoImpl (GetUserPermissions [admin_roles 3表JOIN] / HasPermission)
 - [x] DaoFactory 抽象工厂 + dual backend (SQLite/MySQL)
+- [x] DaoFactory 事务接口 (BeginTransaction/Commit/Rollback)
+- [x] UserDao::FindByIds 批量查询
 
 ---
 
@@ -119,9 +121,9 @@
 
 ---
 
-## ⚠️ 当前进行中 (Phase 4)
+## ✅ 已完成的测试 (Phase 4)
 
-### 单元测试 — ✅ 已完成
+### 单元测试 — ✅ 已完成 (199 用例)
 - [x] JWT 单元测试 (Sign → Verify 往返 / 过期 / 篡改) — 13 用例
 - [x] PasswordUtils 测试 (Hash → Verify / 错误密码) — 11 用例
 - [x] AdminAccountDao 单元测试 (CRUD 操作) — 7 用例
@@ -129,39 +131,41 @@
 - [x] RbacDao 单元测试 (权限查询) — 12 用例
 - [x] Handler 集成测试 (HTTP 请求验证) — 21 用例
 - [x] Router / MPMC / ConnManager 基础测试 — 14 用例
-- [x] UserService 注册/登录测试 — 37 用例 ← NEW
+- [x] UserService 注册/登录测试 — 37 用例
+- [x] FriendService 全功能测试 (申请/同意/拒绝/删除/拉黑/列表) — 57 用例
+- [x] MsgService 全功能测试 (发送/撤回/送达确认/已读确认) — 22 用例
 
-### ConversationDao — 待补 ⚠️
-- [ ] 实现 ConversationDaoImplT 模板
-- [ ] 添加到 DaoFactory (SqliteDaoFactory / MysqlDaoFactory)
-- [ ] 集成到 db_manager InitSchema
+### ConversationDao ✅
+- [x] 实现 ConversationDaoImplT 模板 (CreateConversation / IsMember / AddMember / IncrMaxSeq / GetMembersByConversation / GetMembersByUser / UpdateLastAckSeq / UpdateLastReadSeq)
+- [x] 添加到 DaoFactory (SqliteDaoFactory / MysqlDaoFactory)
+- [x] 集成到 db_manager InitSchema
 
 ---
 
-## ⚠️ IM 用户侧服务
+## ✅⚠️ IM 用户侧服务 (Phase 5)
 
-### 用户服务 — 部分完成 ✅⚠️
+### 用户服务 ✅
 - [x] UserService::Register (邮箱注册 + 格式校验 + 密码校验 + Snowflake UID + TOCTOU 防护)
 - [x] UserService::Login (邮箱登录 + trim/lowercase + 封禁返回通用错误 + 频率限制)
-- [ ] UserService::Logout (清理会话, 从 ConnManager 移除)
-- [ ] UserService::Heartbeat (连接心跳, 使用 conn->user_id())
-- [ ] UserService::SearchUser (邮箱精确 / 昵称模糊搜索, 脱敏)
-- [ ] UserService::GetProfile / UpdateProfile (个人资料 CRUD)
+- [x] UserService::Logout (清理会话, 从 ConnManager 移除)
+- [x] UserService::Heartbeat (连接心跳, 使用 conn->user_id())
+- [x] UserService::SearchUser (邮箱精确 / 昵称模糊搜索, 脱敏)
+- [x] UserService::GetProfile / UpdateProfile (个人资料 CRUD, 事务包裹原子更新)
 
-### 好友服务 — 待实现 ⚠️
-- [ ] FriendService::AddFriend (发送好友申请, 双向写入 friendships)
-- [ ] FriendService::HandleRequest (同意/拒绝, 同意时自动创建私聊会话)
-- [ ] FriendService::DeleteFriend (删除好友, 保留历史消息)
-- [ ] FriendService::Block / Unblock (单向拉黑)
-- [ ] FriendService::GetFriendList (好友列表 + 对应私聊会话 ID)
-- [ ] FriendService::GetRequests (好友申请列表, 分页)
-- [ ] FriendNotify 推送 (申请/同意/拒绝/删除)
+### 好友服务 ✅
+- [x] FriendService::AddFriend (发送好友申请, 拉黑/已好友/pending 校验)
+- [x] FriendService::HandleRequest (同意/拒绝, 同意时事务包裹: 创建会话 + 双向 friendship)
+- [x] FriendService::DeleteFriend (双向标记删除, 保留历史消息)
+- [x] FriendService::Block / Unblock (单向拉黑, 解除后设为已删除)
+- [x] FriendService::GetFriendList (好友列表 + 批量 FindByIds 优化)
+- [x] FriendService::GetRequests (好友申请列表, 分页)
+- [x] FriendNotify 推送 (申请/同意/拒绝/删除, 多端推送)
 
-### 消息服务 — 存根待实现 ⚠️
-- [ ] MsgService::SendMsg (消息投递 + seq 递增 + 幂等去重)
-- [ ] MsgService::RecallMsg (消息撤回 + 2 分钟限制 + 权限校验)
-- [ ] MsgService::DeliverAck (送达确认, 更新 last_ack_seq)
-- [ ] MsgService::ReadAck (已读确认, 更新 last_read_seq)
+### 消息服务 ✅
+- [x] MsgService::SendMsg (消息投递 + seq 递增 + LRU 幂等去重 + in-flight 防 TOCTOU)
+- [x] MsgService::RecallMsg (消息撤回 + 可配置时间限制 + 仅发送者 + 广播通知)
+- [x] MsgService::DeliverAck (送达确认, 更新 last_ack_seq, 成员校验)
+- [x] MsgService::ReadAck (已读确认, 更新 last_read_seq, 成员校验)
 - [ ] 多 msg_type 支持 (文本/表情/图片/语音/视频/文件/位置/名片)
 
 ### 会话服务 — 待实现 ⚠️
@@ -189,15 +193,15 @@
 - [ ] 秒传 (file_hash 去重)
 - [ ] 文件大小限制 (avatar 2MB, image 10MB, file 100MB)
 
-### 同步服务 — 存根待实现 ⚠️
-- [ ] SyncService::SyncMessages (离线消息拉取, 分页)
-- [ ] SyncService::SyncUnread (未读会话 + 未读数)
+### 同步服务 ✅
+- [x] SyncService::SyncMessages (离线消息拉取, 分页 + has_more 标记)
+- [x] SyncService::SyncUnread (未读会话 + 未读数 + 最后消息预览, 批量查询优化)
 
-### 输入校验 — 部分完成 ✅⚠️
+### 输入校验 ✅
 - [x] 邮箱格式校验 + 长度限制 (255)
 - [x] 密码长度校验 (6-128)
 - [x] 昵称长度校验 (100) + 控制字符检测
-- [ ] 消息内容长度限制
+- [x] 消息内容长度限制 (max_content_size 可配置)
 - [ ] 群名/公告长度限制
 - [ ] 文件大小限制
 
