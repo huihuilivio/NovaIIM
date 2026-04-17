@@ -212,8 +212,9 @@ struct SearchUserAck {
 
 // C→S  Cmd::kUpdateProfile (0x0402)
 struct UpdateProfileReq {
-    std::string nickname;  // 空表示不修改
-    std::string avatar;    // 空表示不修改
+    std::string nickname;   // 空表示不修改
+    std::string avatar;     // 空表示不修改
+    std::string file_hash;  // 可选，头像文件哈希（仅当 avatar 非空时有意义）
 };
 
 // S→C  Cmd::kUpdateProfileAck (0x0403)

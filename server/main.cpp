@@ -109,7 +109,7 @@ int main(int argc, char* argv[]) {
     router.Register(Cmd::kSyncMsg, [&](ConnectionPtr c, Packet& p) { sync_svc.HandleSyncMsg(c, p); });
     router.Register(Cmd::kSyncUnread, [&](ConnectionPtr c, Packet& p) { sync_svc.HandleSyncUnread(c, p); });
 
-    router.Register(Cmd::kUpdateAvatar, [&](ConnectionPtr c, Packet& p) { file_svc.HandleUpdateAvatar(c, p); });
+    // kUpdateAvatar 已废弃，头像更新统一走 kUpdateProfile
 
     router.Freeze();  // 禁止后续注册，确保多线程安全
 

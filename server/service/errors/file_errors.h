@@ -1,15 +1,14 @@
 #pragma once
 // FileService 错误码
+// 头像相关错误已迁移到 user_errors.h（kAvatarPathTooLong）
+// 后续文件上传/下载错误码在此定义
 
 #include "common.h"
 
 namespace nova::errc::file {
 
 // clang-format off
-inline constexpr Error kAvatarPathEmpty     {3001, "avatar path is empty"};
-inline constexpr Error kAvatarPathTooLong   {3002, "avatar path exceeds 512 characters"};
-inline constexpr Error kUpdateFailed        {3003, "failed to update avatar"};
-inline constexpr Error kUserNotFound        {3004, "user not found"};
+// 预留给后续文件上传/下载功能
 // clang-format on
 
 }  // namespace nova::errc::file

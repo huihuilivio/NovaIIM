@@ -13,8 +13,8 @@ namespace nova::proto {
 // +-------+-------+-------+------------+------+
 // 固定头 = 18 字节
 
-constexpr uint32_t kHeaderSize  = 18;
-constexpr uint32_t kMaxBodySize = 1 * 1024 * 1024;  // 1 MB
+inline constexpr uint32_t kHeaderSize  = 18;
+inline constexpr uint32_t kMaxBodySize = 1 * 1024 * 1024;  // 1 MB
 
 // ---- 显式小端序读写（跨平台安全） ----
 namespace detail {
@@ -134,8 +134,8 @@ enum class Cmd : uint16_t {
     kSyncUnreadResp = 0x0203,
 
     // 文件 / 个人资料
-    kUpdateAvatar      = 0x0300,
-    kUpdateAvatarAck   = 0x0301,
+    kUpdateAvatar      = 0x0300,  // 已废弃，头像更新统一走 kUpdateProfile
+    kUpdateAvatarAck   = 0x0301,  // 已废弃
     kGetUserProfile    = 0x0302,
     kGetUserProfileAck = 0x0303,
 

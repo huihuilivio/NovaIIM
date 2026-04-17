@@ -459,12 +459,13 @@ void UserService::HandleUpdateProfile(ConnectionPtr conn, Packet& pkt) {
                        proto::UpdateProfileAck{ec::user::kUpdateProfileFailed.code, ec::user::kUpdateProfileFailed.msg});
             return;
         }
-        // 统一头像元数据管理（与 FileService::HandleUpdateAvatar 保持一致）
+        // 统一头像元数据管理
         ctx_.dao().File().SoftDeleteByUserAndType(user->id, "avatar");
         UserFile file;
         file.user_id   = user->id;
         file.file_type = "avatar";
         file.file_path = req->avatar;
+        file.hash      = req->file_hash;
         ctx_.dao().File().Insert(file);
     }
 
