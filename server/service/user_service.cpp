@@ -297,7 +297,7 @@ void UserService::HandleHeartbeat(ConnectionPtr conn, Packet& pkt) {
                    proto::RspBase{ec::kNotAuthenticated.code, ec::kNotAuthenticated.msg});
         return;
     }
-    SendPacket(conn, Cmd::kHeartbeatAck, pkt.seq, static_cast<uint64_t>(user_id),
+    SendPacket(conn, Cmd::kHeartbeatAck, pkt.seq, 0,
                proto::RspBase{ec::kOk.code, {}});
 }
 
@@ -425,7 +425,7 @@ void UserService::HandleUpdateProfile(ConnectionPtr conn, Packet& pkt) {
     // 校验 avatar
     if (!req->avatar.empty() && req->avatar.size() > 512) {
         SendPacket(conn, Cmd::kUpdateProfileAck, seq, 0,
-                   proto::UpdateProfileAck{ec::user::kUpdateProfileFailed.code, "avatar path exceeds 512 characters"});
+                   proto::UpdateProfileAck{ec::user::kAvatarPathTooLong.code, ec::user::kAvatarPathTooLong.msg});
         return;
     }
 

@@ -29,6 +29,7 @@ inline constexpr Error kSearchKeywordTooLong{18, "search keyword too long"};
 inline constexpr Error kUserNotFound        {19, "user not found"};
 inline constexpr Error kNothingToUpdate     {20, "nothing to update"};
 inline constexpr Error kUpdateProfileFailed {21, "failed to update profile"};
+inline constexpr Error kAvatarPathTooLong   {22, "avatar path exceeds 512 characters"};
 // clang-format on
 
 }  // namespace nova::errc::user

@@ -524,8 +524,8 @@ TEST_F(UserServiceTest, HeartbeatAck) {
     auto rsp = proto::Deserialize<proto::RspBase>(conn->last_pkt.body);
     ASSERT_TRUE(rsp.has_value());
     EXPECT_EQ(rsp->code, 0);
-    // uid 字段应包含 user_id
-    EXPECT_NE(conn->last_pkt.uid, 0u);
+    // uid 字段不泄漏内部 DB id
+    EXPECT_EQ(conn->last_pkt.uid, 0u);
 }
 
 TEST_F(UserServiceTest, HeartbeatUnauthenticated) {
