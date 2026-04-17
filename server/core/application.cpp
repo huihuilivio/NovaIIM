@@ -1,4 +1,5 @@
 #include "application.h"
+#include "application_internal.h"
 #include "logger.h"
 #include "server_context.h"
 #include "thread_pool.h"
@@ -31,9 +32,11 @@ static void SignalHandler(int sig) {
     g_running.store(false, std::memory_order_relaxed);
 }
 
-// ---- 内部辅助 ----
+// ---- 内部辅助（detail 名称空间，便于单元测试） ----
 
-static size_t RoundUpPow2(size_t n) {
+namespace detail {
+
+size_t RoundUpPow2(size_t n) {
     if (n < 2) return 2;
     if ((n & (n - 1)) == 0) return n;
     size_t p = 1;
@@ -41,7 +44,7 @@ static size_t RoundUpPow2(size_t n) {
     return p;
 }
 
-static void InitLog(const AppConfig& cfg) {
+void InitLog(const AppConfig& cfg) {
     log::Init({
         .level          = spdlog::level::from_str(cfg.log.level),
         .flush_level    = spdlog::level::from_str(cfg.log.flush_level),
@@ -53,7 +56,7 @@ static void InitLog(const AppConfig& cfg) {
     });
 }
 
-static bool InitDatabase(ServerContext& ctx, const DatabaseConfig& db_cfg) {
+bool InitDatabase(ServerContext& ctx, const DatabaseConfig& db_cfg) {
     try {
         ctx.set_dao(CreateDaoFactory(db_cfg));
     } catch (const std::exception& e) {
@@ -64,7 +67,7 @@ static bool InitDatabase(ServerContext& ctx, const DatabaseConfig& db_cfg) {
     return true;
 }
 
-static void WarnJwtSecret(const AdminConfig& admin_cfg) {
+void WarnJwtSecret(const AdminConfig& admin_cfg) {
     if (!admin_cfg.enabled || admin_cfg.jwt_secret.empty()) return;
     if (admin_cfg.jwt_secret == "change-me-in-production") {
         NOVA_NLOG_WARN(kLogTag, "!!! JWT secret is still the default value. Change it in production !!!");
@@ -74,7 +77,7 @@ static void WarnJwtSecret(const AdminConfig& admin_cfg) {
     }
 }
 
-static void RegisterRoutes(Router& router, UserService& user_svc, MsgService& msg_svc, SyncService& sync_svc) {
+void RegisterRoutes(Router& router, UserService& user_svc, MsgService& msg_svc, SyncService& sync_svc) {
     router.Register(Cmd::kLogin,    [&](ConnectionPtr c, Packet& p) { user_svc.HandleLogin(c, p); });
     router.Register(Cmd::kRegister, [&](ConnectionPtr c, Packet& p) { user_svc.HandleRegister(c, p); });
     router.Register(Cmd::kLogout,   [&](ConnectionPtr c, Packet& p) { user_svc.HandleLogout(c, p); });
@@ -93,7 +96,7 @@ static void RegisterRoutes(Router& router, UserService& user_svc, MsgService& ms
     router.Freeze();
 }
 
-static Gateway::PacketHandler MakePacketHandler(Router& router, ThreadPool& pool, ServerContext& ctx) {
+Gateway::PacketHandler MakePacketHandler(Router& router, ThreadPool& pool, ServerContext& ctx) {
     return [&](ConnectionPtr conn, Packet& pkt) {
         if (!pool.Submit([&router, conn, pkt]() mutable { router.Dispatch(std::move(conn), pkt); })) {
             NOVA_NLOG_WARN(kLogTag, "worker queue full, rejecting cmd=0x{:04X}", pkt.cmd);
@@ -108,20 +111,22 @@ static Gateway::PacketHandler MakePacketHandler(Router& router, ThreadPool& pool
     };
 }
 
+}  // namespace detail
+
 // ---- Application::Run ----
 
 int Application::Run(const AppConfig& cfg) {
     // 1. 日志
-    InitLog(cfg);
+    detail::InitLog(cfg);
     NOVA_NLOG_INFO(kLogTag, "NovaIIM Server starting...");
     NOVA_NLOG_DEBUG(kLogTag, "AppConfig:\n{}", cfg);
 
     // 2. 服务上下文 + 数据库
     ServerContext ctx(cfg);
-    if (!InitDatabase(ctx, cfg.db)) return 1;
+    if (!detail::InitDatabase(ctx, cfg.db)) return 1;
 
     // 3. JWT 安全检查
-    WarnJwtSecret(cfg.admin);
+    detail::WarnJwtSecret(cfg.admin);
 
     // 4. 服务 + 路由
     UserService user_svc(ctx);
@@ -129,7 +134,7 @@ int Application::Run(const AppConfig& cfg) {
     SyncService sync_svc(ctx);
 
     Router router;
-    RegisterRoutes(router, user_svc, msg_svc, sync_svc);
+    detail::RegisterRoutes(router, user_svc, msg_svc, sync_svc);
 
     // 5. 信号处理
     g_running.store(true, std::memory_order_relaxed);
@@ -137,7 +142,7 @@ int Application::Run(const AppConfig& cfg) {
     std::signal(SIGTERM, SignalHandler);
 
     // 6. Worker 线程池
-    auto qcap = RoundUpPow2(static_cast<size_t>(cfg.server.queue_capacity));
+    auto qcap = detail::RoundUpPow2(static_cast<size_t>(cfg.server.queue_capacity));
     if (qcap != static_cast<size_t>(cfg.server.queue_capacity)) {
         NOVA_NLOG_WARN(kLogTag, "queue_capacity {} is not a power of 2, rounded up to {}", cfg.server.queue_capacity, qcap);
     }
@@ -147,7 +152,7 @@ int Application::Run(const AppConfig& cfg) {
     Gateway gateway(ctx);
     gateway.SetWorkerThreads(cfg.server.worker_threads);
     gateway.SetHeartbeatInterval(cfg.server.heartbeat_ms);
-    gateway.SetPacketHandler(MakePacketHandler(router, worker_pool, ctx));
+    gateway.SetPacketHandler(detail::MakePacketHandler(router, worker_pool, ctx));
 
     if (gateway.Start(cfg.server.port) != 0) {
         NOVA_NLOG_ERROR(kLogTag, "Failed to start server on port {}", cfg.server.port);

@@ -57,3 +57,10 @@ nova_add_test(
     SOURCES test_user_service.cpp
     LIBS    im_server_lib
 )
+
+# Application 单元测试 + 集成测试
+nova_add_test(
+    NAME    test_application
+    SOURCES test_application.cpp
+    LIBS    im_server_lib
+)
