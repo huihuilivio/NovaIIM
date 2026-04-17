@@ -18,27 +18,28 @@ set(FETCHCONTENT_QUIET OFF)
 option(NOVA_USE_GITEE "Use Gitee mirrors instead of GitHub" OFF)
 
 if(NOVA_USE_GITEE)
-    set(NOVA_GIT_LIBHV        "https://gitee.com/libhv/libhv.git")
-    set(NOVA_GIT_YALANTINGLIBS "https://gitee.com/alibaba/yalantinglibs.git")
-    set(NOVA_GIT_GTEST        "https://gitee.com/mirrors/googletest.git")
-    set(NOVA_GIT_ORMPP        "https://gitee.com/qicosmos/ormpp.git")
+    set(NOVA_GIT_LIBHV          "https://gitee.com/libhv/libhv.git")
+    set(NOVA_GIT_YALANTINGLIBS  "https://gitee.com/alibaba/yalantinglibs.git")
+    set(NOVA_GIT_GTEST          "https://gitee.com/mirrors/googletest.git")
+    set(NOVA_GIT_ORMPP          "https://gitee.com/qicosmos/ormpp.git")
     message(STATUS "[NovaIIM] Using Gitee mirrors")
 else()
-    set(NOVA_GIT_LIBHV        "https://github.com/ithewei/libhv.git")
-    set(NOVA_GIT_YALANTINGLIBS "https://github.com/alibaba/yalantinglibs.git")
-    set(NOVA_GIT_GTEST        "https://github.com/google/googletest.git")
-    set(NOVA_GIT_ORMPP        "https://github.com/qicosmos/ormpp.git")
+    set(NOVA_GIT_LIBHV          "https://github.com/ithewei/libhv.git")
+    set(NOVA_GIT_YALANTINGLIBS  "https://github.com/alibaba/yalantinglibs.git")
+    set(NOVA_GIT_GTEST          "https://github.com/google/googletest.git")
+    set(NOVA_GIT_ORMPP          "https://github.com/qicosmos/ormpp.git")
 endif()
 
 # ============================================================
 # 版本锁定
 # ============================================================
-set(NOVA_SPDLOG_VERSION       "v1.15.0")
-set(NOVA_LIBHV_VERSION        "v1.3.3")
-set(NOVA_YALANTINGLIBS_VERSION "0.3.9")
-set(NOVA_GTEST_VERSION        "v1.15.2")
-set(NOVA_CLI11_VERSION        "v2.4.2")
+set(NOVA_SPDLOG_VERSION       "v1.17.0")
+set(NOVA_LIBHV_VERSION        "v1.3.4")
+set(NOVA_YALANTINGLIBS_VERSION "0.6.0")
+set(NOVA_GTEST_VERSION        "v1.17.0")
+set(NOVA_CLI11_VERSION        "v2.6.2")
 set(NOVA_ORMPP_VERSION        "0.2.1")
+set(NOVA_L8W8JWT_VERSION      "2.5.0")
 
 # ============================================================
 # spdlog - 高性能日志
@@ -52,7 +53,7 @@ macro(nova_fetch_spdlog)
         if(NOT EXISTS "${_SPDLOG_DIR}/CMakeLists.txt")
             message(FATAL_ERROR "[NovaIIM] thirdparty/spdlog not found.")
         endif()
-        message(STATUS "[NovaIIM] Using local spdlog ${NOVA_SPDLOG_VERSION} from thirdparty/")
+        message(STATUS "[NovaIIM] Using local spdlog from thirdparty/")
         # header-only 模式
         set(SPDLOG_FMT_EXTERNAL OFF CACHE BOOL "" FORCE)
         add_subdirectory(${_SPDLOG_DIR} ${CMAKE_BINARY_DIR}/_spdlog EXCLUDE_FROM_ALL SYSTEM)
@@ -81,7 +82,20 @@ macro(nova_fetch_libhv)
         set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
         set(WITH_OPENSSL OFF CACHE BOOL "" FORCE)
         set(WITH_EVPP ON CACHE BOOL "" FORCE)
-        FetchContent_MakeAvailable(libhv)
+
+        # libhv v1.3.4+: BUILD_SHARED=OFF 时 install(TARGET_PDB_FILE:hv) 会失败
+        # (无 shared target). 先 populate, patch, 再 add_subdirectory.
+        FetchContent_GetProperties(libhv)
+        if(NOT libhv_POPULATED)
+            FetchContent_Populate(libhv)
+            file(READ "${libhv_SOURCE_DIR}/CMakeLists.txt" _libhv_content)
+            string(REPLACE
+                "install(FILES \$<TARGET_PDB_FILE:\${PROJECT_NAME}> DESTINATION bin OPTIONAL)"
+                "# install(FILES ... TARGET_PDB_FILE) removed by NovaIIM (BUILD_SHARED=OFF)"
+                _libhv_content "${_libhv_content}")
+            file(WRITE "${libhv_SOURCE_DIR}/CMakeLists.txt" "${_libhv_content}")
+            add_subdirectory(${libhv_SOURCE_DIR} ${libhv_BINARY_DIR} EXCLUDE_FROM_ALL SYSTEM)
+        endif()
     else()
         message(STATUS "[NovaIIM] Found system libhv")
     endif()
@@ -284,7 +298,7 @@ macro(nova_fetch_cli11)
         if(NOT EXISTS "${_CLI11_DIR}/CMakeLists.txt")
             message(FATAL_ERROR "[NovaIIM] thirdparty/cli11 not found.")
         endif()
-        message(STATUS "[NovaIIM] Using local CLI11 ${NOVA_CLI11_VERSION} from thirdparty/")
+        message(STATUS "[NovaIIM] Using local CLI11 from thirdparty/")
         set(CLI11_PRECOMPILED OFF CACHE BOOL "" FORCE)
         set(CLI11_BUILD_TESTS OFF CACHE BOOL "" FORCE)
         set(CLI11_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
@@ -299,7 +313,6 @@ endmacro()
 # https://github.com/GlitchedPolygons/l8w8jwt
 # 源码已 vendor 到 thirdparty/l8w8jwt（含 mbedtls 等子模块）
 # ============================================================
-set(NOVA_L8W8JWT_VERSION "2.5.0")
 
 macro(nova_fetch_l8w8jwt)
     set(_L8W8JWT_DIR "${CMAKE_SOURCE_DIR}/thirdparty/l8w8jwt")
@@ -308,7 +321,7 @@ macro(nova_fetch_l8w8jwt)
             "Run: git submodule update --init, or manually place l8w8jwt sources there.")
     endif()
 
-    message(STATUS "[NovaIIM] Using local l8w8jwt ${NOVA_L8W8JWT_VERSION} from thirdparty/")
+    message(STATUS "[NovaIIM] Using local l8w8jwt from thirdparty/")
 
     # 禁用 l8w8jwt 自带的测试和示例
     set(L8W8JWT_ENABLE_TESTS OFF CACHE BOOL "" FORCE)

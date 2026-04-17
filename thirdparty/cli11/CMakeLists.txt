@@ -1,16 +1,12 @@
-cmake_minimum_required(VERSION 3.5)
-# Note: this is a header only library. If you have an older CMake than 3.5,
-# just add the CLI11/include directory and that's all you need to do.
+# Copyright (c) 2017-2026, University of Cincinnati, developed by Henry Schreiner
+# under NSF AWARD 1414736 and by the respective contributors.
+# All rights reserved.
+#
+# SPDX-License-Identifier: BSD-3-Clause
 
-# Make sure users don't get warnings on a tested (3.5 to 3.28) version
-# of CMake. For most of the policies, the new version is better (hence the change).
-# We don't use the 3.5...3.28 syntax because of a bug in an older MSVC's
-# built-in and modified CMake 3.11
-if(${CMAKE_VERSION} VERSION_LESS 3.28)
-  cmake_policy(VERSION ${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION})
-else()
-  cmake_policy(VERSION 3.28)
-endif()
+cmake_minimum_required(VERSION 3.14...4.2)
+# Note: this is a header only library. If you have an older CMake than 3.14,
+# just add the CLI11/include directory and that's all you need to do.
 
 set(VERSION_REGEX "#define CLI11_VERSION[ \t]+\"(.+)\"")
 
@@ -35,9 +31,7 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
 
   find_package(Doxygen)
 
-  if(CMAKE_VERSION VERSION_LESS 3.10)
-    message(STATUS "CMake 3.10+ adds Doxygen support. Update CMake to build documentation")
-  elseif(NOT Doxygen_FOUND)
+  if(NOT Doxygen_FOUND)
     message(STATUS "Doxygen not found, building docs has been disabled")
   endif()
 
@@ -51,16 +45,13 @@ endif()
 include(CMakeDependentOption)
 include(GNUInstallDirs)
 
-if(NOT CMAKE_VERSION VERSION_LESS 3.11)
-  include(FetchContent)
-endif()
+include(FetchContent)
 
 list(APPEND force-libcxx "CMAKE_CXX_COMPILER_ID STREQUAL \"Clang\"")
 list(APPEND force-libcxx "CMAKE_SYSTEM_NAME STREQUAL \"Linux\"")
 list(APPEND force-libcxx "CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME")
 
 list(APPEND build-docs "CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME")
-list(APPEND build-docs "NOT CMAKE_VERSION VERSION_LESS 3.11")
 list(APPEND build-docs "Doxygen_FOUND")
 
 # Necessary to support paths with spaces, see #457
@@ -80,8 +71,10 @@ endif()
 option(CLI11_WARNINGS_AS_ERRORS "Turn all warnings into errors (for CI)")
 option(CLI11_SINGLE_FILE "Generate a single header file")
 option(CLI11_PRECOMPILED "Generate a precompiled static library instead of a header-only" OFF)
+option(CLI11_MODULES "Build CLI11 as a C++ module (requires C++20)" OFF)
+
 cmake_dependent_option(CLI11_SANITIZERS "Download the sanitizers CMake config" OFF
-                       "NOT CMAKE_VERSION VERSION_LESS 3.13" OFF)
+                       "NOT CMAKE_VERSION VERSION_LESS 3.15" OFF)
 
 cmake_dependent_option(CLI11_BUILD_DOCS "Build CLI11 documentation" ON "${build-docs}" OFF)
 
@@ -92,7 +85,11 @@ cmake_dependent_option(CLI11_BUILD_EXAMPLES "Build CLI11 examples" ON
                        "CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME;${examples_EXIST}" OFF)
 
 cmake_dependent_option(CLI11_BUILD_EXAMPLES_JSON "Build CLI11 json example" OFF
-                       "CLI11_BUILD_EXAMPLES;NOT CMAKE_VERSION VERSION_LESS 3.11" OFF)
+                       "CLI11_BUILD_EXAMPLES;NOT CMAKE_VERSION VERSION_LESS 3.15" OFF)
+
+cmake_dependent_option(
+  CLI11_FULL_INSTALL "Install all headers regardless of SINGLE_FILE OR PRECOMPILED OPTIONS" OFF
+  "CLI11_SINGLE_FILE " OFF)
 
 cmake_dependent_option(CLI11_SINGLE_FILE_TESTS "Duplicate all the tests for a single file build"
                        OFF "BUILD_TESTING;CLI11_SINGLE_FILE" OFF)
@@ -108,7 +105,9 @@ cmake_dependent_option(
   CLI11_CUDA_TESTS "Build the tests with NVCC to check for warnings there - requires CMake 3.9+"
   OFF "CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME" OFF)
 
-if(CLI11_PRECOMPILED AND CLI11_SINGLE_FILE)
+if(NOT CLI11_FULL_INSTALL
+   AND CLI11_PRECOMPILED
+   AND CLI11_SINGLE_FILE)
   # Sanity check
   message(FATAL_ERROR "CLI11_PRECOMPILE and CLI11_SINGLE_FILE are mutually exclusive")
 endif()
@@ -125,12 +124,15 @@ if(NOT DEFINED CMAKE_CXX_STANDARD_REQUIRED)
   set(CMAKE_CXX_STANDARD_REQUIRED ON)
 endif()
 
+include(CLI11Warnings)
+
 # Allow IDE's to group targets into folders
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
   set_property(GLOBAL PROPERTY USE_FOLDERS ON)
-endif()
 
-include(CLI11Warnings)
+  set(CMAKE_CXX_STANDARD_LIBRARIES_INIT "")
+  set(CMAKE_CXX_STANDARD_LIBRARIES "")
+endif()
 
 # Sources
 
@@ -149,6 +151,7 @@ set(CLI11_headers
     ${CLI11_headerLoc}/StringTools.hpp
     ${CLI11_headerLoc}/TypeTools.hpp
     ${CLI11_headerLoc}/Validators.hpp
+    ${CLI11_headerLoc}/ExtraValidators.hpp
     ${CLI11_headerLoc}/Version.hpp
     ${CLI11_headerLoc}/Encoding.hpp
     ${CLI11_headerLoc}/Argv.hpp)
@@ -161,6 +164,7 @@ set(CLI11_impl_headers
     ${CLI11_headerLoc}/impl/Split_inl.hpp
     ${CLI11_headerLoc}/impl/StringTools_inl.hpp
     ${CLI11_headerLoc}/impl/Validators_inl.hpp
+    ${CLI11_headerLoc}/impl/ExtraValidators_inl.hpp
     ${CLI11_headerLoc}/impl/Encoding_inl.hpp
     ${CLI11_headerLoc}/impl/Argv_inl.hpp)
 
@@ -181,7 +185,7 @@ if(CLI11_CUDA_TESTS)
 endif()
 
 # This folder should be installed
-if(CLI11_INSTALL)
+if(CLI11_INSTALL OR CLI11_FULL_INSTALL)
 
   # Use find_package on the installed package
   # Since we have no custom code, we can directly write this
@@ -203,10 +207,17 @@ if(CLI11_INSTALL)
     DESTINATION "${CMAKE_INSTALL_DATADIR}/cmake/CLI11")
 
   # Use find_package on the installed package
-  export(
-    TARGETS CLI11
-    NAMESPACE CLI11::
-    FILE CLI11Targets.cmake)
+  if(CLI11_MODULES)
+    export(
+      TARGETS CLI11 CLI11_Module
+      NAMESPACE CLI11::
+      FILE CLI11Targets.cmake)
+  else()
+    export(
+      TARGETS CLI11
+      NAMESPACE CLI11::
+      FILE CLI11Targets.cmake)
+  endif()
 
   include(cmake/CLI11GeneratePkgConfig.cmake)
 

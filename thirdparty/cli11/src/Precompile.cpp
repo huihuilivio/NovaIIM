@@ -1,4 +1,4 @@
-// Copyright (c) 2017-2024, University of Cincinnati, developed by Henry Schreiner
+// Copyright (c) 2017-2026, University of Cincinnati, developed by Henry Schreiner
 // under NSF AWARD 1414736 and by the respective contributors.
 // All rights reserved.
 //
@@ -10,6 +10,7 @@
 #include <CLI/impl/Argv_inl.hpp>
 #include <CLI/impl/Config_inl.hpp>
 #include <CLI/impl/Encoding_inl.hpp>
+#include <CLI/impl/ExtraValidators_inl.hpp>
 #include <CLI/impl/Formatter_inl.hpp>
 #include <CLI/impl/Option_inl.hpp>
 #include <CLI/impl/Split_inl.hpp>

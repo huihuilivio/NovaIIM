@@ -1,3 +1,9 @@
+# Copyright (c) 2017-2026, University of Cincinnati, developed by Henry Schreiner
+# under NSF AWARD 1414736 and by the respective contributors.
+# All rights reserved.
+#
+# SPDX-License-Identifier: BSD-3-Clause
+
 if(CLI11_PRECOMPILED)
   # Create static lib
   file(GLOB CLI11_precompile_sources "${PROJECT_SOURCE_DIR}/src/*.cpp")
@@ -11,11 +17,19 @@ else()
   if(CMAKE_VERSION VERSION_GREATER 3.19)
     # This is only useful for visual studio and other IDE builds
     target_sources(CLI11 PRIVATE ${CLI11_headers} ${CLI11_library_headers} ${CLI11_impl_headers})
+
   endif()
 
   set(PUBLIC_OR_INTERFACE INTERFACE)
 endif()
 
+if(CLI11_ENABLE_EXTRA_VALIDATORS)
+  target_compile_definitions(CLI11 ${PUBLIC_OR_INTERFACE} -DCLI11_ENABLE_EXTRA_VALIDATORS=1)
+elseif(CLI11_DISABLE_EXTRA_VALIDATORS)
+  target_compile_definitions(CLI11 ${PUBLIC_OR_INTERFACE} -DCLI11_DISABLE_EXTRA_VALIDATORS=1)
+elseif(DEFINED CLI11_ENABLE_EXTRA_VALIDATORS)
+  target_compile_definitions(CLI11 ${PUBLIC_OR_INTERFACE} -DCLI11_ENABLE_EXTRA_VALIDATORS=0)
+endif()
 # Allow IDE's to group targets into folders
 add_library(CLI11::CLI11 ALIAS CLI11) # for add_subdirectory calls
 
@@ -33,32 +47,22 @@ target_include_directories(
   $<INSTALL_INTERFACE:include>)
 
 if(CMAKE_CXX_STANDARD LESS 14)
-  if(CMAKE_VERSION VERSION_LESS 3.8)
-    # This might not be a complete list
-    target_compile_features(
-      CLI11
-      INTERFACE cxx_lambdas
-                cxx_nullptr
-                cxx_override
-                cxx_range_for
-                cxx_right_angle_brackets
-                cxx_strong_enums
-                cxx_constexpr
-                cxx_auto_type)
-  else()
-    target_compile_features(CLI11 INTERFACE cxx_std_11)
-  endif()
+  target_compile_features(CLI11 INTERFACE cxx_std_11)
 endif()
 
-if(CLI11_INSTALL)
+if(CLI11_INSTALL OR CLI11_FULL_INSTALL)
 
   # Make an export target
   install(TARGETS CLI11 EXPORT CLI11Targets)
-  if(NOT CLI11_SINGLE_FILE)
+  if((NOT CLI11_SINGLE_FILE) OR CLI11_FULL_INSTALL)
     install(FILES ${CLI11_headers} ${CLI11_library_headers}
             DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/CLI")
-    if(NOT CLI11_PRECOMPILED)
+    if(NOT (CLI11_DISABLE_IMPL_HEADERS_INSTALL AND CLI11_PRECOMPILED))
       install(FILES ${CLI11_impl_headers} DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/CLI/impl")
     endif()
   endif()
+endif()
+
+if(CLI11_MODULES)
+  add_subdirectory(modules)
 endif()
