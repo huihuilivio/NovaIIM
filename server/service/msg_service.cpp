@@ -230,17 +230,24 @@ void MsgService::HandleReadAck(ConnectionPtr conn, Packet& pkt) {
 
     auto session = ctx_.dao().Session();
     auto req     = proto::Deserialize<proto::ReadAckReq>(pkt.body);
-    if (!req)
+    if (!req) {
+        SendPacket(conn, Cmd::kReadAck, pkt.seq, 0, proto::RspBase{ec::kInvalidBody.code, ec::kInvalidBody.msg});
         return;
-
-    if (req->conversation_id > 0 && req->read_up_to_seq > 0) {
-        // 仅处理用户所属会话的已读回执
-        if (ctx_.dao().Conversation().IsMember(req->conversation_id, user_id)) {
-            ctx_.dao().Conversation().UpdateLastReadSeq(req->conversation_id, user_id, req->read_up_to_seq);
-
-            SendPacket(conn, Cmd::kReadAck, pkt.seq, 0, proto::RspBase{ec::kOk.code, {}});
-        }
     }
+
+    if (req->conversation_id <= 0 || req->read_up_to_seq <= 0) {
+        SendPacket(conn, Cmd::kReadAck, pkt.seq, 0, proto::RspBase{ec::kInvalidBody.code, ec::kInvalidBody.msg});
+        return;
+    }
+
+    if (!ctx_.dao().Conversation().IsMember(req->conversation_id, user_id)) {
+        SendPacket(conn, Cmd::kReadAck, pkt.seq, 0,
+                   proto::RspBase{ec::msg::kNotMember.code, ec::msg::kNotMember.msg});
+        return;
+    }
+
+    ctx_.dao().Conversation().UpdateLastReadSeq(req->conversation_id, user_id, req->read_up_to_seq);
+    SendPacket(conn, Cmd::kReadAck, pkt.seq, 0, proto::RspBase{ec::kOk.code, {}});
 }
 
 int64_t MsgService::GenerateSeq(int64_t conversation_id) {

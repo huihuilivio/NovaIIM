@@ -494,6 +494,16 @@ int AdminServer::HandleCreateUser(HttpRequest* req, HttpResponse* resp) {
         return JsonError(resp, api_err::kEmailPasswordEmpty);
     }
 
+    // 昵称校验（trim + 长度 + 控制字符）
+    TrimInPlace(nickname);
+    if (nickname.size() > 100) {
+        return JsonError(resp, api_err::kNicknameTooLong);
+    }
+    if (std::any_of(nickname.begin(), nickname.end(),
+                    [](unsigned char c) { return c < 0x20 || c == 0x7F; })) {
+        return JsonError(resp, api_err::kNicknameInvalid);
+    }
+
     // 邮箱校验（trim + lowercase + 格式 + 长度）
     TrimInPlace(email);
     EmailToLower(email);
