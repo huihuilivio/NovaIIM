@@ -6,7 +6,7 @@
 namespace nova {
 
 // 用户服务
-// 职责：登录认证（密码校验 + 频率限制）、登出、心跳
+// 职责：登录认证、登出、心跳、用户搜索、个人资料 CRUD
 class UserService : public ServiceBase {
 public:
     explicit UserService(ServerContext& ctx)
@@ -17,6 +17,9 @@ public:
     void HandleRegister(ConnectionPtr conn, Packet& pkt);
     void HandleLogout(ConnectionPtr conn, Packet& pkt);
     void HandleHeartbeat(ConnectionPtr conn, Packet& pkt);
+    void HandleSearchUser(ConnectionPtr conn, Packet& pkt);
+    void HandleGetProfile(ConnectionPtr conn, Packet& pkt);
+    void HandleUpdateProfile(ConnectionPtr conn, Packet& pkt);
 
 private:
     RateLimiter login_limiter_;  // 从 config.server.login_* 初始化

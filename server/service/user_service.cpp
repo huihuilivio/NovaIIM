@@ -280,8 +280,9 @@ void UserService::HandleLogout(ConnectionPtr conn, Packet& pkt) {
     if (user_id != 0) {
         auto uid = conn->uid();
         ctx_.conn_manager().Remove(user_id, conn.get());
-        conn->set_user_id(0);  // 清零防止 Gateway 断连回调再次操作
+        conn->set_user_id(0);
         conn->set_uid("");
+        conn->set_device_id("");
         NOVA_NLOG_INFO(kLogTag, "user id={}, uid={}, logged out", user_id, uid);
     }
 
@@ -290,8 +291,165 @@ void UserService::HandleLogout(ConnectionPtr conn, Packet& pkt) {
 }
 
 void UserService::HandleHeartbeat(ConnectionPtr conn, Packet& pkt) {
-    SendPacket(conn, Cmd::kHeartbeatAck, pkt.seq, 0,
+    int64_t user_id = conn->user_id();
+    if (user_id == 0) {
+        SendPacket(conn, Cmd::kHeartbeatAck, pkt.seq, 0,
+                   proto::RspBase{ec::kNotAuthenticated.code, ec::kNotAuthenticated.msg});
+        return;
+    }
+    SendPacket(conn, Cmd::kHeartbeatAck, pkt.seq, static_cast<uint64_t>(user_id),
                proto::RspBase{ec::kOk.code, {}});
+}
+
+void UserService::HandleSearchUser(ConnectionPtr conn, Packet& pkt) {
+    auto session = ctx_.dao().Session();
+    uint32_t seq = pkt.seq;
+
+    auto req = proto::Deserialize<proto::SearchUserReq>(pkt.body);
+    if (!req) {
+        SendPacket(conn, Cmd::kSearchUserAck, seq, 0,
+                   proto::SearchUserAck{ec::kInvalidBody.code, ec::kInvalidBody.msg});
+        return;
+    }
+
+    TrimInPlace(req->keyword);
+    if (req->keyword.empty()) {
+        SendPacket(conn, Cmd::kSearchUserAck, seq, 0,
+                   proto::SearchUserAck{ec::user::kSearchKeywordEmpty.code, ec::user::kSearchKeywordEmpty.msg});
+        return;
+    }
+    if (req->keyword.size() > 255) {
+        SendPacket(conn, Cmd::kSearchUserAck, seq, 0,
+                   proto::SearchUserAck{ec::user::kSearchKeywordTooLong.code, ec::user::kSearchKeywordTooLong.msg});
+        return;
+    }
+
+    std::vector<User> results;
+    if (req->keyword.find('@') != std::string::npos) {
+        // 邮箱精确搜索
+        std::string email = req->keyword;
+        EmailToLower(email);
+        auto user = ctx_.dao().User().FindByEmail(email);
+        if (user) {
+            results.push_back(std::move(*user));
+        }
+    } else {
+        // 昵称模糊搜索
+        results = ctx_.dao().User().SearchByNickname(req->keyword, 20);
+    }
+
+    // 脱敏：仅返回 uid / nickname / avatar
+    proto::SearchUserAck ack;
+    ack.code = ec::kOk.code;
+    ack.msg  = ec::kOk.msg;
+    ack.users.reserve(results.size());
+    for (auto& u : results) {
+        ack.users.push_back({std::move(u.uid), std::move(u.nickname), std::move(u.avatar)});
+    }
+
+    SendPacket(conn, Cmd::kSearchUserAck, seq, 0, ack);
+}
+
+void UserService::HandleGetProfile(ConnectionPtr conn, Packet& pkt) {
+    auto session = ctx_.dao().Session();
+    uint32_t seq = pkt.seq;
+
+    auto req = proto::Deserialize<proto::GetUserProfileReq>(pkt.body);
+    if (!req) {
+        SendPacket(conn, Cmd::kGetUserProfileAck, seq, 0,
+                   proto::GetUserProfileAck{ec::kInvalidBody.code, ec::kInvalidBody.msg});
+        return;
+    }
+
+    bool is_self = req->target_uid.empty() || req->target_uid == conn->uid();
+    std::optional<User> user;
+    if (is_self) {
+        user = ctx_.dao().User().FindByUid(conn->uid());
+    } else {
+        user = ctx_.dao().User().FindByUid(req->target_uid);
+    }
+
+    if (!user) {
+        SendPacket(conn, Cmd::kGetUserProfileAck, seq, 0,
+                   proto::GetUserProfileAck{ec::user::kUserNotFound.code, ec::user::kUserNotFound.msg});
+        return;
+    }
+
+    proto::GetUserProfileAck ack;
+    ack.code     = ec::kOk.code;
+    ack.msg      = ec::kOk.msg;
+    ack.uid      = user->uid;
+    ack.nickname = user->nickname;
+    ack.avatar   = user->avatar;
+    if (is_self) {
+        ack.email = user->email;  // 仅查自己时返回邮箱
+    }
+
+    SendPacket(conn, Cmd::kGetUserProfileAck, seq, 0, ack);
+}
+
+void UserService::HandleUpdateProfile(ConnectionPtr conn, Packet& pkt) {
+    auto session = ctx_.dao().Session();
+    uint32_t seq = pkt.seq;
+
+    auto req = proto::Deserialize<proto::UpdateProfileReq>(pkt.body);
+    if (!req) {
+        SendPacket(conn, Cmd::kUpdateProfileAck, seq, 0,
+                   proto::UpdateProfileAck{ec::kInvalidBody.code, ec::kInvalidBody.msg});
+        return;
+    }
+
+    TrimInPlace(req->nickname);
+    TrimInPlace(req->avatar);
+
+    if (req->nickname.empty() && req->avatar.empty()) {
+        SendPacket(conn, Cmd::kUpdateProfileAck, seq, 0,
+                   proto::UpdateProfileAck{ec::user::kNothingToUpdate.code, ec::user::kNothingToUpdate.msg});
+        return;
+    }
+
+    // 校验 nickname
+    if (!req->nickname.empty()) {
+        if (req->nickname.size() > 100) {
+            SendPacket(conn, Cmd::kUpdateProfileAck, seq, 0,
+                       proto::UpdateProfileAck{ec::user::kNicknameTooLong.code, ec::user::kNicknameTooLong.msg});
+            return;
+        }
+        if (ContainsControlChars(req->nickname)) {
+            SendPacket(conn, Cmd::kUpdateProfileAck, seq, 0,
+                       proto::UpdateProfileAck{ec::user::kNicknameInvalid.code, ec::user::kNicknameInvalid.msg});
+            return;
+        }
+    }
+
+    // 校验 avatar
+    if (!req->avatar.empty() && req->avatar.size() > 512) {
+        SendPacket(conn, Cmd::kUpdateProfileAck, seq, 0,
+                   proto::UpdateProfileAck{ec::user::kUpdateProfileFailed.code, "avatar path too long"});
+        return;
+    }
+
+    std::string uid = conn->uid();
+
+    if (!req->nickname.empty()) {
+        if (!ctx_.dao().User().UpdateNickname(uid, req->nickname)) {
+            SendPacket(conn, Cmd::kUpdateProfileAck, seq, 0,
+                       proto::UpdateProfileAck{ec::user::kUpdateProfileFailed.code, ec::user::kUpdateProfileFailed.msg});
+            return;
+        }
+    }
+
+    if (!req->avatar.empty()) {
+        if (!ctx_.dao().User().UpdateAvatar(uid, req->avatar)) {
+            SendPacket(conn, Cmd::kUpdateProfileAck, seq, 0,
+                       proto::UpdateProfileAck{ec::user::kUpdateProfileFailed.code, ec::user::kUpdateProfileFailed.msg});
+            return;
+        }
+    }
+
+    NOVA_NLOG_INFO(kLogTag, "user uid={} updated profile: nickname='{}', avatar='{}'", uid, req->nickname, req->avatar);
+    SendPacket(conn, Cmd::kUpdateProfileAck, seq, 0,
+               proto::UpdateProfileAck{ec::kOk.code, ec::kOk.msg});
 }
 
 }  // namespace nova

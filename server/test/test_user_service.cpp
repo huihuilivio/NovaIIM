@@ -502,6 +502,9 @@ TEST_F(UserServiceTest, LogoutSuccess) {
     ASSERT_TRUE(user.has_value());
     EXPECT_TRUE(conn->closed);
     EXPECT_FALSE(ctx_->conn_manager().IsOnline(user->id));
+    EXPECT_EQ(conn->user_id(), 0);
+    EXPECT_EQ(conn->uid(), "");
+    EXPECT_EQ(conn->device_id(), "");
 }
 
 // ============================================================
@@ -521,6 +524,262 @@ TEST_F(UserServiceTest, HeartbeatAck) {
     auto rsp = proto::Deserialize<proto::RspBase>(conn->last_pkt.body);
     ASSERT_TRUE(rsp.has_value());
     EXPECT_EQ(rsp->code, 0);
+    // uid 字段应包含 user_id
+    EXPECT_NE(conn->last_pkt.uid, 0u);
+}
+
+TEST_F(UserServiceTest, HeartbeatUnauthenticated) {
+    auto conn = std::make_shared<MockConnection>();
+    Packet pkt;
+    pkt.cmd = static_cast<uint16_t>(Cmd::kHeartbeat);
+    pkt.seq = 1;
+    svc_->HandleHeartbeat(conn, pkt);
+
+    auto rsp = proto::Deserialize<proto::RspBase>(conn->last_pkt.body);
+    ASSERT_TRUE(rsp.has_value());
+    EXPECT_NE(rsp->code, 0);
+}
+
+// ============================================================
+//  搜索用户
+// ============================================================
+
+TEST_F(UserServiceTest, SearchUserByEmail) {
+    auto reg = RegisterUser("alice@example.com", "Alice", "pass123");
+    auto login = DoLogin(reg.email, "pass123");
+    ASSERT_EQ(login.ack.code, 0);
+
+    auto pkt = MakePacket(Cmd::kSearchUser, proto::SearchUserReq{"alice@example.com"});
+    svc_->HandleSearchUser(login.conn, pkt);
+
+    auto ack = proto::Deserialize<proto::SearchUserAck>(login.conn->last_pkt.body);
+    ASSERT_TRUE(ack.has_value());
+    EXPECT_EQ(ack->code, 0);
+    ASSERT_EQ(ack->users.size(), 1u);
+    EXPECT_EQ(ack->users[0].uid, reg.uid);
+    EXPECT_EQ(ack->users[0].nickname, "Alice");
+}
+
+TEST_F(UserServiceTest, SearchUserByEmailCaseInsensitive) {
+    auto reg = RegisterUser("alice@example.com", "Alice", "pass123");
+    auto login = DoLogin(reg.email, "pass123");
+
+    auto pkt = MakePacket(Cmd::kSearchUser, proto::SearchUserReq{"ALICE@EXAMPLE.COM"});
+    svc_->HandleSearchUser(login.conn, pkt);
+
+    auto ack = proto::Deserialize<proto::SearchUserAck>(login.conn->last_pkt.body);
+    ASSERT_TRUE(ack.has_value());
+    EXPECT_EQ(ack->code, 0);
+    ASSERT_EQ(ack->users.size(), 1u);
+}
+
+TEST_F(UserServiceTest, SearchUserByEmailNotFound) {
+    auto reg = RegisterUser("alice@example.com", "Alice", "pass123");
+    auto login = DoLogin(reg.email, "pass123");
+
+    auto pkt = MakePacket(Cmd::kSearchUser, proto::SearchUserReq{"nobody@example.com"});
+    svc_->HandleSearchUser(login.conn, pkt);
+
+    auto ack = proto::Deserialize<proto::SearchUserAck>(login.conn->last_pkt.body);
+    ASSERT_TRUE(ack.has_value());
+    EXPECT_EQ(ack->code, 0);
+    EXPECT_TRUE(ack->users.empty());
+}
+
+TEST_F(UserServiceTest, SearchUserByNickname) {
+    RegisterUser("alice@example.com", "Alice", "pass123");
+    RegisterUser("bob@example.com", "Bob", "pass123");
+    auto login = DoLogin("alice@example.com", "pass123");
+
+    auto pkt = MakePacket(Cmd::kSearchUser, proto::SearchUserReq{"Bob"});
+    svc_->HandleSearchUser(login.conn, pkt);
+
+    auto ack = proto::Deserialize<proto::SearchUserAck>(login.conn->last_pkt.body);
+    ASSERT_TRUE(ack.has_value());
+    EXPECT_EQ(ack->code, 0);
+    ASSERT_EQ(ack->users.size(), 1u);
+    EXPECT_EQ(ack->users[0].nickname, "Bob");
+}
+
+TEST_F(UserServiceTest, SearchUserByNicknameFuzzy) {
+    RegisterUser("alice@example.com", "Alice", "pass123");
+    RegisterUser("bob@example.com", "AliceBob", "pass123");
+    auto login = DoLogin("alice@example.com", "pass123");
+
+    auto pkt = MakePacket(Cmd::kSearchUser, proto::SearchUserReq{"Ali"});
+    svc_->HandleSearchUser(login.conn, pkt);
+
+    auto ack = proto::Deserialize<proto::SearchUserAck>(login.conn->last_pkt.body);
+    ASSERT_TRUE(ack.has_value());
+    EXPECT_EQ(ack->code, 0);
+    EXPECT_EQ(ack->users.size(), 2u);  // "Alice" and "AliceBob"
+}
+
+TEST_F(UserServiceTest, SearchUserEmptyKeyword) {
+    auto reg = RegisterUser("alice@example.com", "Alice", "pass123");
+    auto login = DoLogin(reg.email, "pass123");
+
+    auto pkt = MakePacket(Cmd::kSearchUser, proto::SearchUserReq{""});
+    svc_->HandleSearchUser(login.conn, pkt);
+
+    auto ack = proto::Deserialize<proto::SearchUserAck>(login.conn->last_pkt.body);
+    ASSERT_TRUE(ack.has_value());
+    EXPECT_NE(ack->code, 0);  // kSearchKeywordEmpty
+}
+
+TEST_F(UserServiceTest, SearchUserDesensitized) {
+    RegisterUser("alice@example.com", "Alice", "pass123");
+    auto login = DoLogin("alice@example.com", "pass123");
+
+    auto pkt = MakePacket(Cmd::kSearchUser, proto::SearchUserReq{"alice@example.com"});
+    svc_->HandleSearchUser(login.conn, pkt);
+
+    auto ack = proto::Deserialize<proto::SearchUserAck>(login.conn->last_pkt.body);
+    ASSERT_TRUE(ack.has_value());
+    ASSERT_EQ(ack->users.size(), 1u);
+    // SearchUserItem 只有 uid/nickname/avatar，不含 email/password_hash
+    EXPECT_FALSE(ack->users[0].uid.empty());
+    EXPECT_FALSE(ack->users[0].nickname.empty());
+}
+
+// ============================================================
+//  获取个人资料
+// ============================================================
+
+TEST_F(UserServiceTest, GetProfileSelf) {
+    auto reg = RegisterUser("alice@example.com", "Alice", "pass123");
+    auto login = DoLogin(reg.email, "pass123");
+    ASSERT_EQ(login.ack.code, 0);
+
+    auto pkt = MakePacket(Cmd::kGetUserProfile, proto::GetUserProfileReq{""});
+    svc_->HandleGetProfile(login.conn, pkt);
+
+    auto ack = proto::Deserialize<proto::GetUserProfileAck>(login.conn->last_pkt.body);
+    ASSERT_TRUE(ack.has_value());
+    EXPECT_EQ(ack->code, 0);
+    EXPECT_EQ(ack->uid, reg.uid);
+    EXPECT_EQ(ack->nickname, "Alice");
+    EXPECT_EQ(ack->email, "alice@example.com");  // 查自己时返回邮箱
+}
+
+TEST_F(UserServiceTest, GetProfileOther) {
+    auto reg_alice = RegisterUser("alice@example.com", "Alice", "pass123");
+    auto reg_bob   = RegisterUser("bob@example.com", "Bob", "pass456");
+    auto login = DoLogin(reg_alice.email, "pass123");
+
+    auto pkt = MakePacket(Cmd::kGetUserProfile, proto::GetUserProfileReq{reg_bob.uid});
+    svc_->HandleGetProfile(login.conn, pkt);
+
+    auto ack = proto::Deserialize<proto::GetUserProfileAck>(login.conn->last_pkt.body);
+    ASSERT_TRUE(ack.has_value());
+    EXPECT_EQ(ack->code, 0);
+    EXPECT_EQ(ack->uid, reg_bob.uid);
+    EXPECT_EQ(ack->nickname, "Bob");
+    EXPECT_TRUE(ack->email.empty());  // 查他人时不返回邮箱
+}
+
+TEST_F(UserServiceTest, GetProfileNotFound) {
+    auto reg = RegisterUser("alice@example.com", "Alice", "pass123");
+    auto login = DoLogin(reg.email, "pass123");
+
+    auto pkt = MakePacket(Cmd::kGetUserProfile, proto::GetUserProfileReq{"nonexistent_uid"});
+    svc_->HandleGetProfile(login.conn, pkt);
+
+    auto ack = proto::Deserialize<proto::GetUserProfileAck>(login.conn->last_pkt.body);
+    ASSERT_TRUE(ack.has_value());
+    EXPECT_NE(ack->code, 0);
+}
+
+// ============================================================
+//  更新个人资料
+// ============================================================
+
+TEST_F(UserServiceTest, UpdateProfileNickname) {
+    auto reg = RegisterUser("alice@example.com", "Alice", "pass123");
+    auto login = DoLogin(reg.email, "pass123");
+    ASSERT_EQ(login.ack.code, 0);
+
+    auto pkt = MakePacket(Cmd::kUpdateProfile, proto::UpdateProfileReq{"NewAlice", ""});
+    svc_->HandleUpdateProfile(login.conn, pkt);
+
+    auto ack = proto::Deserialize<proto::UpdateProfileAck>(login.conn->last_pkt.body);
+    ASSERT_TRUE(ack.has_value());
+    EXPECT_EQ(ack->code, 0);
+
+    // 验证已更新
+    auto user = ctx_->dao().User().FindByUid(reg.uid);
+    ASSERT_TRUE(user.has_value());
+    EXPECT_EQ(user->nickname, "NewAlice");
+}
+
+TEST_F(UserServiceTest, UpdateProfileAvatar) {
+    auto reg = RegisterUser("alice@example.com", "Alice", "pass123");
+    auto login = DoLogin(reg.email, "pass123");
+
+    auto pkt = MakePacket(Cmd::kUpdateProfile, proto::UpdateProfileReq{"", "/avatars/new.png"});
+    svc_->HandleUpdateProfile(login.conn, pkt);
+
+    auto ack = proto::Deserialize<proto::UpdateProfileAck>(login.conn->last_pkt.body);
+    ASSERT_TRUE(ack.has_value());
+    EXPECT_EQ(ack->code, 0);
+
+    auto user = ctx_->dao().User().FindByUid(reg.uid);
+    ASSERT_TRUE(user.has_value());
+    EXPECT_EQ(user->avatar, "/avatars/new.png");
+}
+
+TEST_F(UserServiceTest, UpdateProfileBoth) {
+    auto reg = RegisterUser("alice@example.com", "Alice", "pass123");
+    auto login = DoLogin(reg.email, "pass123");
+
+    auto pkt = MakePacket(Cmd::kUpdateProfile, proto::UpdateProfileReq{"NewName", "/avatars/v2.png"});
+    svc_->HandleUpdateProfile(login.conn, pkt);
+
+    auto ack = proto::Deserialize<proto::UpdateProfileAck>(login.conn->last_pkt.body);
+    ASSERT_TRUE(ack.has_value());
+    EXPECT_EQ(ack->code, 0);
+
+    auto user = ctx_->dao().User().FindByUid(reg.uid);
+    ASSERT_TRUE(user.has_value());
+    EXPECT_EQ(user->nickname, "NewName");
+    EXPECT_EQ(user->avatar, "/avatars/v2.png");
+}
+
+TEST_F(UserServiceTest, UpdateProfileNothingToUpdate) {
+    auto reg = RegisterUser("alice@example.com", "Alice", "pass123");
+    auto login = DoLogin(reg.email, "pass123");
+
+    auto pkt = MakePacket(Cmd::kUpdateProfile, proto::UpdateProfileReq{"", ""});
+    svc_->HandleUpdateProfile(login.conn, pkt);
+
+    auto ack = proto::Deserialize<proto::UpdateProfileAck>(login.conn->last_pkt.body);
+    ASSERT_TRUE(ack.has_value());
+    EXPECT_NE(ack->code, 0);  // kNothingToUpdate
+}
+
+TEST_F(UserServiceTest, UpdateProfileNicknameTooLong) {
+    auto reg = RegisterUser("alice@example.com", "Alice", "pass123");
+    auto login = DoLogin(reg.email, "pass123");
+
+    std::string long_nick(101, 'a');
+    auto pkt = MakePacket(Cmd::kUpdateProfile, proto::UpdateProfileReq{long_nick, ""});
+    svc_->HandleUpdateProfile(login.conn, pkt);
+
+    auto ack = proto::Deserialize<proto::UpdateProfileAck>(login.conn->last_pkt.body);
+    ASSERT_TRUE(ack.has_value());
+    EXPECT_NE(ack->code, 0);
+}
+
+TEST_F(UserServiceTest, UpdateProfileNicknameControlChars) {
+    auto reg = RegisterUser("alice@example.com", "Alice", "pass123");
+    auto login = DoLogin(reg.email, "pass123");
+
+    auto pkt = MakePacket(Cmd::kUpdateProfile, proto::UpdateProfileReq{"bad\x01name", ""});
+    svc_->HandleUpdateProfile(login.conn, pkt);
+
+    auto ack = proto::Deserialize<proto::UpdateProfileAck>(login.conn->last_pkt.body);
+    ASSERT_TRUE(ack.has_value());
+    EXPECT_NE(ack->code, 0);
 }
 
 // ============================================================

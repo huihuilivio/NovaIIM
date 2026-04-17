@@ -98,6 +98,9 @@ int main(int argc, char* argv[]) {
     router.Register(Cmd::kRegister, [&](ConnectionPtr c, Packet& p) { user_svc.HandleRegister(c, p); });
     router.Register(Cmd::kLogout, [&](ConnectionPtr c, Packet& p) { user_svc.HandleLogout(c, p); });
     router.Register(Cmd::kHeartbeat, [&](ConnectionPtr c, Packet& p) { user_svc.HandleHeartbeat(c, p); });
+    router.Register(Cmd::kSearchUser, [&](ConnectionPtr c, Packet& p) { user_svc.HandleSearchUser(c, p); });
+    router.Register(Cmd::kGetUserProfile, [&](ConnectionPtr c, Packet& p) { user_svc.HandleGetProfile(c, p); });
+    router.Register(Cmd::kUpdateProfile, [&](ConnectionPtr c, Packet& p) { user_svc.HandleUpdateProfile(c, p); });
 
     router.Register(Cmd::kSendMsg, [&](ConnectionPtr c, Packet& p) { msg_svc.HandleSendMsg(c, p); });
     router.Register(Cmd::kDeliverAck, [&](ConnectionPtr c, Packet& p) { msg_svc.HandleDeliverAck(c, p); });
@@ -107,7 +110,6 @@ int main(int argc, char* argv[]) {
     router.Register(Cmd::kSyncUnread, [&](ConnectionPtr c, Packet& p) { sync_svc.HandleSyncUnread(c, p); });
 
     router.Register(Cmd::kUpdateAvatar, [&](ConnectionPtr c, Packet& p) { file_svc.HandleUpdateAvatar(c, p); });
-    router.Register(Cmd::kGetUserProfile, [&](ConnectionPtr c, Packet& p) { file_svc.HandleGetUserProfile(c, p); });
 
     router.Freeze();  // 禁止后续注册，确保多线程安全
 

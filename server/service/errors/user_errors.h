@@ -22,6 +22,13 @@ inline constexpr Error kNicknameInvalid     {12, "nickname contains invalid char
 inline constexpr Error kPasswordTooShort    {13, "password must be at least 6 characters"};
 inline constexpr Error kPasswordTooLong     {14, "password must be at most 128 characters"};
 inline constexpr Error kRegisterFailed      {16, "registration failed"};
+
+// ---- 搜索 / 资料 ----
+inline constexpr Error kSearchKeywordEmpty  {17, "search keyword is required"};
+inline constexpr Error kSearchKeywordTooLong{18, "search keyword too long"};
+inline constexpr Error kUserNotFound        {19, "user not found"};
+inline constexpr Error kNothingToUpdate     {20, "nothing to update"};
+inline constexpr Error kUpdateProfileFailed {21, "failed to update profile"};
 // clang-format on
 
 }  // namespace nova::errc::user

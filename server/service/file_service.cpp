@@ -1,8 +1,8 @@
 #include "file_service.h"
 #include "errors/file_errors.h"
 #include "../core/logger.h"
-#include "../dao/user_dao.h"
 #include "../dao/file_dao.h"
+#include "../dao/user_dao.h"
 
 namespace nova {
 
@@ -62,48 +62,6 @@ void FileService::HandleUpdateAvatar(ConnectionPtr conn, Packet& pkt) {
 
     SendPacket(conn, Cmd::kUpdateAvatarAck, seq, 0,
                proto::UpdateAvatarAck{ec::kOk.code, ec::kOk.msg, req->avatar_path});
-}
-
-void FileService::HandleGetUserProfile(ConnectionPtr conn, Packet& pkt) {
-    auto session = ctx_.dao().Session();
-    uint32_t seq = pkt.seq;
-
-    if (conn->user_id() == 0) {
-        SendPacket(conn, Cmd::kGetUserProfileAck, seq, 0,
-                   proto::GetUserProfileAck{ec::kNotAuthenticated.code, ec::kNotAuthenticated.msg});
-        return;
-    }
-
-    // 1. 反序列化
-    auto req = proto::Deserialize<proto::GetUserProfileReq>(pkt.body);
-    if (!req) {
-        SendPacket(conn, Cmd::kGetUserProfileAck, seq, 0,
-                   proto::GetUserProfileAck{ec::kInvalidBody.code, ec::kInvalidBody.msg});
-        return;
-    }
-
-    // target_uid 为空表示查自己
-    std::optional<User> user;
-    if (req->target_uid.empty()) {
-        user = ctx_.dao().User().FindByUid(conn->uid());
-    } else {
-        user = ctx_.dao().User().FindByUid(req->target_uid);
-    }
-    if (!user) {
-        SendPacket(conn, Cmd::kGetUserProfileAck, seq, 0,
-                   proto::GetUserProfileAck{ec::file::kUserNotFound.code, ec::file::kUserNotFound.msg});
-        return;
-    }
-
-    // 3. 返回资料
-    proto::GetUserProfileAck ack;
-    ack.code     = ec::kOk.code;
-    ack.msg      = ec::kOk.msg;
-    ack.uid      = user->uid;
-    ack.nickname = user->nickname;
-    ack.avatar   = user->avatar;
-
-    SendPacket(conn, Cmd::kGetUserProfileAck, seq, 0, ack);
 }
 
 }  // namespace nova

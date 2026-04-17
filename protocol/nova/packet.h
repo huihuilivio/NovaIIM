@@ -138,6 +138,12 @@ enum class Cmd : uint16_t {
     kUpdateAvatarAck   = 0x0301,
     kGetUserProfile    = 0x0302,
     kGetUserProfileAck = 0x0303,
+
+    // 用户搜索 / 资料编辑
+    kSearchUser        = 0x0400,
+    kSearchUserAck     = 0x0401,
+    kUpdateProfile     = 0x0402,
+    kUpdateProfileAck  = 0x0403,
 };
 
 }  // namespace nova::proto

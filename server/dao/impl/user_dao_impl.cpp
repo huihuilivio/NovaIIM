@@ -138,8 +138,38 @@ std::optional<int64_t> UserDaoImplT<DbMgr>::UpdateAvatar(const std::string& uid,
 }
 
 template <typename DbMgr>
+std::optional<int64_t> UserDaoImplT<DbMgr>::UpdateNickname(const std::string& uid, const std::string& nickname) {
+    auto&& conn = db_.DB();
+    auto res    = conn.query_s<User>("uid=? AND status!=3", uid);
+    if (res.empty())
+        return std::nullopt;
+    res[0].nickname = nickname;
+    if (conn.update_some<&User::nickname>(res[0]) != 1)
+        return std::nullopt;
+    return res[0].id;
+}
+
+template <typename DbMgr>
 std::optional<int64_t> UserDaoImplT<DbMgr>::SoftDelete(const std::string& uid) {
-    return UpdateStatus(uid, static_cast<int>(AccountStatus::Deleted));
+    return UpdateStatus(uid, static_cast<int8_t>(AccountStatus::Deleted));
+}
+
+template <typename DbMgr>
+std::vector<User> UserDaoImplT<DbMgr>::SearchByNickname(const std::string& keyword, int limit) {
+    std::string escaped;
+    escaped.reserve(keyword.size());
+    for (char c : keyword) {
+        if (c == '%' || c == '_' || c == '\\')
+            escaped += '\\';
+        escaped += c;
+    }
+    std::string like = "%" + escaped + "%";
+    // 注意：ormpp 遇到条件中含 "limit" 会移除 WHERE，因此不使用 SQL LIMIT，而在代码中截断
+    auto results = db_.DB().query_s<User>("nickname LIKE ? ESCAPE '\\' AND status<>3", like);
+    if (static_cast<int>(results.size()) > limit) {
+        results.resize(static_cast<size_t>(limit));
+    }
+    return results;
 }
 
 template <typename DbMgr>

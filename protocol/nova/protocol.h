@@ -184,6 +184,42 @@ struct GetUserProfileAck {
     std::string uid;
     std::string nickname;
     std::string avatar;
+    std::string email;  // 仅查自己时返回，查他人为空
+};
+
+// ============================================================
+//  用户搜索 / 资料编辑
+// ============================================================
+
+// C→S  Cmd::kSearchUser (0x0400)
+struct SearchUserReq {
+    std::string keyword;  // 含 '@' 按邮箱精确匹配，否则按昵称模糊搜索
+};
+
+// 搜索结果条目（脱敏：不含 email、password_hash）
+struct SearchUserItem {
+    std::string uid;
+    std::string nickname;
+    std::string avatar;
+};
+
+// S→C  Cmd::kSearchUserAck (0x0401)
+struct SearchUserAck {
+    int32_t code = 0;
+    std::string msg;
+    std::vector<SearchUserItem> users;
+};
+
+// C→S  Cmd::kUpdateProfile (0x0402)
+struct UpdateProfileReq {
+    std::string nickname;  // 空表示不修改
+    std::string avatar;    // 空表示不修改
+};
+
+// S→C  Cmd::kUpdateProfileAck (0x0403)
+struct UpdateProfileAck {
+    int32_t code = 0;
+    std::string msg;
 };
 
 // ============================================================
