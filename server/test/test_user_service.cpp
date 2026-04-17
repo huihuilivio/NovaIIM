@@ -182,7 +182,7 @@ TEST_F(UserServiceTest, RegisterNicknameTooLong) {
 
     auto ack = proto::Deserialize<proto::RegisterAck>(conn->last_pkt.body);
     ASSERT_TRUE(ack.has_value());
-    EXPECT_EQ(ack->code, 11);  // kNicknameTooLong
+    EXPECT_EQ(ack->code, 1011);  // kNicknameTooLong
 }
 
 TEST_F(UserServiceTest, RegisterNicknameExactMax) {
@@ -203,7 +203,7 @@ TEST_F(UserServiceTest, RegisterWhitespaceOnlyNickname) {
 
     auto ack = proto::Deserialize<proto::RegisterAck>(conn->last_pkt.body);
     ASSERT_TRUE(ack.has_value());
-    EXPECT_EQ(ack->code, 10);  // kNicknameRequired（trim 后为空）
+    EXPECT_EQ(ack->code, 1010);  // kNicknameRequired（trim 后为空）
 }
 
 TEST_F(UserServiceTest, RegisterNicknameTrimsWhitespace) {
@@ -229,7 +229,7 @@ TEST_F(UserServiceTest, RegisterNicknameWithControlChars) {
 
     auto ack = proto::Deserialize<proto::RegisterAck>(conn->last_pkt.body);
     ASSERT_TRUE(ack.has_value());
-    EXPECT_EQ(ack->code, 12);  // kNicknameInvalid
+    EXPECT_EQ(ack->code, 1012);  // kNicknameInvalid
 }
 
 TEST_F(UserServiceTest, RegisterInvalidBody) {
@@ -255,7 +255,7 @@ TEST_F(UserServiceTest, RegisterEmptyEmail) {
 
     auto ack = proto::Deserialize<proto::RegisterAck>(conn->last_pkt.body);
     ASSERT_TRUE(ack.has_value());
-    EXPECT_EQ(ack->code, 1);  // kEmailRequired
+    EXPECT_EQ(ack->code, 1001);  // kEmailRequired
 }
 
 TEST_F(UserServiceTest, RegisterInvalidEmailFormat) {
@@ -265,7 +265,7 @@ TEST_F(UserServiceTest, RegisterInvalidEmailFormat) {
 
     auto ack = proto::Deserialize<proto::RegisterAck>(conn->last_pkt.body);
     ASSERT_TRUE(ack.has_value());
-    EXPECT_EQ(ack->code, 6);  // kEmailInvalid
+    EXPECT_EQ(ack->code, 1006);  // kEmailInvalid
 }
 
 TEST_F(UserServiceTest, RegisterDuplicateEmail) {
@@ -277,7 +277,7 @@ TEST_F(UserServiceTest, RegisterDuplicateEmail) {
 
     auto ack = proto::Deserialize<proto::RegisterAck>(conn->last_pkt.body);
     ASSERT_TRUE(ack.has_value());
-    EXPECT_EQ(ack->code, 8);  // kEmailAlreadyExists
+    EXPECT_EQ(ack->code, 1008);  // kEmailAlreadyExists
 }
 
 TEST_F(UserServiceTest, RegisterEmailCaseInsensitive) {
@@ -289,7 +289,7 @@ TEST_F(UserServiceTest, RegisterEmailCaseInsensitive) {
 
     auto ack = proto::Deserialize<proto::RegisterAck>(conn->last_pkt.body);
     ASSERT_TRUE(ack.has_value());
-    EXPECT_EQ(ack->code, 8);  // 不区分大小写，视为重复
+    EXPECT_EQ(ack->code, 1008);  // 不区分大小写，视为重复
 }
 
 TEST_F(UserServiceTest, RegisterEmailTooLong) {
@@ -300,7 +300,7 @@ TEST_F(UserServiceTest, RegisterEmailTooLong) {
 
     auto ack = proto::Deserialize<proto::RegisterAck>(conn->last_pkt.body);
     ASSERT_TRUE(ack.has_value());
-    EXPECT_EQ(ack->code, 7);  // kEmailTooLong
+    EXPECT_EQ(ack->code, 1007);  // kEmailTooLong
 }
 
 TEST_F(UserServiceTest, RegisterConcurrentDuplicateEmailReturnsAlreadyExists) {
@@ -314,7 +314,7 @@ TEST_F(UserServiceTest, RegisterConcurrentDuplicateEmailReturnsAlreadyExists) {
 
     auto ack = proto::Deserialize<proto::RegisterAck>(conn->last_pkt.body);
     ASSERT_TRUE(ack.has_value());
-    EXPECT_EQ(ack->code, 8);  // kEmailAlreadyExists
+    EXPECT_EQ(ack->code, 1008);  // kEmailAlreadyExists
 }
 
 TEST_F(UserServiceTest, LoginEmailWithWhitespace) {
@@ -327,8 +327,8 @@ TEST_F(UserServiceTest, LoginEmailWithWhitespace) {
 TEST_F(UserServiceTest, LoginPasswordRequiredHasDistinctCode) {
     auto reg = RegisterUser("alice@example.com", "alice", "pass123");
     auto [conn, ack] = DoLogin(reg.email, "");
-    // kPasswordRequired 的 code(3) 应不同于 kEmailRequired(1)
-    EXPECT_EQ(ack.code, 3);
+    // kPasswordRequired 的 code(1003) 应不同于 kEmailRequired(1001)
+    EXPECT_EQ(ack.code, 1003);
 }
 
 // ============================================================
@@ -400,7 +400,7 @@ TEST_F(UserServiceTest, LoginBannedUser) {
 
     auto [conn, ack] = DoLogin(reg.email, "pass123");
     // 封禁用户应返回与"不存在/密码错误"相同的 code，防止用户枚举
-    EXPECT_EQ(ack.code, 2);  // kInvalidCredentials
+    EXPECT_EQ(ack.code, 1002);  // kInvalidCredentials
     EXPECT_TRUE(conn->closed);
 }
 

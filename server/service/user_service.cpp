@@ -3,6 +3,7 @@
 #include "../core/logger.h"
 #include "../admin/password_utils.h"
 #include "../dao/user_dao.h"
+#include "../dao/file_dao.h"
 
 #include <algorithm>
 #include <cctype>
@@ -458,6 +459,13 @@ void UserService::HandleUpdateProfile(ConnectionPtr conn, Packet& pkt) {
                        proto::UpdateProfileAck{ec::user::kUpdateProfileFailed.code, ec::user::kUpdateProfileFailed.msg});
             return;
         }
+        // 统一头像元数据管理（与 FileService::HandleUpdateAvatar 保持一致）
+        ctx_.dao().File().SoftDeleteByUserAndType(user->id, "avatar");
+        UserFile file;
+        file.user_id   = user->id;
+        file.file_type = "avatar";
+        file.file_path = req->avatar;
+        ctx_.dao().File().Insert(file);
     }
 
     NOVA_NLOG_INFO(kLogTag, "user uid={} updated profile: nickname='{}', avatar='{}'", uid, req->nickname, req->avatar);
