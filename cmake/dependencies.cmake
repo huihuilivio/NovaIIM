@@ -4,6 +4,7 @@
 #   1. 优先 find_package 检测系统已安装的库
 #   2. 未找到则 FetchContent 自动下载
 #   3. 所有依赖版本锁定，保证可复现构建
+#   4. 第三方头文件标记 SYSTEM（抑制警告），EXCLUDE_FROM_ALL（不安装）
 #
 # 用法：
 #   include(dependencies)  → 自动拉取所有依赖
@@ -11,26 +12,22 @@
 
 include(FetchContent)
 
-# 全局设置：下载到统一目录，避免重复下载
-set(FETCHCONTENT_BASE_DIR ${CMAKE_SOURCE_DIR}/_deps CACHE PATH "FetchContent download dir")
 set(FETCHCONTENT_QUIET OFF)
 
 # 镜像源切换：无法访问 GitHub 时设置 -DNOVA_USE_GITEE=ON
 option(NOVA_USE_GITEE "Use Gitee mirrors instead of GitHub" OFF)
 
 if(NOVA_USE_GITEE)
-    set(NOVA_GIT_SPDLOG       "https://gitee.com/mirrors/spdlog.git")
     set(NOVA_GIT_LIBHV        "https://gitee.com/libhv/libhv.git")
     set(NOVA_GIT_YALANTINGLIBS "https://gitee.com/alibaba/yalantinglibs.git")
     set(NOVA_GIT_GTEST        "https://gitee.com/mirrors/googletest.git")
-    set(NOVA_GIT_CLI11        "https://gitee.com/mirrors/CLI11.git")
+    set(NOVA_GIT_ORMPP        "https://gitee.com/qicosmos/ormpp.git")
     message(STATUS "[NovaIIM] Using Gitee mirrors")
 else()
-    set(NOVA_GIT_SPDLOG       "https://github.com/gabime/spdlog.git")
     set(NOVA_GIT_LIBHV        "https://github.com/ithewei/libhv.git")
     set(NOVA_GIT_YALANTINGLIBS "https://github.com/alibaba/yalantinglibs.git")
     set(NOVA_GIT_GTEST        "https://github.com/google/googletest.git")
-    set(NOVA_GIT_CLI11        "https://github.com/CLIUtils/CLI11.git")
+    set(NOVA_GIT_ORMPP        "https://github.com/qicosmos/ormpp.git")
 endif()
 
 # ============================================================
@@ -41,26 +38,24 @@ set(NOVA_LIBHV_VERSION        "v1.3.3")
 set(NOVA_YALANTINGLIBS_VERSION "0.3.9")
 set(NOVA_GTEST_VERSION        "v1.15.2")
 set(NOVA_CLI11_VERSION        "v2.4.2")
+set(NOVA_ORMPP_VERSION        "0.2.1")
 
 # ============================================================
 # spdlog - 高性能日志
 # https://github.com/gabime/spdlog
+# 源码已 vendor 到 thirdparty/spdlog
 # ============================================================
 macro(nova_fetch_spdlog)
     find_package(spdlog QUIET)
     if(NOT spdlog_FOUND)
-        message(STATUS "[NovaIIM] Fetching spdlog ${NOVA_SPDLOG_VERSION} ...")
-        FetchContent_Declare(spdlog
-            GIT_REPOSITORY ${NOVA_GIT_SPDLOG}
-            GIT_TAG        ${NOVA_SPDLOG_VERSION}
-            GIT_SHALLOW    TRUE
-        )
+        set(_SPDLOG_DIR "${CMAKE_SOURCE_DIR}/thirdparty/spdlog")
+        if(NOT EXISTS "${_SPDLOG_DIR}/CMakeLists.txt")
+            message(FATAL_ERROR "[NovaIIM] thirdparty/spdlog not found.")
+        endif()
+        message(STATUS "[NovaIIM] Using local spdlog ${NOVA_SPDLOG_VERSION} from thirdparty/")
         # header-only 模式
         set(SPDLOG_FMT_EXTERNAL OFF CACHE BOOL "" FORCE)
-        FetchContent_MakeAvailable(spdlog)
-        # 第三方头文件标记为 SYSTEM，抑制警告
-        get_target_property(_spdlog_inc spdlog INTERFACE_INCLUDE_DIRECTORIES)
-        set_target_properties(spdlog PROPERTIES INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${_spdlog_inc}")
+        add_subdirectory(${_SPDLOG_DIR} ${CMAKE_BINARY_DIR}/_spdlog EXCLUDE_FROM_ALL SYSTEM)
     else()
         message(STATUS "[NovaIIM] Found system spdlog")
     endif()
@@ -78,6 +73,8 @@ macro(nova_fetch_libhv)
             GIT_REPOSITORY ${NOVA_GIT_LIBHV}
             GIT_TAG        ${NOVA_LIBHV_VERSION}
             GIT_SHALLOW    TRUE
+            SYSTEM
+            EXCLUDE_FROM_ALL
         )
         # libhv 构建选项
         set(BUILD_SHARED OFF CACHE BOOL "" FORCE)
@@ -85,9 +82,6 @@ macro(nova_fetch_libhv)
         set(WITH_OPENSSL OFF CACHE BOOL "" FORCE)
         set(WITH_EVPP ON CACHE BOOL "" FORCE)
         FetchContent_MakeAvailable(libhv)
-        # 第三方头文件标记为 SYSTEM，抑制警告
-        get_target_property(_hv_inc hv_static INTERFACE_INCLUDE_DIRECTORIES)
-        set_target_properties(hv_static PROPERTIES INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${_hv_inc}")
     else()
         message(STATUS "[NovaIIM] Found system libhv")
     endif()
@@ -106,11 +100,10 @@ macro(nova_fetch_yalantinglibs)
             GIT_REPOSITORY ${NOVA_GIT_YALANTINGLIBS}
             GIT_TAG        ${NOVA_YALANTINGLIBS_VERSION}
             GIT_SHALLOW    TRUE
+            SOURCE_SUBDIR  _none  # 仅下载，不 add_subdirectory（手动创建 INTERFACE 库）
+            EXCLUDE_FROM_ALL
         )
-        FetchContent_GetProperties(yalantinglibs)
-        if(NOT yalantinglibs_POPULATED)
-            FetchContent_Populate(yalantinglibs)
-        endif()
+        FetchContent_MakeAvailable(yalantinglibs)
         # 创建 INTERFACE 库
         if(NOT TARGET ylt)
             add_library(ylt INTERFACE)
@@ -128,42 +121,6 @@ macro(nova_fetch_yalantinglibs)
 endmacro()
 
 # ============================================================
-# SQLite3 - 轻量嵌入式数据库 (第一版使用，后续可切 MySQL)
-# 源码编译，无外部依赖
-# 如果自动下载失败，手动下载 sqlite-amalgamation 并放到
-# third_party/sqlite3/ 目录 (sqlite3.c + sqlite3.h)
-# ============================================================
-macro(nova_fetch_sqlite3)
-    # 优先检查本地 vendor 目录
-    set(_SQLITE3_LOCAL_DIR "${CMAKE_SOURCE_DIR}/third_party/sqlite3")
-    if(EXISTS "${_SQLITE3_LOCAL_DIR}/sqlite3.c")
-        message(STATUS "[NovaIIM] Using local sqlite3 from third_party/sqlite3/")
-        set(_SQLITE3_SRC_DIR ${_SQLITE3_LOCAL_DIR})
-    else()
-        message(STATUS "[NovaIIM] Fetching sqlite3 amalgamation ...")
-        FetchContent_Declare(sqlite3
-            URL https://www.sqlite.org/2024/sqlite-amalgamation-3460100.zip
-        )
-        FetchContent_GetProperties(sqlite3)
-        if(NOT sqlite3_POPULATED)
-            FetchContent_Populate(sqlite3)
-        endif()
-        set(_SQLITE3_SRC_DIR ${sqlite3_SOURCE_DIR})
-    endif()
-    if(NOT TARGET sqlite3)
-        add_library(sqlite3 STATIC ${_SQLITE3_SRC_DIR}/sqlite3.c)
-        target_include_directories(sqlite3 SYSTEM PUBLIC ${_SQLITE3_SRC_DIR})
-        target_compile_definitions(sqlite3 PRIVATE
-            SQLITE_THREADSAFE=1
-            SQLITE_ENABLE_FTS5
-            SQLITE_ENABLE_JSON1
-        )
-        if(WIN32)
-            target_compile_definitions(sqlite3 PRIVATE _CRT_SECURE_NO_WARNINGS)
-        endif()
-    endif()
-endmacro()
-
 # ============================================================
 # MySQL 客户端库 (预编译下载)
 # 仅在 NOVA_ENABLE_MYSQL=ON 时启用
@@ -242,18 +199,32 @@ endmacro()
 # ============================================================
 # ormpp - C++20 ORM (header-only, 内置 iguana 反射)
 # https://github.com/qicosmos/ormpp
-# SQLite3 默认启用；MySQL 通过 -DNOVA_ENABLE_MYSQL=ON 启用
+# 内置 thirdparty/sqlite3，无需单独拉取
+# MySQL 通过 -DNOVA_ENABLE_MYSQL=ON 启用
 # ============================================================
 macro(nova_fetch_ormpp)
-    message(STATUS "[NovaIIM] Fetching ormpp ...")
+    message(STATUS "[NovaIIM] Fetching ormpp ${NOVA_ORMPP_VERSION} ...")
     FetchContent_Declare(ormpp
-        GIT_REPOSITORY https://github.com/qicosmos/ormpp.git
-        GIT_TAG        master
-        GIT_SHALLOW    TRUE
+        GIT_REPOSITORY ${NOVA_GIT_ORMPP}
+        GIT_TAG        ${NOVA_ORMPP_VERSION}
+        SOURCE_SUBDIR  _none  # 仅下载，不 add_subdirectory（手动创建 INTERFACE 库）
+        EXCLUDE_FROM_ALL
     )
-    FetchContent_GetProperties(ormpp)
-    if(NOT ormpp_POPULATED)
-        FetchContent_Populate(ormpp)
+    FetchContent_MakeAvailable(ormpp)
+
+    # 使用 ormpp 内置的 sqlite3 源码编译
+    if(NOT TARGET sqlite3)
+        set(_ORMPP_SQLITE3_DIR ${ormpp_SOURCE_DIR}/thirdparty/sqlite3)
+        add_library(sqlite3 STATIC ${_ORMPP_SQLITE3_DIR}/sqlite3.c)
+        target_include_directories(sqlite3 SYSTEM PUBLIC ${_ORMPP_SQLITE3_DIR})
+        target_compile_definitions(sqlite3 PRIVATE
+            SQLITE_THREADSAFE=1
+            SQLITE_ENABLE_FTS5
+            SQLITE_ENABLE_JSON1
+        )
+        if(WIN32)
+            target_compile_definitions(sqlite3 PRIVATE _CRT_SECURE_NO_WARNINGS)
+        endif()
     endif()
 
     if(NOT TARGET ormpp)
@@ -288,6 +259,8 @@ macro(nova_fetch_gtest)
             GIT_REPOSITORY ${NOVA_GIT_GTEST}
             GIT_TAG        ${NOVA_GTEST_VERSION}
             GIT_SHALLOW    TRUE
+            SYSTEM
+            EXCLUDE_FROM_ALL
         )
         # 防止 gtest 覆盖父项目编译器选项 (MSVC)
         set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
@@ -302,20 +275,20 @@ endmacro()
 # ============================================================
 # CLI11 - 命令行参数解析 (header-only)
 # https://github.com/CLIUtils/CLI11
+# 源码已 vendor 到 thirdparty/cli11
 # ============================================================
 macro(nova_fetch_cli11)
     find_package(CLI11 QUIET)
     if(NOT CLI11_FOUND)
-        message(STATUS "[NovaIIM] Fetching CLI11 ${NOVA_CLI11_VERSION} ...")
-        FetchContent_Declare(cli11
-            GIT_REPOSITORY ${NOVA_GIT_CLI11}
-            GIT_TAG        ${NOVA_CLI11_VERSION}
-            GIT_SHALLOW    TRUE
-        )
+        set(_CLI11_DIR "${CMAKE_SOURCE_DIR}/thirdparty/cli11")
+        if(NOT EXISTS "${_CLI11_DIR}/CMakeLists.txt")
+            message(FATAL_ERROR "[NovaIIM] thirdparty/cli11 not found.")
+        endif()
+        message(STATUS "[NovaIIM] Using local CLI11 ${NOVA_CLI11_VERSION} from thirdparty/")
         set(CLI11_PRECOMPILED OFF CACHE BOOL "" FORCE)
         set(CLI11_BUILD_TESTS OFF CACHE BOOL "" FORCE)
         set(CLI11_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-        FetchContent_MakeAvailable(cli11)
+        add_subdirectory(${_CLI11_DIR} ${CMAKE_BINARY_DIR}/_cli11 EXCLUDE_FROM_ALL SYSTEM)
     else()
         message(STATUS "[NovaIIM] Found system CLI11")
     endif()
@@ -324,26 +297,37 @@ endmacro()
 # ============================================================
 # l8w8jwt - 轻量 JWT 库 (纯 C, 内置 MbedTLS, 无 OpenSSL 依赖)
 # https://github.com/GlitchedPolygons/l8w8jwt
+# 源码已 vendor 到 thirdparty/l8w8jwt（含 mbedtls 等子模块）
 # ============================================================
 set(NOVA_L8W8JWT_VERSION "2.5.0")
 
 macro(nova_fetch_l8w8jwt)
-    message(STATUS "[NovaIIM] Fetching l8w8jwt ${NOVA_L8W8JWT_VERSION} ...")
-    FetchContent_Declare(l8w8jwt
-        GIT_REPOSITORY https://github.com/GlitchedPolygons/l8w8jwt.git
-        GIT_TAG        ${NOVA_L8W8JWT_VERSION}
-    )
+    set(_L8W8JWT_DIR "${CMAKE_SOURCE_DIR}/thirdparty/l8w8jwt")
+    if(NOT EXISTS "${_L8W8JWT_DIR}/CMakeLists.txt")
+        message(FATAL_ERROR "[NovaIIM] thirdparty/l8w8jwt not found. "
+            "Run: git submodule update --init, or manually place l8w8jwt sources there.")
+    endif()
+
+    message(STATUS "[NovaIIM] Using local l8w8jwt ${NOVA_L8W8JWT_VERSION} from thirdparty/")
+
     # 禁用 l8w8jwt 自带的测试和示例
     set(L8W8JWT_ENABLE_TESTS OFF CACHE BOOL "" FORCE)
     set(L8W8JWT_ENABLE_EXAMPLES OFF CACHE BOOL "" FORCE)
     set(L8W8JWT_ENABLE_EDDSA OFF CACHE BOOL "" FORCE)
+    # MbedTLS 选项：保存/恢复 ENABLE_TESTING 防止污染父项目
+    set(_NOVA_SAVE_ENABLE_TESTING ${ENABLE_TESTING})
+    set(_NOVA_SAVE_ENABLE_PROGRAMS ${ENABLE_PROGRAMS})
     set(ENABLE_TESTING OFF CACHE BOOL "" FORCE)
     set(ENABLE_PROGRAMS OFF CACHE BOOL "" FORCE)
-    FetchContent_MakeAvailable(l8w8jwt)
-    # 第三方头文件标记为 SYSTEM，抑制警告
+
+    add_subdirectory(${_L8W8JWT_DIR} ${CMAKE_BINARY_DIR}/_l8w8jwt EXCLUDE_FROM_ALL SYSTEM)
+
+    set(ENABLE_TESTING ${_NOVA_SAVE_ENABLE_TESTING} CACHE BOOL "" FORCE)
+    set(ENABLE_PROGRAMS ${_NOVA_SAVE_ENABLE_PROGRAMS} CACHE BOOL "" FORCE)
+    # 补充 l8w8jwt 和 MbedTLS 头文件路径（上游 CMake 未正确导出）
     target_include_directories(l8w8jwt SYSTEM INTERFACE
-        ${l8w8jwt_SOURCE_DIR}/include
-        ${l8w8jwt_SOURCE_DIR}/lib/mbedtls/include
+        ${_L8W8JWT_DIR}/include
+        ${_L8W8JWT_DIR}/lib/mbedtls/include
     )
 endmacro()
 
@@ -357,7 +341,6 @@ macro(nova_fetch_all_dependencies)
     nova_fetch_spdlog()
     nova_fetch_libhv()
     nova_fetch_yalantinglibs()
-    nova_fetch_sqlite3()
     if(NOVA_ENABLE_MYSQL)
         nova_fetch_mysql_client()
     endif()

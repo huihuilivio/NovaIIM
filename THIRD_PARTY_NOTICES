@@ -1,0 +1,80 @@
+NovaIIM Third-Party Software Notices
+=====================================
+
+This project incorporates components from the projects listed below.
+The original copyright notices and license terms are set forth below.
+
+----------------------------------------------------------------------
+1. spdlog (v1.15.0)
+   https://github.com/gabime/spdlog
+   License: MIT
+   Copyright (c) 2016 Gabi Melman
+
+----------------------------------------------------------------------
+2. libhv (v1.3.3)
+   https://github.com/ithewei/libhv
+   License: BSD-3-Clause
+   Copyright (c) 2020 ithewei
+
+----------------------------------------------------------------------
+3. yalantinglibs (0.3.9)
+   https://github.com/alibaba/yalantinglibs
+   License: Apache-2.0
+   Copyright (c) 2019-2022 Alibaba Group Holding Limited
+
+----------------------------------------------------------------------
+4. ormpp
+   https://github.com/qicosmos/ormpp
+   License: Apache-2.0
+   Copyright (c) qicosmos
+
+   Includes bundled SQLite3:
+   License: Public Domain
+   https://www.sqlite.org/copyright.html
+
+----------------------------------------------------------------------
+5. CLI11 (v2.4.2)
+   https://github.com/CLIUtils/CLI11
+   License: BSD-3-Clause
+   Copyright (c) 2017-2024 University of Cincinnati, developed by
+   Henry Schreiner
+
+----------------------------------------------------------------------
+6. l8w8jwt (v2.5.0)
+   https://github.com/GlitchedPolygons/l8w8jwt
+   License: Apache-2.0
+   Copyright (c) 2020 Raphael Beck
+
+   Includes the following bundled components:
+
+   6a. Mbed TLS (v3.6.2)
+       https://github.com/Mbed-TLS/mbedtls
+       License: Apache-2.0 (dual-licensed Apache-2.0 OR GPL-2.0-or-later;
+                this project uses it under Apache-2.0)
+       Copyright (c) The Mbed TLS Contributors
+
+   6b. chillbuff
+       https://github.com/GlitchedPolygons/chillbuff
+       License: Apache-2.0
+       Copyright (c) 2019 Raphael Beck
+
+   6c. jsmn
+       https://github.com/zserge/jsmn
+       License: MIT
+       Copyright (c) 2010 Serge Zaitsev
+
+   6d. checknum
+       https://github.com/GlitchedPolygons/checknum
+       License: Apache-2.0
+       Copyright (c) Raphael Beck
+
+----------------------------------------------------------------------
+7. GoogleTest (v1.15.2) — test only
+   https://github.com/google/googletest
+   License: BSD-3-Clause
+   Copyright (c) 2008 Google Inc.
+
+----------------------------------------------------------------------
+
+Full license texts can be found in the LICENSE files within each
+dependency's source directory under thirdparty/ or build/_deps/.

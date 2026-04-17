@@ -25,7 +25,6 @@ if(SERVER_SOURCES)
         hv_static
         spdlog::spdlog
         ylt
-        sqlite3
         ormpp
         l8w8jwt
     )
