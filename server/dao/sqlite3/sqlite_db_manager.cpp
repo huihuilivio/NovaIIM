@@ -12,16 +12,14 @@ bool SqliteDbManager::Open(const std::string& path) {
         return false;
     }
 
-    // 启用 WAL 模式 + 外键约束
-    if (!db_.execute("PRAGMA journal_mode=WAL")) {
+    // 启用 WAL 模式（PRAGMA journal_mode 返回结果行，不能用 execute）
+    auto wal = db_.query_s<std::tuple<std::string>>("PRAGMA journal_mode=WAL");
+    if (wal.empty() || std::get<0>(wal[0]) != "wal") {
         NOVA_NLOG_WARN(kLogTag, "Failed to enable WAL mode");
     }
-    if (!db_.execute("PRAGMA foreign_keys=ON")) {
-        NOVA_NLOG_WARN(kLogTag, "Failed to enable foreign key constraints");
-    }
-    if (!db_.execute("PRAGMA busy_timeout=5000")) {
-        NOVA_NLOG_WARN(kLogTag, "Failed to set busy_timeout");
-    }
+    // foreign_keys / busy_timeout 是设置型 PRAGMA，同样返回行
+    db_.query_s<std::tuple<int>>("PRAGMA foreign_keys=ON");
+    db_.query_s<std::tuple<int>>("PRAGMA busy_timeout=5000");
 
     NOVA_NLOG_INFO(kLogTag, "Database opened: {}", path);
     return true;

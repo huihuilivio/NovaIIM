@@ -25,7 +25,11 @@ AuditLogListResult AuditLogDaoImplT<DbMgr>::List(int64_t admin_id, const std::st
         "(? = '' OR created_at >= ?) AND "
         "(? = '' OR created_at <= ?)";
 
-    static constexpr auto kWhere =
+    // ormpp master 的 query_s 在检测到条件含 "order by"/"limit" 时
+    // 会错误地吃掉 WHERE 关键字，因此这里用完整 SELECT 语句绕过
+    static constexpr auto kSelectSql =
+        "SELECT id, admin_id, action, target_type, target_id, detail, ip_address, created_at "
+        "FROM audit_logs WHERE "
         "(? = 0 OR admin_id = ?) AND "
         "(? = '' OR action = ?) AND "
         "(? = '' OR created_at >= ?) AND "
@@ -39,8 +43,8 @@ AuditLogListResult AuditLogDaoImplT<DbMgr>::List(int64_t admin_id, const std::st
     if (!cnt.empty())
         result.total = std::get<0>(cnt[0]);
 
-    result.items = conn.query_s<AuditLog>(kWhere, admin_id, admin_id, action, action, start_time, start_time, end_time,
-                                          end_time, page_size, offset);
+    result.items = conn.query_s<AuditLog>(kSelectSql, admin_id, admin_id, action, action, start_time, start_time,
+                                          end_time, end_time, page_size, offset);
 
     return result;
 }

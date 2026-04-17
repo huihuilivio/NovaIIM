@@ -14,22 +14,6 @@ include(FetchContent)
 
 set(FETCHCONTENT_QUIET OFF)
 
-# 镜像源切换：无法访问 GitHub 时设置 -DNOVA_USE_GITEE=ON
-option(NOVA_USE_GITEE "Use Gitee mirrors instead of GitHub" OFF)
-
-if(NOVA_USE_GITEE)
-    set(NOVA_GIT_LIBHV          "https://gitee.com/libhv/libhv.git")
-    set(NOVA_GIT_YALANTINGLIBS  "https://gitee.com/alibaba/yalantinglibs.git")
-    set(NOVA_GIT_GTEST          "https://gitee.com/mirrors/googletest.git")
-    set(NOVA_GIT_ORMPP          "https://gitee.com/qicosmos/ormpp.git")
-    message(STATUS "[NovaIIM] Using Gitee mirrors")
-else()
-    set(NOVA_GIT_LIBHV          "https://github.com/ithewei/libhv.git")
-    set(NOVA_GIT_YALANTINGLIBS  "https://github.com/alibaba/yalantinglibs.git")
-    set(NOVA_GIT_GTEST          "https://github.com/google/googletest.git")
-    set(NOVA_GIT_ORMPP          "https://github.com/qicosmos/ormpp.git")
-endif()
-
 # ============================================================
 # 版本锁定
 # ============================================================
@@ -40,6 +24,24 @@ set(NOVA_GTEST_VERSION        "v1.17.0")
 set(NOVA_CLI11_VERSION        "v2.6.2")
 set(NOVA_ORMPP_VERSION        "0.2.1")
 set(NOVA_L8W8JWT_VERSION      "2.5.0")
+
+# 镜像源切换：无法访问 GitHub 时设置 -DNOVA_USE_GITEE=ON
+option(NOVA_USE_GITEE "Use Gitee mirrors instead of GitHub" OFF)
+if(NOVA_USE_GITEE)
+    set(NOVA_GIT_LIBHV          "https://gitee.com/libhv/libhv.git")
+    set(NOVA_GIT_YALANTINGLIBS  "https://gitee.com/alibaba/yalantinglibs.git")
+    set(NOVA_GIT_GTEST          "https://gitee.com/mirrors/googletest.git")
+    set(NOVA_GIT_ORMPP          "https://gitee.com/qicosmos/ormpp.git")
+    # Gitee ormpp 镜像 tag 滞后，使用 master 分支
+    set(NOVA_ORMPP_VERSION "master")
+    message(STATUS "[NovaIIM] Using Gitee mirrors (ormpp pinned to master)")
+else()
+    set(NOVA_GIT_LIBHV          "https://github.com/ithewei/libhv.git")
+    set(NOVA_GIT_YALANTINGLIBS  "https://github.com/alibaba/yalantinglibs.git")
+    set(NOVA_GIT_GTEST          "https://github.com/google/googletest.git")
+    set(NOVA_GIT_ORMPP          "https://github.com/qicosmos/ormpp.git")
+endif()
+
 
 # ============================================================
 # spdlog - 高性能日志
