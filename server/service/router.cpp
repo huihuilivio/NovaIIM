@@ -18,7 +18,7 @@ void Router::Dispatch(ConnectionPtr conn, Packet& pkt) {
     if (it != handlers_.end()) {
         it->second(std::move(conn), pkt);
     } else {
-        NOVA_NLOG_WARN(kLogTag, "unknown cmd=0x{:04X} from uid={}", pkt.cmd, conn->user_id());
+        NOVA_NLOG_WARN(kLogTag, "unknown cmd=0x{:04X} from uid={}", pkt.cmd, conn->uid());
     }
 }
 

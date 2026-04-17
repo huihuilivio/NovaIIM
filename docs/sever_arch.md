@@ -178,13 +178,16 @@ GET  /api/v1/audit-logs
 
 | DAO | 说明 |
 |-----|------|
-| UserDaoImpl | CRUD, ListUsers (LIKE 转义), 参数化查询 |
+| UserDaoImpl | CRUD, FindByEmail, ListUsers (LIKE 转义), 参数化查询 |
 | AdminAccountDaoImpl | FindByUid/FindById/Insert/UpdatePassword (管理员专属) |
 | AuditLogDaoImpl | Insert + 多条件参数化分页查询 |
 | AdminSessionDaoImpl | JWT 黑名单 (update_some prepared stmt) |
 | RbacDaoImpl | 3表 JOIN 获取用户权限 (admin_roles) |
 | MessageDaoImpl | Insert/GetAfterSeq/UpdateStatus/ListMessages/FindById |
-| ConversationDao | 接口已定义，待实现 |
+| ConversationDao | 会话 CRUD + 成员管理 + 未读计算 |
+| FriendshipDao | 好友申请/同意/拒绝/删除/拉黑 + 关系查询 |
+| GroupDao | 建群/解散/入群/退群/踢人 + 群信息 CRUD |
+| UserFileDao | 文件元数据 CRUD + hash 秒传查询 |
 
 安全措施：
 - 全部使用 `query_s` / `update_some` / `insert` (ormpp 内部 prepared statement)

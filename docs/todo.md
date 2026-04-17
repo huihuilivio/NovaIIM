@@ -1,6 +1,6 @@
 # NovaIIM Server 待办列表
 
-**最后更新：2026-04-16 | 项目进度：85% | 编译状态：✅ 0 errors | 测试：✅ 83/83**
+**最后更新：2026-04-16 | 项目进度：60% | 编译状态：✅ 0 errors | 测试：✅ 120/120**
 
 ---
 
@@ -129,6 +129,7 @@
 - [x] RbacDao 单元测试 (权限查询) — 12 用例
 - [x] Handler 集成测试 (HTTP 请求验证) — 21 用例
 - [x] Router / MPMC / ConnManager 基础测试 — 14 用例
+- [x] UserService 注册/登录测试 — 37 用例 ← NEW
 
 ### ConversationDao — 待补 ⚠️
 - [ ] 实现 ConversationDaoImplT 模板
@@ -137,27 +138,68 @@
 
 ---
 
-## ⚠️ IM 用户侧服务（存根待实现）
+## ⚠️ IM 用户侧服务
 
-### 用户服务 — 存根 ⚠️
-- [ ] UserService::Login (验证 IM 用户身份)
-- [ ] UserService::Logout (清理会话)
+### 用户服务 — 部分完成 ✅⚠️
+- [x] UserService::Register (邮箱注册 + 格式校验 + 密码校验 + Snowflake UID + TOCTOU 防护)
+- [x] UserService::Login (邮箱登录 + trim/lowercase + 封禁返回通用错误 + 频率限制)
+- [ ] UserService::Logout (清理会话, 从 ConnManager 移除)
 - [ ] UserService::Heartbeat (连接心跳, 使用 conn->user_id())
+- [ ] UserService::SearchUser (邮箱精确 / 昵称模糊搜索, 脱敏)
+- [ ] UserService::GetProfile / UpdateProfile (个人资料 CRUD)
 
-### 消息服务 — 存根 ⚠️
-- [ ] MsgService::SendMsg (消息投递 + seq 递增)
-- [ ] MsgService::RecallMsg (消息撤回)
-- [ ] MsgService::Ack (消息确认)
+### 好友服务 — 待实现 ⚠️
+- [ ] FriendService::AddFriend (发送好友申请, 双向写入 friendships)
+- [ ] FriendService::HandleRequest (同意/拒绝, 同意时自动创建私聊会话)
+- [ ] FriendService::DeleteFriend (删除好友, 保留历史消息)
+- [ ] FriendService::Block / Unblock (单向拉黑)
+- [ ] FriendService::GetFriendList (好友列表 + 对应私聊会话 ID)
+- [ ] FriendService::GetRequests (好友申请列表, 分页)
+- [ ] FriendNotify 推送 (申请/同意/拒绝/删除)
 
-### 同步服务 — 存根 ⚠️
-- [ ] SyncService::SyncMessages (离线消息同步)
-- [ ] SyncService::SyncRoster (好友列表同步)
-- [ ] SyncService::SyncRoles (角色列表同步)
+### 消息服务 — 存根待实现 ⚠️
+- [ ] MsgService::SendMsg (消息投递 + seq 递增 + 幂等去重)
+- [ ] MsgService::RecallMsg (消息撤回 + 2 分钟限制 + 权限校验)
+- [ ] MsgService::DeliverAck (送达确认, 更新 last_ack_seq)
+- [ ] MsgService::ReadAck (已读确认, 更新 last_read_seq)
+- [ ] 多 msg_type 支持 (文本/表情/图片/语音/视频/文件/位置/名片)
 
-### 输入校验 — 待补 ⚠️
-- [ ] UID/密码 格式校验
+### 会话服务 — 待实现 ⚠️
+- [ ] ConvService::CreateConv (私聊/群聊会话创建)
+- [ ] ConvService::GetConvList (会话列表 + 未读数 + 最后一条消息摘要)
+- [ ] ConvService::DeleteConv (隐藏会话, 新消息自动恢复)
+- [ ] ConvService::MuteConv / PinConv (免打扰/置顶)
+- [ ] ConvUpdate 推送 (新消息摘要/成员变化/信息变更)
+
+### 群组服务 — 待实现 ⚠️
+- [ ] GroupService::CreateGroup (建群 + 自动创建 Conversation)
+- [ ] GroupService::DismissGroup (解散群, 仅群主)
+- [ ] GroupService::JoinGroup / HandleJoinReq (入群申请 + 审批)
+- [ ] GroupService::LeaveGroup (退群, 群主须先转让)
+- [ ] GroupService::KickMember (踢出 + 权限校验)
+- [ ] GroupService::UpdateGroup (修改群名/头像/公告)
+- [ ] GroupService::GetGroupInfo / GetMembers / GetMyGroups
+- [ ] GroupService::SetMemberRole (设置管理员)
+- [ ] GroupNotify 推送 (创建/解散/加入/退出/踢出/变更/角色)
+
+### 文件服务 — 待实现 ⚠️
+- [ ] FileService::Upload (请求上传 → 返回 upload_url + file_id)
+- [ ] FileService::UploadComplete (上传完成确认)
+- [ ] FileService::Download (请求下载 → 返回 download_url)
+- [ ] 秒传 (file_hash 去重)
+- [ ] 文件大小限制 (avatar 2MB, image 10MB, file 100MB)
+
+### 同步服务 — 存根待实现 ⚠️
+- [ ] SyncService::SyncMessages (离线消息拉取, 分页)
+- [ ] SyncService::SyncUnread (未读会话 + 未读数)
+
+### 输入校验 — 部分完成 ✅⚠️
+- [x] 邮箱格式校验 + 长度限制 (255)
+- [x] 密码长度校验 (6-128)
+- [x] 昵称长度校验 (100) + 控制字符检测
 - [ ] 消息内容长度限制
-- [ ] 频率限制 (Rate Limiting)
+- [ ] 群名/公告长度限制
+- [ ] 文件大小限制
 
 ---
 

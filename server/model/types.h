@@ -60,7 +60,7 @@ inline constexpr std::string_view get_alias_struct_name(Admin*) {
 
 struct UserDevice {
     int64_t id      = 0;
-    int64_t user_id = 0;
+    std::string uid;  // 关联 users.uid
     std::string device_id;
     std::string device_type;
     std::string last_active_at;

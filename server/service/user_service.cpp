@@ -142,9 +142,9 @@ void UserService::HandleRegister(ConnectionPtr conn, Packet& pkt) {
     user.status        = static_cast<int>(AccountStatus::Normal);
 
     if (ctx_.dao().User().Insert(user)) {
-        NOVA_NLOG_INFO(kLogTag, "user registered: email={}, uid={}, id={}, nickname={}", user.email, user.uid, user.id, user.nickname);
+        NOVA_NLOG_INFO(kLogTag, "user registered: email={}, uid={}, nickname={}", user.email, user.uid, user.nickname);
         SendPacket(conn, Cmd::kRegisterAck, seq, 0,
-                   proto::RegisterAck{ec::kOk.code, ec::kOk.msg, user.uid, user.id});
+                   proto::RegisterAck{ec::kOk.code, ec::kOk.msg, user.uid});
         return;
     }
 
@@ -167,6 +167,7 @@ void UserService::HandleLogin(ConnectionPtr conn, Packet& pkt) {
     if (conn->is_authenticated()) {
         ctx_.conn_manager().Remove(conn->user_id(), conn.get());
         conn->set_user_id(0);
+        conn->set_uid("");
     }
 
     // 1. 反序列化 body → LoginReq
@@ -253,6 +254,7 @@ void UserService::HandleLogin(ConnectionPtr conn, Packet& pkt) {
 
     // 6. 设置连接状态
     conn->set_user_id(user.id);
+    conn->set_uid(user.uid);
     if (!req->device_id.empty()) {
         conn->set_device_id(req->device_id);
     }
@@ -262,31 +264,33 @@ void UserService::HandleLogin(ConnectionPtr conn, Packet& pkt) {
 
     // 8. 持久化设备信息（upsert user_devices 表，供 Admin 查询）
     if (!req->device_id.empty()) {
-        ctx_.dao().User().UpsertDevice(user.id, req->device_id, req->device_type);
+        ctx_.dao().User().UpsertDevice(user.uid, req->device_id, req->device_type);
     }
 
-    NOVA_NLOG_INFO(kLogTag, "user {} (id={}) logged in, device={} type={}", req->email, user.id, req->device_id,
+    NOVA_NLOG_INFO(kLogTag, "user {} (uid={}) logged in, device={} type={}", req->email, user.uid, req->device_id,
                    req->device_type);
 
     // 9. 返回 LoginAck
-    SendPacket(conn, Cmd::kLoginAck, seq, static_cast<uint64_t>(user.id),
-               proto::LoginAck{ec::kOk.code, ec::kOk.msg, user.id, user.nickname, user.avatar});
+    SendPacket(conn, Cmd::kLoginAck, seq, 0,
+               proto::LoginAck{ec::kOk.code, ec::kOk.msg, user.uid, user.nickname, user.avatar});
 }
 
 void UserService::HandleLogout(ConnectionPtr conn, Packet& pkt) {
     int64_t user_id = conn->user_id();
     if (user_id != 0) {
+        auto uid = conn->uid();
         ctx_.conn_manager().Remove(user_id, conn.get());
         conn->set_user_id(0);  // 清零防止 Gateway 断连回调再次操作
-        NOVA_NLOG_INFO(kLogTag, "user id={} logged out", user_id);
+        conn->set_uid("");
+        NOVA_NLOG_INFO(kLogTag, "user id={}, uid={}, logged out", user_id, uid);
     }
 
-    SendPacket(conn, Cmd::kLogout, pkt.seq, static_cast<uint64_t>(user_id), proto::RspBase{ec::kOk.code, "goodbye"});
+    SendPacket(conn, Cmd::kLogout, pkt.seq, 0, proto::RspBase{ec::kOk.code, "goodbye"});
     conn->Close();
 }
 
 void UserService::HandleHeartbeat(ConnectionPtr conn, Packet& pkt) {
-    SendPacket(conn, Cmd::kHeartbeatAck, pkt.seq, static_cast<uint64_t>(conn->user_id()),
+    SendPacket(conn, Cmd::kHeartbeatAck, pkt.seq, 0,
                proto::RspBase{ec::kOk.code, {}});
 }
 

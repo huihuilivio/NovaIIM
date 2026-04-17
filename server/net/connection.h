@@ -18,6 +18,17 @@ public:
     int64_t user_id() const { return user_id_.load(std::memory_order_acquire); }
     void set_user_id(int64_t uid) { user_id_.store(uid, std::memory_order_release); }
 
+    // Snowflake uid（对外暴露的用户标识）
+    // 重新登录时可被覆写，需与并发读同步
+    std::string uid() const {
+        std::lock_guard<std::mutex> lock(uid_mutex_);
+        return uid_;
+    }
+    void set_uid(const std::string& uid) {
+        std::lock_guard<std::mutex> lock(uid_mutex_);
+        uid_ = uid;
+    }
+
     std::string device_id() const {
         std::lock_guard<std::mutex> lock(device_mutex_);
         return device_id_;
@@ -39,7 +50,9 @@ public:
     virtual void Close() = 0;
 
 private:
-    std::atomic<int64_t> user_id_{0};
+    std::atomic<int64_t> user_id_{0};  // 内部 DB id，仅用于 ConnManager，不对外暴露
+    mutable std::mutex uid_mutex_;
+    std::string uid_;                   // Snowflake uid，对外暴露的用户标识
     mutable std::mutex device_mutex_;
     std::string device_id_;
 };

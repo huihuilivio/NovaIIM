@@ -3,6 +3,7 @@
 #include "../core/logger.h"
 #include "../dao/conversation_dao.h"
 #include "../dao/message_dao.h"
+#include "../dao/user_dao.h"
 
 #include <unordered_map>
 
@@ -15,7 +16,6 @@ static constexpr const char* kLogTag = "SyncService";
 void SyncService::HandleSyncMsg(ConnectionPtr conn, Packet& pkt) {
     auto session    = ctx_.dao().Session();
     int64_t user_id = conn->user_id();
-    auto uid        = static_cast<uint64_t>(user_id);
 
     if (user_id == 0) {
         SendPacket(conn, Cmd::kSyncMsgResp, pkt.seq, 0, proto::SyncMsgResp{ec::kNotAuthenticated.code});
@@ -25,18 +25,18 @@ void SyncService::HandleSyncMsg(ConnectionPtr conn, Packet& pkt) {
     // 1. 反序列化 body → SyncMsgReq
     auto req = proto::Deserialize<proto::SyncMsgReq>(pkt.body);
     if (!req) {
-        SendPacket(conn, Cmd::kSyncMsgResp, pkt.seq, uid, proto::SyncMsgResp{ec::kInvalidBody.code});
+        SendPacket(conn, Cmd::kSyncMsgResp, pkt.seq, 0, proto::SyncMsgResp{ec::kInvalidBody.code});
         return;
     }
 
     if (req->conversation_id <= 0) {
-        SendPacket(conn, Cmd::kSyncMsgResp, pkt.seq, uid, proto::SyncMsgResp{ec::kInvalidBody.code});
+        SendPacket(conn, Cmd::kSyncMsgResp, pkt.seq, 0, proto::SyncMsgResp{ec::kInvalidBody.code});
         return;
     }
 
     // 检查用户是否为会话成员
     if (!ctx_.dao().Conversation().IsMember(req->conversation_id, user_id)) {
-        SendPacket(conn, Cmd::kSyncMsgResp, pkt.seq, uid, proto::SyncMsgResp{ec::sync::kNotMember.code});
+        SendPacket(conn, Cmd::kSyncMsgResp, pkt.seq, 0, proto::SyncMsgResp{ec::sync::kNotMember.code});
         return;
     }
 
@@ -51,17 +51,28 @@ void SyncService::HandleSyncMsg(ConnectionPtr conn, Packet& pkt) {
     // 2. 从 DB 拉取 seq > last_seq 的消息
     auto messages = ctx_.dao().Message().GetAfterSeq(req->conversation_id, req->last_seq, limit);
 
-    // 3. 构建响应
+    // 3. 构建响应（需要将 sender_id 转为 sender_uid）
+    // sender_uid 缓存，避免 N+1 查询
+    std::unordered_map<int64_t, std::string> uid_cache;
+    auto resolve_uid = [&](int64_t id) -> std::string {
+        auto [it, inserted] = uid_cache.try_emplace(id);
+        if (inserted) {
+            auto u     = ctx_.dao().User().FindById(id);
+            it->second = u ? u->uid : "";
+        }
+        return it->second;
+    };
+
     proto::SyncMsgResp resp;
     resp.code     = ec::kOk.code;
     resp.has_more = static_cast<int>(messages.size()) >= limit;
     resp.messages.reserve(messages.size());
 
     for (const auto& m : messages) {
-        resp.messages.push_back({m.seq, m.sender_id, m.content, m.msg_type, m.created_at, m.status});
+        resp.messages.push_back({m.seq, resolve_uid(m.sender_id), m.content, m.msg_type, m.created_at, m.status});
     }
 
-    SendPacket(conn, Cmd::kSyncMsgResp, pkt.seq, uid, resp);
+    SendPacket(conn, Cmd::kSyncMsgResp, pkt.seq, 0, resp);
 
     NOVA_NLOG_DEBUG(kLogTag, "sync_msg: user={}, conv={}, from_seq={}, returned={}", user_id, req->conversation_id,
                     req->last_seq, messages.size());
@@ -70,7 +81,6 @@ void SyncService::HandleSyncMsg(ConnectionPtr conn, Packet& pkt) {
 void SyncService::HandleSyncUnread(ConnectionPtr conn, Packet& pkt) {
     auto session    = ctx_.dao().Session();
     int64_t user_id = conn->user_id();
-    auto uid        = static_cast<uint64_t>(user_id);
 
     if (user_id == 0) {
         SendPacket(conn, Cmd::kSyncUnreadResp, pkt.seq, 0, proto::SyncUnreadResp{ec::kNotAuthenticated.code});
@@ -127,6 +137,17 @@ void SyncService::HandleSyncUnread(ConnectionPtr conn, Packet& pkt) {
     if (!preview_convs.empty()) {
         auto all_previews = ctx_.dao().Message().GetLatestByConversations(preview_convs, 3);
 
+        // sender_uid 缓存
+        std::unordered_map<int64_t, std::string> uid_cache;
+        auto resolve_uid = [&](int64_t id) -> std::string {
+            auto [it, inserted] = uid_cache.try_emplace(id);
+            if (inserted) {
+                auto u     = ctx_.dao().User().FindById(id);
+                it->second = u ? u->uid : "";
+            }
+            return it->second;
+        };
+
         // 按 conversation_id 分组
         std::unordered_map<int64_t, std::vector<const Message*>> preview_map;
         for (const auto& m : all_previews) {
@@ -140,12 +161,12 @@ void SyncService::HandleSyncUnread(ConnectionPtr conn, Packet& pkt) {
                 continue;
             for (const auto* m : pit->second) {
                 item.latest_messages.push_back(
-                    {m->seq, m->sender_id, m->content, m->msg_type, m->created_at, m->status});
+                    {m->seq, resolve_uid(m->sender_id), m->content, m->msg_type, m->created_at, m->status});
             }
         }
     }
 
-    SendPacket(conn, Cmd::kSyncUnreadResp, pkt.seq, uid, resp);
+    SendPacket(conn, Cmd::kSyncUnreadResp, pkt.seq, 0, resp);
 
     NOVA_NLOG_DEBUG(kLogTag, "sync_unread: user={}, conversations={}, total_unread={}", user_id, memberships.size(),
                     resp.total_unread);

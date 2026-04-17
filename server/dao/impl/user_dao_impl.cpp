@@ -102,53 +102,59 @@ bool UserDaoImplT<DbMgr>::Insert(User& user) {
 }
 
 template <typename DbMgr>
-bool UserDaoImplT<DbMgr>::UpdateStatus(int64_t id, int8_t status) {
+std::optional<int64_t> UserDaoImplT<DbMgr>::UpdateStatus(const std::string& uid, int8_t status) {
     auto&& conn = db_.DB();
-    auto res    = conn.query_s<User>("id=?", id);
+    auto res    = conn.query_s<User>("uid=? AND status!=3", uid);
     if (res.empty())
-        return false;
+        return std::nullopt;
     res[0].status = status;
-    return conn.update_some<&User::status>(res[0]) == 1;
+    if (conn.update_some<&User::status>(res[0]) != 1)
+        return std::nullopt;
+    return res[0].id;
 }
 
 template <typename DbMgr>
-bool UserDaoImplT<DbMgr>::UpdatePassword(int64_t id, const std::string& password_hash) {
+std::optional<int64_t> UserDaoImplT<DbMgr>::UpdatePassword(const std::string& uid, const std::string& password_hash) {
     auto&& conn = db_.DB();
-    auto res    = conn.query_s<User>("id=?", id);
+    auto res    = conn.query_s<User>("uid=? AND status!=3", uid);
     if (res.empty())
-        return false;
+        return std::nullopt;
     res[0].password_hash = password_hash;
-    return conn.update_some<&User::password_hash>(res[0]) == 1;
+    if (conn.update_some<&User::password_hash>(res[0]) != 1)
+        return std::nullopt;
+    return res[0].id;
 }
 
 template <typename DbMgr>
-bool UserDaoImplT<DbMgr>::UpdateAvatar(int64_t id, const std::string& avatar) {
+std::optional<int64_t> UserDaoImplT<DbMgr>::UpdateAvatar(const std::string& uid, const std::string& avatar) {
     auto&& conn = db_.DB();
-    auto res    = conn.query_s<User>("id=?", id);
+    auto res    = conn.query_s<User>("uid=? AND status!=3", uid);
     if (res.empty())
-        return false;
+        return std::nullopt;
     res[0].avatar = avatar;
-    return conn.update_some<&User::avatar>(res[0]) == 1;
+    if (conn.update_some<&User::avatar>(res[0]) != 1)
+        return std::nullopt;
+    return res[0].id;
 }
 
 template <typename DbMgr>
-bool UserDaoImplT<DbMgr>::SoftDelete(int64_t id) {
-    return UpdateStatus(id, static_cast<int>(AccountStatus::Deleted));
+std::optional<int64_t> UserDaoImplT<DbMgr>::SoftDelete(const std::string& uid) {
+    return UpdateStatus(uid, static_cast<int>(AccountStatus::Deleted));
 }
 
 template <typename DbMgr>
-std::vector<UserDevice> UserDaoImplT<DbMgr>::ListDevicesByUser(int64_t user_id) {
-    return db_.DB().query_s<UserDevice>("user_id=?", user_id);
+std::vector<UserDevice> UserDaoImplT<DbMgr>::ListDevicesByUser(const std::string& uid) {
+    return db_.DB().query_s<UserDevice>("uid=?", uid);
 }
 
 template <typename DbMgr>
-void UserDaoImplT<DbMgr>::UpsertDevice(int64_t user_id, const std::string& device_id,
+void UserDaoImplT<DbMgr>::UpsertDevice(const std::string& uid, const std::string& device_id,
                                        const std::string& device_type) {
     auto&& conn = db_.DB();
-    auto res    = conn.query_s<UserDevice>("user_id=? AND device_id=?", user_id, device_id);
+    auto res    = conn.query_s<UserDevice>("uid=? AND device_id=?", uid, device_id);
     if (res.empty()) {
         UserDevice dev;
-        dev.user_id        = user_id;
+        dev.uid            = uid;
         dev.device_id      = device_id;
         dev.device_type    = device_type;
         dev.last_active_at = NowUtcStr();

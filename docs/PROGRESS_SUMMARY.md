@@ -205,7 +205,7 @@ struct SyncReq { int64_t from_seq[n_topics]; };
 
 ### Phase 4A — 单元测试 ✅ 已完成
 ```
-83 tests across 7 test suites, 100% pass rate
+120 tests across 8 test suites, 100% pass rate
 ```
 
 ### Phase 4B — IM 用户侧实现 (估计 30h)
@@ -231,7 +231,7 @@ Week 3 (2026-04-29 ~ 2026-05-05)
 | 指标 | 目标 | 现状 | 拟定 |
 |------|------|------|------|
 | 编译错误 | 0 | ✅ 0 | 保持 |
-| 测试通过 | 100% | ✅ 83/83 | 保持 |
+| 测试通过 | 100% | ✅ 120/120 | 保持 |
 | 代码覆盖 | 80% | ⚠️ 60% | Phase 5 目标 80% |
 | API 文档 | 100% | ⚠️ 80% | Phase 5 完成 |
 | 安全审计 | PASSED | ✅ PASSED | 半年一次 |

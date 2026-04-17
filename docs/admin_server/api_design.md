@@ -263,11 +263,16 @@ GET /users?page=1&page_size=20&keyword=john&status=1
 **请求体：**
 ```json
 {
-  "uid": "newuser",
-  "nickname": "New User",
-  "password": "initial_password"
+  "email": "user@example.com",
+  "password": "secure_password",
+  "nickname": "New User"
 }
 ```
+
+**校验规则：**
+- `email`：必填，自动转小写，格式校验（含 `@` 和 `.`），最长 255 字符，不允许重复
+- `password`：必填，6–128 字符
+- `nickname`：可选，默认为 email
 
 **成功响应 (200)：**
 ```json
@@ -275,21 +280,27 @@ GET /users?page=1&page_size=20&keyword=john&status=1
   "code": 0,
   "data": {
     "id": 1001,
-    "uid": "newuser",
-    "nickname": "New User",
-    "status": 1,
-    "created_at": "2026-04-15T14:30:00Z"
+    "email": "user@example.com"
   }
 }
 ```
 
-**失败响应 (400)：**
-```json
-{
-  "code": 1,
-  "msg": "User uid already exists"
-}
-```
+**失败响应：**
+
+| code | msg | HTTP |
+|------|-----|------|
+| 1 | email and password required | 400 |
+| 1 | email and password must be strings | 400 |
+| 1 | email and password cannot be empty | 400 |
+| 1 | invalid email format | 400 |
+| 1 | email must be at most 255 characters | 400 |
+| 1 | password must be at least 6 characters | 400 |
+| 1 | password must be at most 128 characters | 400 |
+| 1 | email already exists | 409 |
+| 5 | failed to hash password | 500 |
+| 5 | failed to create user | 500 |
+
+**并发安全：** Insert 失败时重新检查 FindByEmail 区分 UNIQUE 冲突与 DB 错误 (TOCTOU 防护)
 
 **审计记录：** action = "user.create"
 
@@ -367,6 +378,9 @@ GET /users?page=1&page_size=20&keyword=john&status=1
   "new_password": "new_secure_password"
 }
 ```
+
+**校验规则：**
+- `new_password`：必填，必须为字符串，非空，6–128 字符
 
 **成功响应 (200)：**
 ```json
@@ -1035,11 +1049,13 @@ Client                          Server
 **Request:**
 ```json
 {
-  "uid": "john",
-  "password": "initial_password",
+  "email": "john@example.com",
+  "password": "secure_password",
   "nickname": "John"
 }
 ```
+
+**校验：** email 格式+长度(≤255)+唯一性，password 长度(6-128)
 
 **Response:**
 ```json
@@ -1047,7 +1063,7 @@ Client                          Server
   "code": 0,
   "data": {
     "id": 10,
-    "uid": "john"
+    "email": "john@example.com"
   }
 }
 ```

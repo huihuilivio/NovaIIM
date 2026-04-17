@@ -39,7 +39,7 @@ struct LoginReq {
 struct LoginAck {
     int32_t code = 0;
     std::string msg;
-    int64_t user_id = 0;
+    std::string uid;      // Snowflake uid（对外用户标识）
     std::string nickname;
     std::string avatar;
 };
@@ -58,7 +58,6 @@ struct RegisterAck {
     int32_t code = 0;
     std::string msg;
     std::string uid;       // 服务端生成的唯一 UID
-    int64_t user_id = 0;
 };
 
 // ============================================================
@@ -91,7 +90,7 @@ struct SendMsgAck {
 // S→C  Cmd::kPushMsg (0x0102)
 struct PushMsg {
     int64_t conversation_id = 0;
-    int64_t sender_id       = 0;
+    std::string sender_uid;         // 发送者 Snowflake uid
     std::string content;
     int64_t server_seq  = 0;
     int64_t server_time = 0;
@@ -124,7 +123,7 @@ struct SyncMsgReq {
 // 同步消息条目（嵌套在 SyncMsgResp 中）
 struct SyncMsgItem {
     int64_t server_seq = 0;
-    int64_t sender_id  = 0;
+    std::string sender_uid;   // 发送者 Snowflake uid
     std::string content;
     int32_t msg_type = 0;
     std::string server_time;  // 数据库时间字符串
@@ -173,14 +172,13 @@ struct UpdateAvatarAck {
 
 // C→S  Cmd::kGetUserProfile (0x0302)
 struct GetUserProfileReq {
-    int64_t target_user_id = 0;  // 要查询的用户 ID，0 表示查自己
+    std::string target_uid;  // 要查询的用户 uid，空表示查自己
 };
 
 // S→C  Cmd::kGetUserProfileAck (0x0303)
 struct GetUserProfileAck {
     int32_t code = 0;
     std::string msg;
-    int64_t user_id = 0;
     std::string uid;
     std::string nickname;
     std::string avatar;

@@ -31,7 +31,11 @@
     ┌───────────────────────────────┐
     │   Service Layer               │
     │ - UserService                 │
+    │ - FriendService               │
     │ - MsgService                  │
+    │ - ConvService                 │
+    │ - GroupService                │
+    │ - FileService                 │
     │ - SyncService                 │
     └───────────────┬───────────────┘
                     │
@@ -63,7 +67,7 @@ TCP 连接 → Gateway 接收
     ↓
 Worker 线程: Router.Dispatch(conn, pkt)
     ↓
-Service 层处理 (UserService/MsgService/SyncService)
+Service 层处理 (UserService/FriendService/MsgService/ConvService/GroupService/FileService/SyncService)
     ↓
 DAO 层数据操作
     ↓
@@ -120,14 +124,53 @@ using PacketHandler = std::function<void(ConnectionPtr, Packet&)>;
 
 | 命令 | Handler | 服务 | 描述 |
 |------|---------|------|------|
-| Cmd::kLogin | HandleLogin | UserService | 用户登录 |
-| Cmd::kLogout | HandleLogout | UserService | 用户登出 |
-| Cmd::kHeartbeat | HandleHeartbeat | UserService | 心跳 |
-| Cmd::kSendMsg | HandleSendMsg | MsgService | 发送消息 |
-| Cmd::kDeliverAck | HandleDeliverAck | MsgService | 已送达确认 |
-| Cmd::kReadAck | HandleReadAck | MsgService | 已读确认 |
-| Cmd::kSyncMsg | HandleSyncMsg | SyncService | 拉取历史消息 |
-| Cmd::kSyncUnread | HandleSyncUnread | SyncService | 拉取未读 |
+| **认证** |
+| kLogin (0x0001) | HandleLogin | UserService | 邮箱登录 |
+| kLogout (0x0003) | HandleLogout | UserService | 登出 |
+| kRegister (0x0005) | HandleRegister | UserService | 邮箱注册 |
+| kHeartbeat (0x0010) | HandleHeartbeat | UserService | 心跳 |
+| **用户** |
+| kSearchUser (0x0020) | HandleSearchUser | UserService | 搜索用户 |
+| kGetUserProfile (0x0022) | HandleGetProfile | UserService | 获取资料 |
+| kUpdateProfile (0x0024) | HandleUpdateProfile | UserService | 修改资料 |
+| **好友** |
+| kAddFriend (0x0030) | HandleAddFriend | FriendService | 发送好友申请 |
+| kHandleFriendReq (0x0032) | HandleFriendReq | FriendService | 处理申请 |
+| kDeleteFriend (0x0034) | HandleDeleteFriend | FriendService | 删除好友 |
+| kBlockFriend (0x0036) | HandleBlockFriend | FriendService | 拉黑 |
+| kUnblockFriend (0x0038) | HandleUnblockFriend | FriendService | 取消拉黑 |
+| kGetFriendList (0x003A) | HandleGetFriendList | FriendService | 好友列表 |
+| kGetFriendRequests (0x003C) | HandleGetFriendRequests | FriendService | 申请列表 |
+| **消息** |
+| kSendMsg (0x0100) | HandleSendMsg | MsgService | 发送消息 |
+| kDeliverAck (0x0103) | HandleDeliverAck | MsgService | 已送达确认 |
+| kReadAck (0x0104) | HandleReadAck | MsgService | 已读确认 |
+| kRecallMsg (0x0105) | HandleRecallMsg | MsgService | 撤回消息 |
+| **会话** |
+| kCreateConv (0x0110) | HandleCreateConv | ConvService | 创建会话 |
+| kGetConvList (0x0112) | HandleGetConvList | ConvService | 会话列表 |
+| kDeleteConv (0x0114) | HandleDeleteConv | ConvService | 隐藏会话 |
+| kMuteConv (0x0116) | HandleMuteConv | ConvService | 免打扰 |
+| kPinConv (0x0118) | HandlePinConv | ConvService | 置顶 |
+| **同步** |
+| kSyncMsg (0x0200) | HandleSyncMsg | SyncService | 拉取历史消息 |
+| kSyncUnread (0x0202) | HandleSyncUnread | SyncService | 拉取未读 |
+| **群组** |
+| kCreateGroup (0x0400) | HandleCreateGroup | GroupService | 建群 |
+| kDismissGroup (0x0402) | HandleDismissGroup | GroupService | 解散群 |
+| kJoinGroup (0x0404) | HandleJoinGroup | GroupService | 申请入群 |
+| kHandleJoinReq (0x0406) | HandleJoinReq | GroupService | 审批入群 |
+| kLeaveGroup (0x0408) | HandleLeaveGroup | GroupService | 退群 |
+| kKickMember (0x040A) | HandleKickMember | GroupService | 踢出成员 |
+| kGetGroupInfo (0x040C) | HandleGetGroupInfo | GroupService | 群信息 |
+| kUpdateGroup (0x040E) | HandleUpdateGroup | GroupService | 修改群信息 |
+| kGetGroupMembers (0x0410) | HandleGetGroupMembers | GroupService | 群成员列表 |
+| kGetMyGroups (0x0412) | HandleGetMyGroups | GroupService | 我的群列表 |
+| kSetMemberRole (0x0414) | HandleSetMemberRole | GroupService | 设置角色 |
+| **文件** |
+| kUploadReq (0x0500) | HandleUploadReq | FileService | 请求上传 |
+| kUploadComplete (0x0502) | HandleUploadComplete | FileService | 上传完成 |
+| kDownloadReq (0x0504) | HandleDownloadReq | FileService | 请求下载 |
 
 ### 3.2 分发流程
 
@@ -147,31 +190,32 @@ Router::Dispatch(ConnectionPtr conn, Packet& pkt) {
 ### 4.1 UserService - 用户管理
 
 **职责:**
-- 用户登录认证 (UID/密码)
-- 用户信息维护
-- 在线状态管理
-- 设备绑定
+- 邮箱注册 (格式/长度/唯一性校验 + Snowflake UID + PBKDF2 密码哈希)
+- 邮箱登录 (trim/lowercase + 密码验证 + 封禁检查 + 频率限制)
+- 登出处理 (ConnManager 清理)
+- 心跳续期
+- 用户搜索 (邮箱精确 / 昵称模糊)
+- 个人资料管理
 
-**主要操作:**
-```cpp
-void HandleLogin(ConnectionPtr conn, Packet& pkt);     // 身份验证
-void HandleLogout(ConnectionPtr conn, Packet& pkt);    // 登出
-void HandleHeartbeat(ConnectionPtr conn, Packet& pkt); // 心跳续期
-```
-
-**状态维护:**
-- `conn->user_id()`: 已验证用户 ID (登录后设置)
-- `conn->last_heartbeat`: 最后心跳时间戳
-- `conn->app_version`: 客户端应用版本
-
-### 4.2 MsgService - 消息服务
+### 4.2 FriendService - 好友服务
 
 **职责:**
-- 消息发送 (1:1, 群聊)
-- 消息存储 (数据库)
-- 送达确认 (Delivery ACK)
-- 已读确认 (Read ACK)
-- 消息广播 (online users)
+- 好友申请/同意/拒绝 (双向 friendships 记录)
+- 删除好友 (保留历史消息)
+- 拉黑/取消拉黑 (单向)
+- 好友列表 + 申请列表
+- 好友变更推送 (FriendNotify)
+- 同意时自动创建私聊 Conversation
+
+### 4.3 MsgService - 消息服务
+
+**职责:**
+- 消息发送 (私聊/群聊 + 多 msg_type 支持)
+- 消息存储 + 幂等去重 (client_msg_id)
+- 送达确认 + 已读确认
+- 消息撤回 (时间限制 + 权限校验)
+- 消息广播 (online users via ConnManager)
+- 离线用户消息入库待同步
 
 **主要操作:**
 ```cpp
@@ -187,7 +231,36 @@ void HandleReadAck(ConnectionPtr conn, Packet& pkt);      // 已读
 4. 接收方 → 服务器: Cmd::kDeliverAck (已送达)
 5. 接收方 → 服务器: Cmd::kReadAck (已读)
 
-### 4.3 SyncService - 消息同步
+### 4.4 ConvService - 会话服务
+
+**职责:**
+- 会话创建 (私聊自动创建 / 群聊随建群创建)
+- 会话列表 (未读数 + 最后消息摘要)
+- 隐藏会话 (新消息自动恢复)
+- 免打扰 / 置顶
+- 会话变更推送 (ConvUpdate)
+
+### 4.5 GroupService - 群组服务
+
+**职责:**
+- 建群 / 解散群 (仅群主)
+- 入群申请 + 审批
+- 退群 / 踢出成员 (权限校验: 群主 > 管理员 > 成员)
+- 群信息 CRUD (名称/头像/公告)
+- 群成员列表 + 我的群列表
+- 群角色管理 (设置/撤销管理员)
+- 群事件推送 (GroupNotify)
+
+### 4.6 FileService - 文件服务
+
+**职责:**
+- 上传凭证签发 (upload_url + file_id)
+- 上传完成确认
+- 下载 URL 签发 (有时效性)
+- 秒传去重 (file_hash SHA-256)
+- 文件大小限制 (avatar 2MB, image 10MB, file 100MB)
+
+### 4.7 SyncService - 消息同步
 
 **职责:**
 - 历史消息拉取 (offline sync)
@@ -227,10 +300,13 @@ UserDao* user_dao = factory->User();
 
 | DAO | 职责 | 方法 |
 |-----|------|------|
-| UserDao | 用户账户管理 | FindByUid, FindById, Insert, UpdateStatus |
-| MessageDao | 消息存储 | Insert, FindByConversationId, FindUnread, MarkAsRead |
-| ConversationDao | 会话管理 | FindByUserIds, FindByUserId, Insert, UpdateLastMsg |
-| ConnectionDao | 连接记录 | Insert (可选，用于离线消息路由) |
+| UserDao | 用户账户 | FindByEmail, FindById, Insert, UpdatePassword, UpdateProfile |
+| MessageDao | 消息存储 | Insert, FindByConvId, GetAfterSeq, UpdateStatus, FindById |
+| ConversationDao | 会话管理 | Create, FindByUsers, GetConvList, UpdateMember, CalcUnread |
+| ConvMemberDao | 会话成员 | Add, Remove, UpdateReadSeq, UpdateMute, UpdatePinned |
+| FriendshipDao | 好友关系 | Insert, UpdateStatus, FindByUsers, GetFriendList, GetRequests |
+| GroupDao | 群组管理 | Create, Dismiss, UpdateInfo, GetGroupInfo, GetMyGroups |
+| UserFileDao | 文件元数据 | Insert, FindById, FindByHash, UpdateStatus |
 | DeviceDao | 设备管理 | Insert, FindByUserId, UpdateLastSeen |
 
 ### 5.3 DAO 操作示例

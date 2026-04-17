@@ -42,6 +42,17 @@ static bool IsValidEmail(const std::string& email) {
     return true;
 }
 
+// 首尾空白裁剪（与 UserService 一致）
+static void TrimInPlace(std::string& s) {
+    auto start = s.find_first_not_of(" \t\r\n");
+    auto end   = s.find_last_not_of(" \t\r\n");
+    if (start == std::string::npos) {
+        s.clear();
+    } else {
+        s = s.substr(start, end - start + 1);
+    }
+}
+
 // 邮箱转小写
 static void EmailToLower(std::string& email) {
     std::transform(email.begin(), email.end(), email.begin(),
@@ -406,6 +417,7 @@ int AdminServer::HandleMe(HttpRequest* req, HttpResponse* resp) {
 // ============================================================
 
 int AdminServer::HandleStats(HttpRequest* req, HttpResponse* resp) {
+    auto session = ctx_.dao().Session();
     int rc = RequirePermission(req, resp, "admin.dashboard");
     if (rc != 0)
         return rc;
@@ -445,7 +457,6 @@ int AdminServer::HandleListUsers(HttpRequest* req, HttpResponse* resp) {
     nlohmann::json items = nlohmann::json::array();
     for (auto& u : result.items) {
         items.push_back({
-            {"id", u.id},
             {"uid", u.uid},
             {"email", u.email},
             {"nickname", u.nickname},
@@ -484,6 +495,7 @@ int AdminServer::HandleCreateUser(HttpRequest* req, HttpResponse* resp) {
     }
 
     // 邮箱校验（trim + lowercase + 格式 + 长度）
+    TrimInPlace(email);
     EmailToLower(email);
     if (email.size() > 255) {
         return JsonError(resp, api_err::kEmailTooLong);
@@ -534,7 +546,7 @@ int AdminServer::HandleCreateUser(HttpRequest* req, HttpResponse* resp) {
     int64_t admin_id = GetCurrentAdminId(req);
     WriteAuditLog(admin_id, "user.create", "user", user.id, nlohmann::json({{"email", email}}).dump(), GetClientIp(req));
 
-    return JsonOk(resp, {{"id", user.id}, {"email", email}});
+    return JsonOk(resp, {{"uid", user.uid}, {"email", email}});
 }
 
 int AdminServer::HandleGetUser(HttpRequest* req, HttpResponse* resp) {
@@ -543,19 +555,17 @@ int AdminServer::HandleGetUser(HttpRequest* req, HttpResponse* resp) {
     if (rc != 0)
         return rc;
 
-    auto id_str = req->GetParam("id");
-    int64_t id  = std::atoll(id_str.c_str());
-    if (id <= 0) {
+    auto uid_str = req->GetParam("id");
+    if (uid_str.empty()) {
         return JsonError(resp, api_err::kInvalidUserId);
     }
 
-    auto user = ctx_.dao().User().FindById(id);
+    auto user = ctx_.dao().User().FindByUid(uid_str);
     if (!user) {
         return JsonError(resp, api_err::kUserNotFound);
     }
 
     nlohmann::json data;
-    data["id"]         = user->id;
     data["uid"]        = user->uid;
     data["email"]      = user->email;
     data["nickname"]   = user->nickname;
@@ -564,7 +574,7 @@ int AdminServer::HandleGetUser(HttpRequest* req, HttpResponse* resp) {
     data["is_online"]  = ctx_.conn_manager().IsOnline(user->id);
     data["created_at"] = user->created_at;
     // devices: 查 user_devices 表
-    auto devices           = ctx_.dao().User().ListDevicesByUser(id);
+    auto devices           = ctx_.dao().User().ListDevicesByUser(user->uid);
     nlohmann::json dev_arr = nlohmann::json::array();
     for (auto& d : devices) {
         dev_arr.push_back({
@@ -584,17 +594,16 @@ int AdminServer::HandleDeleteUser(HttpRequest* req, HttpResponse* resp) {
     if (rc != 0)
         return rc;
 
-    auto id_str = req->GetParam("id");
-    int64_t id  = std::atoll(id_str.c_str());
-    if (id <= 0) {
+    auto uid_str = req->GetParam("id");
+    if (uid_str.empty()) {
         return JsonError(resp, api_err::kInvalidUserId);
     }
 
-    if (!ctx_.dao().User().FindById(id)) {
+    auto id_opt = ctx_.dao().User().SoftDelete(uid_str);
+    if (!id_opt) {
         return JsonError(resp, api_err::kUserNotFound);
     }
-
-    ctx_.dao().User().SoftDelete(id);
+    int64_t id = *id_opt;
 
     // 踢下线
     auto conns = ctx_.conn_manager().GetConns(id);
@@ -613,9 +622,8 @@ int AdminServer::HandleResetPassword(HttpRequest* req, HttpResponse* resp) {
     if (rc != 0)
         return rc;
 
-    auto id_str = req->GetParam("id");
-    int64_t id  = std::atoll(id_str.c_str());
-    if (id <= 0) {
+    auto uid_str = req->GetParam("id");
+    if (uid_str.empty()) {
         return JsonError(resp, api_err::kInvalidUserId);
     }
 
@@ -651,12 +659,13 @@ int AdminServer::HandleResetPassword(HttpRequest* req, HttpResponse* resp) {
         return JsonError(resp, api_err::kHashFailed);
     }
 
-    if (!ctx_.dao().User().UpdatePassword(id, hash)) {
+    auto id_opt = ctx_.dao().User().UpdatePassword(uid_str, hash);
+    if (!id_opt) {
         return JsonError(resp, api_err::kUserNotFound);
     }
 
     int64_t admin_id = GetCurrentAdminId(req);
-    WriteAuditLog(admin_id, "user.reset_password", "user", id, "{}", GetClientIp(req));
+    WriteAuditLog(admin_id, "user.reset_password", "user", *id_opt, "{}", GetClientIp(req));
 
     return JsonOk(resp);
 }
@@ -667,18 +676,19 @@ int AdminServer::HandleBanUser(HttpRequest* req, HttpResponse* resp) {
     if (rc != 0)
         return rc;
 
-    auto id_str = req->GetParam("id");
-    int64_t id  = std::atoll(id_str.c_str());
-    if (id <= 0) {
+    auto uid_str = req->GetParam("id");
+    if (uid_str.empty()) {
         return JsonError(resp, api_err::kInvalidUserId);
     }
 
     auto body_opt      = ParseJsonBody(req);
     std::string reason = body_opt ? body_opt->value("reason", "") : "";
 
-    if (!ctx_.dao().User().UpdateStatus(id, static_cast<int>(AccountStatus::Banned))) {
+    auto id_opt = ctx_.dao().User().UpdateStatus(uid_str, static_cast<int>(AccountStatus::Banned));
+    if (!id_opt) {
         return JsonError(resp, api_err::kUserNotFound);
     }
+    int64_t id = *id_opt;
 
     // 踢下线
     auto conns = ctx_.conn_manager().GetConns(id);
@@ -697,32 +707,38 @@ int AdminServer::HandleUnbanUser(HttpRequest* req, HttpResponse* resp) {
     if (rc != 0)
         return rc;
 
-    auto id_str = req->GetParam("id");
-    int64_t id  = std::atoll(id_str.c_str());
-    if (id <= 0) {
+    auto uid_str = req->GetParam("id");
+    if (uid_str.empty()) {
         return JsonError(resp, api_err::kInvalidUserId);
     }
 
-    if (!ctx_.dao().User().UpdateStatus(id, static_cast<int>(AccountStatus::Normal))) {
+    auto id_opt = ctx_.dao().User().UpdateStatus(uid_str, static_cast<int>(AccountStatus::Normal));
+    if (!id_opt) {
         return JsonError(resp, api_err::kUserNotFound);
     }
 
     int64_t admin_id = GetCurrentAdminId(req);
-    WriteAuditLog(admin_id, "user.unban", "user", id, "{}", GetClientIp(req));
+    WriteAuditLog(admin_id, "user.unban", "user", *id_opt, "{}", GetClientIp(req));
 
     return JsonOk(resp);
 }
 
 int AdminServer::HandleKickUser(HttpRequest* req, HttpResponse* resp) {
+    auto session = ctx_.dao().Session();
     int rc = RequirePermission(req, resp, "user.ban");
     if (rc != 0)
         return rc;
 
-    auto id_str = req->GetParam("id");
-    int64_t id  = std::atoll(id_str.c_str());
-    if (id <= 0) {
+    auto uid_str = req->GetParam("id");
+    if (uid_str.empty()) {
         return JsonError(resp, api_err::kInvalidUserId);
     }
+
+    auto user_opt = ctx_.dao().User().FindByUid(uid_str);
+    if (!user_opt) {
+        return JsonError(resp, api_err::kUserNotFound);
+    }
+    int64_t id = user_opt->id;
 
     auto conns = ctx_.conn_manager().GetConns(id);
     if (conns.empty()) {
@@ -776,7 +792,6 @@ int AdminServer::HandleListMessages(HttpRequest* req, HttpResponse* resp) {
         nlohmann::json item;
         item["id"]              = m.id;
         item["conversation_id"] = m.conversation_id;
-        item["sender_id"]       = m.sender_id;
         item["sender_uid"]      = resolve_uid(m.sender_id);
         item["seq"]             = m.seq;
         item["msg_type"]        = m.msg_type;

@@ -27,7 +27,7 @@ private:
     size_t max_dedup_cache_size_;
     size_t max_content_size_;
     static constexpr std::chrono::seconds kInflightTimeout{30};  // in-flight 超时
-    std::mutex dedup_mutex_;
+    std::mutex dedup_mutex_; // todo: 细化锁粒度（读写分离）以提升并发性能, 分片锁等
     // LRU 列表：front = 最旧，back = 最新
     using DedupEntry = std::pair<std::string, proto::SendMsgAck>;  // key, value
     std::list<DedupEntry> dedup_order_;

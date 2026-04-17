@@ -82,8 +82,8 @@ return JsonError(resp, ApiCode::kParamError, "uid and password required", 400); 
 
 ### Full Test Suite Run
 ```
-[==========] 83 tests from 7 test suites ran
-[  PASSED  ] 83 tests
+[==========] 120 tests from 8 test suites ran
+[  PASSED  ] 120 tests
 ```
 
 ### Test-by-Test Status

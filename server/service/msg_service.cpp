@@ -76,7 +76,6 @@ void MsgService::HandleSendMsg(ConnectionPtr conn, Packet& pkt) {
     auto session      = ctx_.dao().Session();
     uint32_t seq      = pkt.seq;
     int64_t sender_id = conn->user_id();
-    auto uid          = static_cast<uint64_t>(sender_id);
 
     // 未认证检查
     if (sender_id == 0) {
@@ -88,24 +87,24 @@ void MsgService::HandleSendMsg(ConnectionPtr conn, Packet& pkt) {
     // 1. 反序列化 body → SendMsgReq
     auto req = proto::Deserialize<proto::SendMsgReq>(pkt.body);
     if (!req) {
-        SendPacket(conn, Cmd::kSendMsgAck, seq, uid, proto::SendMsgAck{ec::kInvalidBody.code, ec::kInvalidBody.msg});
+        SendPacket(conn, Cmd::kSendMsgAck, seq, 0, proto::SendMsgAck{ec::kInvalidBody.code, ec::kInvalidBody.msg});
         return;
     }
 
     if (req->content.empty()) {
-        SendPacket(conn, Cmd::kSendMsgAck, seq, uid,
+        SendPacket(conn, Cmd::kSendMsgAck, seq, 0,
                    proto::SendMsgAck{ec::msg::kContentEmpty.code, ec::msg::kContentEmpty.msg});
         return;
     }
 
     if (req->content.size() > max_content_size_) {
-        SendPacket(conn, Cmd::kSendMsgAck, seq, uid,
+        SendPacket(conn, Cmd::kSendMsgAck, seq, 0,
                    proto::SendMsgAck{ec::msg::kContentTooLarge.code, ec::msg::kContentTooLarge.msg});
         return;
     }
 
     if (req->conversation_id <= 0) {
-        SendPacket(conn, Cmd::kSendMsgAck, seq, uid,
+        SendPacket(conn, Cmd::kSendMsgAck, seq, 0,
                    proto::SendMsgAck{ec::msg::kInvalidConversation.code, ec::msg::kInvalidConversation.msg});
         return;
     }
@@ -115,14 +114,14 @@ void MsgService::HandleSendMsg(ConnectionPtr conn, Packet& pkt) {
     if (!req->client_msg_id.empty()) {
         std::lock_guard<std::mutex> lock(dedup_mutex_);
         if (auto* cached = DedupFind(req->client_msg_id)) {
-            SendPacket(conn, Cmd::kSendMsgAck, seq, uid, *cached);
+            SendPacket(conn, Cmd::kSendMsgAck, seq, 0, *cached);
             return;
         }
         // 防止 TOCTOU 竞态：查找未命中时立即标记 in-flight，其他线程会看到此标记
         // 超过 kInflightTimeout 的旧标记会被自动覆盖，防止永久阻塞
         if (!TryMarkInflight(req->client_msg_id)) {
             // 已有线程正在处理同一 client_msg_id，返回繁忙提示而非静默丢弃
-            SendPacket(conn, Cmd::kSendMsgAck, seq, uid,
+            SendPacket(conn, Cmd::kSendMsgAck, seq, 0,
                        proto::SendMsgAck{ec::kServerBusy.code, ec::kServerBusy.msg});
             return;
         }
@@ -131,7 +130,7 @@ void MsgService::HandleSendMsg(ConnectionPtr conn, Packet& pkt) {
     // 检查发送者是否为会话成员
     if (!ctx_.dao().Conversation().IsMember(req->conversation_id, sender_id)) {
         DedupRemoveInflightIfNeeded(req->client_msg_id);
-        SendPacket(conn, Cmd::kSendMsgAck, seq, uid,
+        SendPacket(conn, Cmd::kSendMsgAck, seq, 0,
                    proto::SendMsgAck{ec::msg::kNotMember.code, ec::msg::kNotMember.msg});
         return;
     }
@@ -140,7 +139,7 @@ void MsgService::HandleSendMsg(ConnectionPtr conn, Packet& pkt) {
     int64_t server_seq = GenerateSeq(req->conversation_id);
     if (server_seq < 0) {
         DedupRemoveInflightIfNeeded(req->client_msg_id);
-        SendPacket(conn, Cmd::kSendMsgAck, seq, uid,
+        SendPacket(conn, Cmd::kSendMsgAck, seq, 0,
                    proto::SendMsgAck{ec::msg::kConversationNotFound.code, ec::msg::kConversationNotFound.msg});
         return;
     }
@@ -173,7 +172,7 @@ void MsgService::HandleSendMsg(ConnectionPtr conn, Packet& pkt) {
     if (!ctx_.dao().Message().Insert(msg)) {
         NOVA_NLOG_ERROR(kLogTag, "failed to insert message conv={} sender={}", req->conversation_id, sender_id);
         DedupRemoveInflightIfNeeded(req->client_msg_id);
-        SendPacket(conn, Cmd::kSendMsgAck, seq, uid,
+        SendPacket(conn, Cmd::kSendMsgAck, seq, 0,
                    proto::SendMsgAck{ec::kDatabaseError.code, ec::kDatabaseError.msg});
         return;
     }
@@ -188,10 +187,10 @@ void MsgService::HandleSendMsg(ConnectionPtr conn, Packet& pkt) {
     }
 
     // 5. 返回 SendMsgAck 给发送方
-    SendPacket(conn, Cmd::kSendMsgAck, seq, uid, ack);
+    SendPacket(conn, Cmd::kSendMsgAck, seq, 0, ack);
 
     // 6. 构建 PushMsg 并一次性编码，广播时避免重复编码
-    proto::PushMsg push{req->conversation_id, sender_id, req->content, server_seq, epoch_ms, req->msg_type};
+    proto::PushMsg push{req->conversation_id, conn->uid(), req->content, server_seq, epoch_ms, req->msg_type};
 
     Packet push_pkt;
     push_pkt.cmd  = static_cast<uint16_t>(Cmd::kPushMsg);
@@ -239,7 +238,7 @@ void MsgService::HandleReadAck(ConnectionPtr conn, Packet& pkt) {
         if (ctx_.dao().Conversation().IsMember(req->conversation_id, user_id)) {
             ctx_.dao().Conversation().UpdateLastReadSeq(req->conversation_id, user_id, req->read_up_to_seq);
 
-            SendPacket(conn, Cmd::kReadAck, pkt.seq, static_cast<uint64_t>(user_id), proto::RspBase{ec::kOk.code, {}});
+            SendPacket(conn, Cmd::kReadAck, pkt.seq, 0, proto::RspBase{ec::kOk.code, {}});
         }
     }
 }

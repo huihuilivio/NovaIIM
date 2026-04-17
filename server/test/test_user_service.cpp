@@ -60,18 +60,17 @@ protected:
         svc_ = std::make_unique<UserService>(*ctx_);
     }
 
-    // 注册一个测试用户并返回 uid 和 user_id
+    // 注册一个测试用户并返回 uid
     struct RegisterResult {
         std::string uid;
         std::string email;
-        int64_t user_id = 0;
     };
     RegisterResult RegisterUser(const std::string& email, const std::string& nickname, const std::string& password) {
         auto conn = std::make_shared<MockConnection>();
         auto pkt  = MakePacket(Cmd::kRegister, proto::RegisterReq{email, nickname, password});
         svc_->HandleRegister(conn, pkt);
         auto ack = proto::Deserialize<proto::RegisterAck>(conn->last_pkt.body);
-        if (ack && ack->code == 0) return {ack->uid, email, ack->user_id};
+        if (ack && ack->code == 0) return {ack->uid, email};
         return {};
     }
 
@@ -107,7 +106,6 @@ TEST_F(UserServiceTest, RegisterSuccess) {
     auto ack = proto::Deserialize<proto::RegisterAck>(conn->last_pkt.body);
     ASSERT_TRUE(ack.has_value());
     EXPECT_EQ(ack->code, 0);
-    EXPECT_GT(ack->user_id, 0);
     EXPECT_FALSE(ack->uid.empty());  // 服务端生成的 UID
 }
 
@@ -342,11 +340,10 @@ TEST_F(UserServiceTest, LoginSuccess) {
     auto [conn, ack] = DoLogin(reg.email, "pass123");
 
     EXPECT_EQ(ack.code, 0);
-    EXPECT_GT(ack.user_id, 0);
+    EXPECT_FALSE(ack.uid.empty());
     EXPECT_FALSE(ack.nickname.empty());
     EXPECT_FALSE(conn->closed);
     EXPECT_TRUE(conn->is_authenticated());
-    EXPECT_EQ(conn->user_id(), ack.user_id);
 }
 
 TEST_F(UserServiceTest, LoginWrongPassword) {
@@ -399,7 +396,7 @@ TEST_F(UserServiceTest, LoginBannedUser) {
     auto session = ctx_->dao().Session();
     auto user    = ctx_->dao().User().FindByEmail(reg.email);
     ASSERT_TRUE(user.has_value());
-    ctx_->dao().User().UpdateStatus(user->id, static_cast<int>(AccountStatus::Banned));  // 封禁
+    ctx_->dao().User().UpdateStatus(user->uid, static_cast<int>(AccountStatus::Banned));  // 封禁
 
     auto [conn, ack] = DoLogin(reg.email, "pass123");
     // 封禁用户应返回与"不存在/密码错误"相同的 code，防止用户枚举
@@ -417,7 +414,9 @@ TEST_F(UserServiceTest, LoginPersistsDevice) {
     ASSERT_EQ(ack.code, 0);
 
     auto session = ctx_->dao().Session();
-    auto devices = ctx_->dao().User().ListDevicesByUser(ack.user_id);
+    auto user = ctx_->dao().User().FindByEmail(reg.email);
+    ASSERT_TRUE(user.has_value());
+    auto devices = ctx_->dao().User().ListDevicesByUser(user->uid);
     ASSERT_EQ(devices.size(), 1u);
     EXPECT_EQ(devices[0].device_id, "pc-001");
     EXPECT_EQ(devices[0].device_type, "pc");
@@ -434,7 +433,7 @@ TEST_F(UserServiceTest, LoginUpdatesExistingDevice) {
 
     auto session = ctx_->dao().Session();
     auto devices = ctx_->dao().User().ListDevicesByUser(
-        ctx_->dao().User().FindByEmail(reg.email)->id);
+        ctx_->dao().User().FindByEmail(reg.email)->uid);
     ASSERT_EQ(devices.size(), 1u);  // 同一 device_id 只有 1 条记录
     EXPECT_EQ(devices[0].device_type, "tablet");
 }
@@ -446,7 +445,7 @@ TEST_F(UserServiceTest, LoginMultipleDevices) {
 
     auto session = ctx_->dao().Session();
     auto devices = ctx_->dao().User().ListDevicesByUser(
-        ctx_->dao().User().FindByEmail(reg.email)->id);
+        ctx_->dao().User().FindByEmail(reg.email)->uid);
     EXPECT_EQ(devices.size(), 2u);
 }
 
@@ -479,7 +478,9 @@ TEST_F(UserServiceTest, DifferentDeviceKeepsBoth) {
     EXPECT_FALSE(conn1->closed);
     EXPECT_FALSE(conn2->closed);
 
-    auto conns = ctx_->conn_manager().GetConns(ack1.user_id);
+    auto user = ctx_->dao().User().FindByEmail(reg.email);
+    ASSERT_TRUE(user.has_value());
+    auto conns = ctx_->conn_manager().GetConns(user->id);
     EXPECT_EQ(conns.size(), 2u);
 }
 
@@ -497,8 +498,10 @@ TEST_F(UserServiceTest, LogoutSuccess) {
     pkt.seq = 2;
     svc_->HandleLogout(conn, pkt);
 
+    auto user = ctx_->dao().User().FindByEmail(reg.email);
+    ASSERT_TRUE(user.has_value());
     EXPECT_TRUE(conn->closed);
-    EXPECT_FALSE(ctx_->conn_manager().IsOnline(ack.user_id));
+    EXPECT_FALSE(ctx_->conn_manager().IsOnline(user->id));
 }
 
 // ============================================================
@@ -541,11 +544,14 @@ TEST_F(UserServiceTest, ReloginOnSameConnection) {
     svc_->HandleLogin(conn, pkt2);
     auto ack2 = proto::Deserialize<proto::LoginAck>(conn->last_pkt.body);
     ASSERT_TRUE(ack2 && ack2->code == 0);
-    EXPECT_EQ(conn->user_id(), ack2->user_id);
+    EXPECT_EQ(conn->uid(), ack2->uid);
 
     // alice 不应再在线（该连接已切换为 bob）
-    EXPECT_FALSE(ctx_->conn_manager().IsOnline(ack1->user_id));
-    EXPECT_TRUE(ctx_->conn_manager().IsOnline(ack2->user_id));
+    auto alice = ctx_->dao().User().FindByEmail(reg_alice.email);
+    auto bob   = ctx_->dao().User().FindByEmail(reg_bob.email);
+    ASSERT_TRUE(alice.has_value() && bob.has_value());
+    EXPECT_FALSE(ctx_->conn_manager().IsOnline(alice->id));
+    EXPECT_TRUE(ctx_->conn_manager().IsOnline(bob->id));
 }
 
 }  // namespace

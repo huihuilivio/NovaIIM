@@ -90,7 +90,8 @@ CREATE INDEX idx_admin_roles_role ON admin_roles(role_id);
 ```sql
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    uid TEXT UNIQUE NOT NULL,                    -- 用户登录 ID
+    uid TEXT UNIQUE NOT NULL,                    -- Snowflake 生成的唯一 ID
+    email TEXT UNIQUE NOT NULL,                  -- 登录邮箱（小写存储，格式校验）
     password_hash TEXT NOT NULL,
     nickname TEXT,
     avatar_url TEXT,

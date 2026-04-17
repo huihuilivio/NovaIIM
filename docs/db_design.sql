@@ -11,7 +11,8 @@ SET FOREIGN_KEY_CHECKS = 0;
 
 CREATE TABLE users (
     id BIGINT PRIMARY KEY AUTO_INCREMENT, -- 内部关联主键，不对外暴露
-    uid VARCHAR(64) NOT NULL UNIQUE,      -- 对外业务 ID（协议/接口层使用）
+    uid VARCHAR(64) NOT NULL UNIQUE,      -- 对外业务 ID（Snowflake 生成）
+    email VARCHAR(255) NOT NULL UNIQUE,   -- 登录邮箱，存储小写，格式校验
     password_hash VARCHAR(255) NOT NULL,  -- PBKDF2-SHA256, 禁止明文
     nickname VARCHAR(100),
     avatar VARCHAR(255),
@@ -67,6 +68,8 @@ CREATE TABLE conversation_members (
     last_ack_seq BIGINT DEFAULT 0,
 
     mute TINYINT DEFAULT 0,
+    pinned TINYINT DEFAULT 0,             -- 0=不置顶 1=置顶
+    hidden TINYINT DEFAULT 0,             -- 0=可见 1=隐藏（新消息自动恢复）
 
     joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 
@@ -134,12 +137,34 @@ CREATE TABLE friendships (
     user_id BIGINT NOT NULL,
     friend_id BIGINT NOT NULL,
     status TINYINT DEFAULT 0, -- 0待确认 1已通过 2已拒绝 3已删除 4已拉黑
+    remark VARCHAR(200),      -- 验证消息 / 备注
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY uk_friend (user_id, friend_id)
 );
 
 -- =========================================================
--- 6. E2E 加密
+-- 6. 文件记录
+-- =========================================================
+
+CREATE TABLE user_files (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    user_id BIGINT NOT NULL,
+    file_type VARCHAR(20) NOT NULL,       -- avatar/image/voice/video/file
+    file_path VARCHAR(512) NOT NULL,      -- 存储路径或 URL
+    file_name VARCHAR(255) NOT NULL,      -- 原始文件名
+    file_size BIGINT DEFAULT 0,           -- 字节数
+    mime_type VARCHAR(100),               -- e.g. image/png
+    hash VARCHAR(64),                     -- SHA-256，秒传去重
+    status TINYINT DEFAULT 1,             -- 1=有效 2=已删除
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    KEY idx_user_type (user_id, file_type),
+    KEY idx_hash (hash)
+);
+
+-- =========================================================
+-- 7. E2E 加密
 -- =========================================================
 
 CREATE TABLE user_identity_keys (
@@ -169,7 +194,7 @@ CREATE TABLE session_keys (
 );
 
 -- =========================================================
--- 7. RBAC（后台权限系统）
+-- 8. RBAC（后台权限系统）
 -- =========================================================
 
 CREATE TABLE roles (
@@ -206,7 +231,7 @@ CREATE TABLE admin_roles (
 );
 
 -- =========================================================
--- 8. 群聊角色权限（Scoped RBAC）
+-- 9. 群聊角色权限（Scoped RBAC）
 -- =========================================================
 
 CREATE TABLE conversation_roles (
@@ -239,7 +264,7 @@ CREATE TABLE conversation_member_roles (
 );
 
 -- =========================================================
--- 9. 审计日志
+-- 10. 审计日志
 -- =========================================================
 
 CREATE TABLE audit_logs (
