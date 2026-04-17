@@ -2,7 +2,7 @@
 
 ## 概述
 
-已完成 **全部测试目标**，共83 个测试用例：
+已完成 **全部测试目标**，共120 个测试用例：
 
 | 测试目标 | 用例数 | 状态 | 覆盖范围 |
 |--------|-------|------|----------|
@@ -13,6 +13,7 @@
 | `test_router` | 5 | ✅ 通过 | 命令字路由分发 |
 | `test_mpmc_queue` | 5 | ✅ 通过 | Vyukov 无锁队列 |
 | `test_conn_manager` | 4 | ✅ 通过 | 多端连接管理 |
+| `test_user_service` | 37 | ✅ 通过 | 邮箱注册/登录、设备管理、心跳、多端同步 |
 
 ## 测试执行脚本
 
@@ -29,7 +30,7 @@ cmake --build . --target test_jwt_utils test_password_utils test_admin_dao test_
 ```bash
 cd d:\livio\NovaIIM\build
 ctest --output-on-failure
-# 期望输出: 100% tests passed, 0 tests failed out of 83
+# 期望输出: 100% tests passed, 0 tests failed out of 120
 ```
 
 ### 运行特定测试
@@ -93,12 +94,11 @@ nova_add_test(
 - ✅ 用户管理API (列表、创建、重复uid失败)
 - ✅ 审计日志API
 
-## 已知问题 & 待修复
+## 已解决的历史问题
 
-### 1. AdminAccountDaoTest.InsertAndFindByUid 失败
+### 1. AdminAccountDaoTest.InsertAndFindByUid
 - **问题**：`Admin::Insert()` 后 `admin.id` 未被自动填充（仍为0）
-- **原因**：ormpp的auto-increment支持需verify
-- **修复**：检查 `db_.DB().insert()` 返回值处理，可能需要显式查询插入后ID
+- **修复**：通过 `REGISTER_AUTO_KEY` 显式注册 auto_key，确保 insert 时跳过 id 列
 
 ### 2. test_admin_api 尚未运行
 - **依赖**：真实HttpServer启动、端口19091可用

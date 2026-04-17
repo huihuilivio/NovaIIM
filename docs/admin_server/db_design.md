@@ -303,7 +303,7 @@ WHERE r.code = 'auditor' AND p.code = 'admin.audit';
                   
 2. SeedSuperAdmin(dao)
    └─→ Check admins count = 0
-        └─→ Insert admin (uid="admin", password="admin123")
+        └─→ Insert admin (uid="admin", password="nova2024")
              └─→ admin_roles bindRole(admin_id=1, role_id=super_admin)
                   └─→ 9 个权限全部绑定完成
 ```

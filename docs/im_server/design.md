@@ -1,5 +1,7 @@
 # NovaIIM IM服务器架构设计
 
+> **注意：本文档为设计规划文档。**当前已实现 Gateway、ConnManager、Router、UserService（部分），其余 Service 尚为存根待实现。
+
 ## 1. 系统总体架构
 
 ### 1.1 核心组件
@@ -364,7 +366,7 @@ Main 线程
 
 ```yaml
 server:
-  port: 8888              # 监听端口
+  port: 9090              # 监听端口
   worker_threads: 8       # Worker 线程数 (通常=CPU核心数)
   queue_capacity: 10000   # 工作队列容量
   idle_timeout: 300       # 连接空闲超时 (秒)
@@ -433,9 +435,9 @@ try {
 
 ```
 LB (负载均衡器)
-  ├─ IM Server #1 (port 8888)
-  ├─ IM Server #2 (port 8888)
-  └─ IM Server #3 (port 8888)
+  ├─ IM Server #1 (port 9090)
+  ├─ IM Server #2 (port 9090)
+  └─ IM Server #3 (port 9090)
 
 共享后端:
   - MySQL 数据库

@@ -90,4 +90,4 @@ server/
 - 邮箱格式校验 + 密码长度校验 (6-128) + TOCTOU Insert 回退
 - PBKDF2 iterations 上限 (10M) 防 CPU DoS
 
-详细架构设计见 [sever_arch.md](sever_arch.md)，Admin 模块设计见 [admin_server/](admin_server/) 目录。
+详细架构设计见 [server_arch.md](server_arch.md)，Admin 模块设计见 [admin_server/](admin_server/) 目录。

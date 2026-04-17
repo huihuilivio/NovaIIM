@@ -2,7 +2,8 @@
 
 > **权威协议文档已迁移至 [protocol.md](../protocol.md)**
 >
-> 本文件保留为客户端开发集成指南，协议细节（命令字、消息体、错误码）以 protocol.md 为准。
+> 本文件为客户端集成指南（设计规划），大部分 IM 用户侧功能（好友、群组、文件）尚未实现。
+> 协议细节（命令字、消息体、错误码）以 protocol.md 为准。
 
 ---
 
@@ -217,7 +218,7 @@ log:
 
 **抓包分析:**
 ```bash
-tcpdump -i lo -w packets.pcap port 8888
+tcpdump -i lo -w packets.pcap port 9090
 # 用 Wireshark 打开 packets.pcap
 ```
 

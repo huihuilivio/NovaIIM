@@ -1,7 +1,7 @@
 # NovaIIM 🚀
 
 > A High-Performance Next-Gen Instant Messaging System (C++ / CMake)  
-> **Current Status:** 85% Complete • 0 Compilation Errors • 83 Tests Passing • Production Ready
+> **Current Status:** 120 Tests Passing • 0 Compilation Errors
 
 ---
 
@@ -103,15 +103,15 @@ GET    /permissions             权限列表（всех）
   - AuditLog 追踪（admin_id 字段记录操作者）
 
 ### ⚠️ 进行中（Phase 4）
-- ✅ 单元测试：83 个用例全部通过（JWT 13 / Password 11 / DAO 24 / API 21 / Router 5 / MPMC 5 / ConnMgr 4）
-- ConversationDao 模板实现 — 预估 5h
+- ✅ 单元测试：120 个用例全部通过
+  - JWT 13 / Password 11 / DAO 24 / API 21 / Router 5 / MPMC 5 / ConnMgr 4 / UserService 37
 
 ### ⏳ 待补（Phase 5+）
+- ConversationDao 模板实现
 - **运维管理** (Ops Management)：7 个新 API 管理员账户
 - **角色管理** (Role Management)：7 个新 API 角色和权限
-- IM 用户侧实现（Login / Message / Sync） — 预估 30h
-- API 文档（Swagger / OpenAPI）— 可选
-- 部署指南（SQLite vs MySQL 选择） — 可选
+- IM 用户侧实现（Login / Message / Sync）
+- 部署指南（SQLite vs MySQL 选择）
 
 ---
 
@@ -150,7 +150,7 @@ GET    /permissions             权限列表（всех）
 
 ### 核心技术
 - **C++20** — 现代化语言特性（concepts, ranges, structured bindings）
-- **CMake ≥ 3.20** — 唯一构建方式（FetchContent 自动依赖管理）
+- **CMake ≥ 3.28** — 唯一构建方式（FetchContent 自动依赖管理）
 - **libhv** — HTTP/WebSocket 网络框架
 - **ormpp** — C++20 reflection ORM（iguana，参数化查询）
 
@@ -193,18 +193,20 @@ NovaIIM/
 │   └── server.yaml                # 服务配置（db/jwt/admin etc）
 │
 ├── docs/
-│   ├── PROGRESS_SUMMARY.md        # 📊 项目进度快照 (NEW)
-│   ├── implementation_plan.md     # 📋 Admin 模块实现计划
-│   ├── db_design.md               # DB 补充说明
 │   ├── db_design.sql              # 完整 Schema (11 tables)
-│   ├── api_design.md              # REST API 设计
+│   ├── todo.md                    # 任务清单
 │   ├── protocol.md                # IM 二进制协议文档
-│   ├── architecture.md            # 系统架构详解
-│   ├── sever_arch.md              # 服务端架构
-│   └── admin_server/
-│       ├── requirements.md
-│       ├── implementation_plan.md
-│       ├── api_design.md
+│   ├── architecture.md            # 系统架构总览
+│   ├── server_arch.md             # 服务端架构详解
+│   ├── admin_server/              # Admin 模块文档
+│   │   ├── requirements.md
+│   │   ├── implementation_plan.md
+│   │   ├── api_design.md
+│   │   └── db_design.md
+│   └── im_server/                 # IM 模块设计文档（规划中）
+│       ├── README.md
+│       ├── design.md
+│       ├── api.md
 │       └── db_design.md
 │
 ├── protocol/                      # IM 协议层（binary frames）
@@ -267,8 +269,11 @@ NovaIIM/
 │       ├── test_conn_manager.cpp
 │       ├── test_mpmc_queue.cpp
 │       ├── test_router.cpp
-│       ├── test_jwt_utils.cpp     # (待补)
-│       └── test_admin_account_dao.cpp # (待补)
+│       ├── test_jwt_utils.cpp
+│       ├── test_admin_account_dao.cpp
+│       ├── test_admin_api.cpp
+│       ├── test_admin_dao.cpp
+│       └── test_user_service.cpp
 │
 ├── client/                        # 客户端（预留）
 │   └── cpp/
@@ -290,8 +295,8 @@ NovaIIM/
 
 ### 前置要求
 - **Windows/Linux/macOS** 任一
-- **CMake ≥ 3.20**
-- **C++20 编译器** (MSVC 2019+ / GCC 11+ / Clang 12+)
+- **CMake ≥ 3.28**
+- **C++20 编译器** (MSVC 2022+ / GCC 11+ / Clang 12+)
 - **Python 3.8+** (MySQL 客户端下载脚本)
 
 ### 编译步骤
@@ -335,7 +340,7 @@ ls -la build/output/bin/NovaIIM
 # [INFO] IM service listening on: 0.0.0.0:9999
 # [INFO] Server started. Press Ctrl+C to shutdown.
 
-# 运行单元测试 (83 个用例)
+# 运行单元测试 (120 个用例)
 ctest --output-on-failure
 ```
 
@@ -393,12 +398,12 @@ curl "http://localhost:9091/api/v1/users?page=1&page_size=20" \
 
 | 文档 | 用途 | 完成度 |
 |------|------|--------|
-| [PROGRESS_SUMMARY.md](docs/PROGRESS_SUMMARY.md) | 📊 项目进度快照 | ✅ NEW |
-| [implementation_plan.md](docs/admin_server/implementation_plan.md) | 📋 功能 Phase 规划 | ✅ 99% |
-| [db_design.sql](docs/db_design.sql) | 🗄️ 11 张表完整 Schema | ✅ 100% |
-| [api_design.md](docs/api_design.md) | 🔌 REST API 设计 | ✅ 100% |
-| [protocol.md](docs/protocol.md) | 📡 二进制协议格式 | ⚠️ 80% |
-| [architecture.md](docs/architecture.md) | 🏗️ 系统架构详解 | ⚠️ 70% |
+| [todo.md](docs/todo.md) | 📋 任务清单 | 🔄 |
+| [db_design.sql](docs/db_design.sql) | 🗄️ 11 张表完整 Schema | ✅ |
+| [admin API](docs/admin_server/api_design.md) | 🔌 REST API 设计 | ✅ |
+| [protocol.md](docs/protocol.md) | 📡 IM 二进制协议 | ✅ |
+| [architecture.md](docs/architecture.md) | 🏗️ 系统架构 | ✅ |
+| [server_arch.md](docs/server_arch.md) | 🖥️ 服务端架构详解 | ✅ |
 
 ---
 
