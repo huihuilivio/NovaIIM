@@ -10,7 +10,7 @@
 #include "core/app_config.h"
 #include "core/server_context.h"
 #include "core/formatters.h"
-#include "model/packet.h"
+#include <nova/packet.h>
 #include "admin/admin_server.h"
 #include "dao/dao_factory.h"
 

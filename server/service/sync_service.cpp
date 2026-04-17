@@ -69,7 +69,9 @@ void SyncService::HandleSyncMsg(ConnectionPtr conn, Packet& pkt) {
     resp.messages.reserve(messages.size());
 
     for (const auto& m : messages) {
-        resp.messages.push_back({m.seq, resolve_uid(m.sender_id), m.content, m.msg_type, m.created_at, m.status});
+        resp.messages.push_back({m.seq, resolve_uid(m.sender_id), m.content,
+                                 static_cast<MsgType>(m.msg_type), m.created_at,
+                                 static_cast<MsgStatus>(m.status)});
     }
 
     SendPacket(conn, Cmd::kSyncMsgResp, pkt.seq, 0, resp);
@@ -161,7 +163,9 @@ void SyncService::HandleSyncUnread(ConnectionPtr conn, Packet& pkt) {
                 continue;
             for (const auto* m : pit->second) {
                 item.latest_messages.push_back(
-                    {m->seq, resolve_uid(m->sender_id), m->content, m->msg_type, m->created_at, m->status});
+                    {m->seq, resolve_uid(m->sender_id), m->content,
+                     static_cast<MsgType>(m->msg_type), m->created_at,
+                     static_cast<MsgStatus>(m->status)});
             }
         }
     }

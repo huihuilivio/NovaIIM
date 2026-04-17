@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include <memory>
 #include "service/router.h"
-#include "model/packet.h"
+#include <nova/packet.h>
 
 namespace nova {
 namespace {

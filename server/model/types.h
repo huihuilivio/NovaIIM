@@ -1,21 +1,22 @@
 #pragma once
 
+#include <nova/proto_types.h>
+
 #include <cstdint>
 #include <string>
 #include <string_view>
 
 namespace nova {
 
-// ---- 状态 / 角色 枚举 ----
+// 从 nova::proto 引入协议枚举
+using proto::ConvType;
+using proto::MsgStatus;
+using proto::MsgType;
+
+// ---- 服务端专用枚举（不暴露给客户端） ----
 
 // User / Admin 通用状态
 enum class AccountStatus : int { Normal = 1, Banned = 2, Deleted = 3 };
-
-// Message 状态
-enum class MsgStatus : int { Normal = 0, Recalled = 1, Deleted = 2 };
-
-// Conversation 类型
-enum class ConvType : int { Private = 1, Group = 2 };
 
 // ConversationMember 角色
 enum class MemberRole : int { Member = 0, Admin = 1, Owner = 2 };
@@ -78,7 +79,7 @@ struct Message {
     int msg_type            = 0;
     std::string content;
     std::string encrypted_content;
-    int status = static_cast<int>(MsgStatus::Normal);
+    int status = static_cast<int>(MsgStatus::kNormal);
     std::string client_msg_id;
     std::string created_at;
 };

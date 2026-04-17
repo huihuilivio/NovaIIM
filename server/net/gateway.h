@@ -3,7 +3,7 @@
 #include <functional>
 #include <memory>
 #include "tcp_connection.h"
-#include "../model/packet.h"
+#include <nova/packet.h>
 
 #include <hv/TcpServer.h>
 

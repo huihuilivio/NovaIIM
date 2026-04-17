@@ -5,7 +5,7 @@
 #include <string>
 #include <type_traits>
 
-namespace nova {
+namespace nova::proto {
 
 // 二进制帧格式（小端序）:
 // +-------+-------+-------+------------+------+
@@ -140,4 +140,4 @@ enum class Cmd : uint16_t {
     kGetUserProfileAck = 0x0303,
 };
 
-}  // namespace nova
+}  // namespace nova::proto

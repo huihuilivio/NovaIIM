@@ -1,8 +1,8 @@
 #pragma once
 
 #include "../net/connection.h"
-#include "../model/packet.h"
-#include "../model/protocol.h"
+#include <nova/packet.h>
+#include <nova/protocol.h>
 #include "../core/server_context.h"
 
 namespace nova {

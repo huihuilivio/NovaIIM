@@ -824,7 +824,7 @@ int AdminServer::HandleRecallMessage(HttpRequest* req, HttpResponse* resp) {
         return JsonError(resp, api_err::kMessageNotFound);
     }
 
-    if (!ctx_.dao().Message().UpdateStatus(id, static_cast<int>(MsgStatus::Recalled))) {
+    if (!ctx_.dao().Message().UpdateStatus(id, static_cast<int>(MsgStatus::kRecalled))) {
         return JsonError(resp, api_err::kRecallFailed);
     }
 

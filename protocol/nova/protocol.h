@@ -7,6 +7,8 @@
 //
 // 每个 Cmd 对应一组 Request / Response 结构体
 
+#include <nova/proto_types.h>
+
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -75,7 +77,7 @@ struct RegisterAck {
 struct SendMsgReq {
     int64_t conversation_id = 0;
     std::string content;
-    int32_t msg_type = 1;       // 1=text, 2=image, 3=voice ...
+    MsgType msg_type = MsgType::kText;
     std::string client_msg_id;  // 客户端生成的去重 ID（可选，用于消息幂等）
 };
 
@@ -94,7 +96,7 @@ struct PushMsg {
     std::string content;
     int64_t server_seq  = 0;
     int64_t server_time = 0;
-    int32_t msg_type    = 1;
+    MsgType msg_type    = MsgType::kText;
 };
 
 // C→S  Cmd::kDeliverAck (0x0103)
@@ -125,9 +127,9 @@ struct SyncMsgItem {
     int64_t server_seq = 0;
     std::string sender_uid;   // 发送者 Snowflake uid
     std::string content;
-    int32_t msg_type = 0;
+    MsgType msg_type = MsgType::kText;
     std::string server_time;  // 数据库时间字符串
-    int32_t status = 0;
+    MsgStatus status = MsgStatus::kNormal;
 };
 
 // S→C  Cmd::kSyncMsgResp (0x0201)

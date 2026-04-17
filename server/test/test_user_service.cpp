@@ -10,8 +10,8 @@
 #include "core/server_context.h"
 #include "dao/dao_factory.h"
 #include "dao/user_dao.h"
-#include "model/packet.h"
-#include "model/protocol.h"
+#include <nova/packet.h>
+#include <nova/protocol.h>
 #include "net/connection.h"
 #include "service/user_service.h"
 #include "admin/password_utils.h"

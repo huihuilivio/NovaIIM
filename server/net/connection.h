@@ -5,9 +5,15 @@
 #include <memory>
 #include <mutex>
 #include <string>
-#include "../model/packet.h"
+#include <nova/packet.h>
 
 namespace nova {
+
+// 从 nova::proto 引入协议类型，服务端代码可直接使用
+using proto::Cmd;
+using proto::Packet;
+using proto::kHeaderSize;
+using proto::kMaxBodySize;
 
 // 连接抽象（对应架构文档 4.1 Gateway - Connection）
 // 纯接口，不依赖具体网络库，便于测试 mock

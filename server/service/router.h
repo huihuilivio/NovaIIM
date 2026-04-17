@@ -4,7 +4,7 @@
 #include <functional>
 #include <unordered_map>
 #include "../net/connection.h"
-#include "../model/packet.h"
+#include <nova/packet.h>
 
 namespace nova {
 

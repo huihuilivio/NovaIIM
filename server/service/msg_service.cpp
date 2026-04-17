@@ -163,10 +163,10 @@ void MsgService::HandleSendMsg(ConnectionPtr conn, Packet& pkt) {
     msg.conversation_id = req->conversation_id;
     msg.sender_id       = sender_id;
     msg.seq             = server_seq;
-    msg.msg_type        = req->msg_type;
+    msg.msg_type        = static_cast<int>(req->msg_type);
     msg.content         = req->content;
     msg.client_msg_id   = req->client_msg_id;
-    msg.status          = static_cast<int>(MsgStatus::Normal);
+    msg.status          = static_cast<int>(MsgStatus::kNormal);
     msg.created_at      = time_buf;
 
     if (!ctx_.dao().Message().Insert(msg)) {
