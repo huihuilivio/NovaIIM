@@ -1,6 +1,6 @@
 # NovaIIM Server 待办列表
 
-**最后更新：2026-04-17 | 编译状态：✅ 0 errors | 测试：✅ 199/199**
+**最后更新：2026-04-17 | 编译状态：✅ 0 errors | 测试：✅ 222/222**
 
 ---
 
@@ -123,17 +123,19 @@
 
 ## ✅ 已完成的测试 (Phase 4)
 
-### 单元测试 — ✅ 已完成 (199 用例)
+### 单元测试 — ✅ 已完成 (222 用例)
 - [x] JWT 单元测试 (Sign → Verify 往返 / 过期 / 篡改) — 13 用例
 - [x] PasswordUtils 测试 (Hash → Verify / 错误密码) — 11 用例
 - [x] AdminAccountDao 单元测试 (CRUD 操作) — 7 用例
 - [x] AdminSessionDao 单元测试 — 5 用例
 - [x] RbacDao 单元测试 (权限查询) — 12 用例
 - [x] Handler 集成测试 (HTTP 请求验证) — 21 用例
-- [x] Router / MPMC / ConnManager 基础测试 — 14 用例
-- [x] UserService 注册/登录测试 — 37 用例
-- [x] FriendService 全功能测试 (申请/同意/拒绝/删除/拉黑/列表) — 57 用例
+- [x] Router / MPMC / ConnManager 基础测试 — 15 用例
+- [x] UserService 注册/登录测试 — 53 用例
+- [x] FriendService 全功能测试 (申请/同意/拒绝/删除/拉黑/列表) — 23 用例
 - [x] MsgService 全功能测试 (发送/撤回/送达确认/已读确认) — 22 用例
+- [x] ConvService 全功能测试 (列表/删除/免打扰/置顶/多用户隔离) — 23 用例
+- [x] Application 启动/数据库初始化测试 — 17 用例
 
 ### ConversationDao ✅
 - [x] 实现 ConversationDaoImplT 模板 (CreateConversation / IsMember / AddMember / IncrMaxSeq / GetMembersByConversation / GetMembersByUser / UpdateLastAckSeq / UpdateLastReadSeq)
@@ -142,7 +144,7 @@
 
 ---
 
-## ✅⚠️ IM 用户侧服务 (Phase 5)
+## ✅ IM 用户侧服务 (Phase 5)
 
 ### 用户服务 ✅
 - [x] UserService::Register (邮箱注册 + 格式校验 + 密码校验 + Snowflake UID + TOCTOU 防护)
@@ -161,16 +163,20 @@
 - [x] FriendService::GetRequests (好友申请列表, 分页)
 - [x] FriendNotify 推送 (申请/同意/拒绝/删除, 多端推送)
 
-### 消息服务 ✅⚠️
+### 消息服务 ✅
 - [x] MsgService::SendMsg (消息投递 + seq 递增 + LRU 幂等去重 + in-flight 防 TOCTOU)
 - [x] MsgService::RecallMsg (消息撤回 + 可配置时间限制 + 仅发送者 + 广播通知)
 - [x] MsgService::DeliverAck (送达确认, 更新 last_ack_seq, 成员校验)
 - [x] MsgService::ReadAck (已读确认, 更新 last_read_seq, 成员校验)
 - [ ] 多 msg_type 支持 (文本/表情/图片/语音/视频/文件/位置/名片)
 
-### 会话服务 — 待实现 ⚠️
-- [ ] ConvService::CreateConv (私聊/群聊会话创建)
-- [ ] ConvService::GetConvList (会话列表 + 未读数 + 最后一条消息摘要)
+### 会话服务 ✅
+- [x] ConvService::GetConvList (会话列表 + 未读数 + 最后一条消息摘要 + 私聊对方昵称)
+- [x] ConvService::DeleteConv (软隐藏会话, hidden=1, 新消息自动恢复)
+- [x] ConvService::MuteConv (免打扰开关, mute 0/1)
+- [x] ConvService::PinConv (置顶开关, pinned 0/1)
+- [x] BroadcastConvUpdate (ConvUpdate 推送辅助函数)
+- [x] MsgService 自动恢复隐藏会话 (发送消息后 unhide)
 - [ ] ConvService::DeleteConv (隐藏会话, 新消息自动恢复)
 - [ ] ConvService::MuteConv / PinConv (免打扰/置顶)
 - [ ] ConvUpdate 推送 (新消息摘要/成员变化/信息变更)

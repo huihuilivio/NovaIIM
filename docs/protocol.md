@@ -748,6 +748,17 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 
 **规则：** 隐藏后如收到新消息，会话自动恢复可见。
 
+**会话管理错误码：**
+
+| code | 含义 | 适用命令 |
+|------|------|---------|
+| 6001 | 非会话成员 | DeleteConv / MuteConv / PinConv |
+| 6002 | 会话不存在 | GetConvList / DeleteConv |
+| 6003 | 已经免打扰 | MuteConv (mute=1) |
+| 6004 | 未免打扰 | MuteConv (mute=0) |
+| 6005 | 已经置顶 | PinConv (pinned=1) |
+| 6006 | 未置顶 | PinConv (pinned=0) |
+
 #### 3.8.4 免打扰 / 置顶 (kMuteConv / kPinConv)
 
 **MuteConvReq** (C→S, 0x0116):

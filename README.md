@@ -1,7 +1,7 @@
 # NovaIIM 🚀
 
 > A High-Performance Next-Gen Instant Messaging System (C++ / CMake)  
-> **Current Status:** 120 Tests Passing • 0 Compilation Errors
+> **Current Status:** 222 Tests Passing • 0 Compilation Errors
 
 ---
 
@@ -12,7 +12,8 @@
 * ✅ **Admin HTTP REST API** — 13 个端点，完整运维面板
 * ✅ **双后端数据库** — SQLite3（开发）+ MySQL 5.7+（生产）
 * ✅ **JWT + RBAC 认证** — 精细权限控制，黑名单管理
-* ✅ **IM 核心框架** — TCP 网关、多端同步、消息序列化（用户侧待完成）
+* ✅ **IM 核心框架** — TCP 网关、多端同步、消息序列化
+* ✅ **IM 用户侧服务** — 注册登录/好友/消息/会话管理，222 测试用例全通过
 * ✅ **安全加固** — SQL 注入防护、权限隔离、审计日志
 
 本项目采用**纯 CMake 构建体系**，不依赖 Makefile，提供统一、跨平台的工程管理方案。
@@ -77,7 +78,7 @@ GET    /permissions             权限列表（всех）
 - ✅ 系统配置（YAML 格式）
 
 #### 数据存储
-- **11 张表** — users / admins / messages / conversations / audit_logs / admin_sessions / roles / permissions / role_permissions / admin_roles / user_devices
+- **11 张表** — users / admins / messages / conversations / conversation_members / audit_logs / admin_sessions / roles / permissions / role_permissions / admin_roles / user_devices / friendships
 - **完整 Schema** — 含索引、约束、级联
 - **参数化查询** — 防 SQL 注入（ormpp prepared statement）
 - **自动建表** — 首次运行幂等初始化
@@ -102,15 +103,16 @@ GET    /permissions             权限列表（всех）
   - JWT Claim 区分（admin_id vs user_id）
   - AuditLog 追踪（admin_id 字段记录操作者）
 
-### ⚠️ 进行中（Phase 4）
-- ✅ 单元测试：120 个用例全部通过
-  - JWT 13 / Password 11 / DAO 24 / API 21 / Router 5 / MPMC 5 / ConnMgr 4 / UserService 37
+### ⚠️ 进行中（Phase 5+）
+- ✅ 单元测试：222 个用例全部通过
+  - JWT 13 / Password 11 / DAO 24 / API 21 / Router 6 / MPMC 5 / ConnMgr 4 / UserService 53 / FriendService 23 / MsgService 22 / ConvService 23 / Application 17
 
-### ⏳ 待补（Phase 5+）
-- ConversationDao 模板实现
+### ⏳ 待补（Phase 6+）
+- **群组服务** (GroupService)
+- **文件服务** (FileService)
+- **同步服务** (SyncService)
 - **运维管理** (Ops Management)：7 个新 API 管理员账户
 - **角色管理** (Role Management)：7 个新 API 角色和权限
-- IM 用户侧实现（Login / Message / Sync）
 - 部署指南（SQLite vs MySQL 选择）
 
 ---
@@ -237,12 +239,13 @@ NovaIIM/
 │   │   ├── audit_log_dao.h        # audit admin_id 追踪
 │   │   ├── admin_session_dao.h    # JWT 黑名单
 │   │   ├── rbac_dao.h             # 权限查询 (admin_roles)
-│   │   ├── conversation_dao.h     # 对话 (完成中)
+    │   ├── conversation_dao.h     # 会话 DAO (已完成)
+    │   ├── friend_dao.h           # 好友 DAO (已完成)
 │   │   ├── impl/                  # 模板实现
 │   │   │   ├── user_dao_impl.h/cpp
 │   │   │   ├── admin_account_dao_impl.h/cpp (NEW)
-│   │   │   ├── message_dao_impl.h/cpp
-│   │   │   ├── audit_log_dao_impl.h/cpp
+│   │   │   ├── message_dao_impl.h/cpp    │   │   ├── conversation_dao_impl.h/cpp
+    │   │   ├── friend_dao_impl.h/cpp│   │   │   ├── audit_log_dao_impl.h/cpp
 │   │   │   ├── admin_session_dao_impl.h/cpp
 │   │   │   └── rbac_dao_impl.h/cpp
 │   │   ├── sqlite3/               # SQLite3 后端
@@ -262,18 +265,26 @@ NovaIIM/
 │   │   └── gateway.h/cpp          # TCP 网关
 │   ├── service/                   # 业务服务
 │   │   ├── router.h/cpp           # 命令字路由
-│   │   ├── user_service.h/cpp     # Login/Logout (stub待完成)
-│   │   ├── msg_service.h/cpp      # SendMsg/Recall (stub)
+    │   ├── service_base.h         # Service 基类
+    │   ├── user_service.h/cpp     # 注册/登录/登出/搜索/资料
+    │   ├── friend_service.h/cpp   # 好友申请/同意/删除/拉黑/列表
+    │   ├── msg_service.h/cpp      # 发送/撤回/送达确认/已读确认
+    │   ├── conv_service.h/cpp     # 会话列表/删除/免打扰/置顶
 │   │   └── sync_service.h/cpp     # 离线同步 (stub)
 │   └── test/                      # 单元测试
 │       ├── test_conn_manager.cpp
 │       ├── test_mpmc_queue.cpp
 │       ├── test_router.cpp
 │       ├── test_jwt_utils.cpp
-│       ├── test_admin_account_dao.cpp
-│       ├── test_admin_api.cpp
-│       ├── test_admin_dao.cpp
-│       └── test_user_service.cpp
+        ├── test_password_utils.cpp
+        ├── test_admin_account_dao.cpp
+        ├── test_admin_api.cpp
+        ├── test_admin_dao.cpp
+        ├── test_application.cpp
+        ├── test_user_service.cpp
+        ├── test_friend_service.cpp
+        ├── test_msg_service.cpp
+        └── test_conv_service.cpp
 │
 ├── client/                        # 客户端（预留）
 │   └── cpp/

@@ -42,7 +42,8 @@ NovaIIM 是一个高性能 IM 服务端，采用 C++20 开发，单进程架构�
     ┌─────────────┼─────────┐            │
     ▼             ▼         ▼            ▼
  UserSvc      MsgSvc    SyncSvc     DAO Layer (ormpp)
- FriendSvc    GroupSvc  FileSvc          │
+ FriendSvc    ConvSvc   GroupSvc         │
+              FileSvc                    │
     │             │         │            │
     └──────┬──────┘         │            │
            ▼                │            ▼
@@ -66,7 +67,7 @@ server/
   core/                 ← 基础设施: 配置/日志/指标/线程池/队列
   net/                  ← 网络层: Connection/ConnManager/Gateway
   model/                ← 数据模型: Packet (二进制帧) / types.h (DB 实体)
-  service/              ← 业务逻辑: Router/UserSvc/FriendSvc/MsgSvc/SyncSvc/GroupSvc/FileSvc
+  service/              ← 业务逻辑: Router/UserSvc/FriendSvc/MsgSvc/ConvSvc/SyncSvc/GroupSvc/FileSvc
   service/errors/       ← 类型化错误码: common.h (负数系统级) / user_errors.h (正数业务级)
   dao/                  ← 数据访问: DbManager + 各 DAO 实现 (ormpp)
   admin/                ← 管理面板: AdminServer/JWT/密码/响应助手/ApiError常量/Handlers

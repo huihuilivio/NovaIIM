@@ -1,6 +1,6 @@
 # NovaIIM IM服务器架构设计
 
-> **注意：本文档为设计规划文档。**当前已实现 Gateway、ConnManager、Router、UserService（部分），其余 Service 尚为存根待实现。
+> **注意：本文档为设计规划文档。**已实现：Gateway、ConnManager、Router、UserService、FriendService、MsgService、ConvService（222 测试用例全通过）。待实现：GroupService、FileService、SyncService。
 
 ## 1. 系统总体架构
 

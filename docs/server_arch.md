@@ -153,14 +153,23 @@ GET  /api/v1/audit-logs
 
 ---
 
-### 4.5 MsgService（核心）
+### 4.5 MsgService / ConvService（核心）
 
-职责：
+MsgService 职责：
 
 * seq 生成 (conversation.max_seq + 1)
 * 写 DB
 * 推送消息
 * ACK 处理
+* 发送消息后自动恢复隐藏会话 (unhide)
+
+ConvService 职责：
+
+* 会话列表查询 (GetConvList: 未读数 + 最后消息摘要 + 私聊对方昵称)
+* 会话软隐藏 (DeleteConv: hidden=1, 新消息自动恢复)
+* 免打扰开关 (MuteConv: mute 0/1)
+* 置顶开关 (PinConv: pinned 0/1)
+* 会话变更推送 (BroadcastConvUpdate 通知所有成员)
 
 ---
 
@@ -184,7 +193,7 @@ GET  /api/v1/audit-logs
 | AdminSessionDaoImpl | JWT 黑名单 (update_some prepared stmt) |
 | RbacDaoImpl | 3表 JOIN 获取用户权限 (admin_roles) |
 | MessageDaoImpl | Insert/GetAfterSeq/UpdateStatus/ListMessages/FindById |
-| ConversationDao | 会话 CRUD + 成员管理 + 未读计算 |
+| ConversationDao | 会话 CRUD + 成员管理 + 未读计算 + mute/pinned/hidden 更新 + FindMember |
 | FriendshipDao | 好友申请/同意/拒绝/删除/拉黑 + 关系查询 |
 | GroupDao | 建群/解散/入群/退群/踢人 + 群信息 CRUD |
 | UserFileDao | 文件元数据 CRUD + hash 秒传查询 |

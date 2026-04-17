@@ -2,7 +2,7 @@
 
 ## 概述
 
-已完成 **全部测试目标**，共120 个测试用例：
+已完成 **全部测试目标**，共 222 个测试用例：
 
 | 测试目标 | 用例数 | 状态 | 覆盖范围 |
 |--------|-------|------|----------|
@@ -10,10 +10,14 @@
 | `test_password_utils` | 11 | ✅ 通过 | PBKDF2哈希、验证、随机盐、边界值 |
 | `test_admin_dao` | 24 | ✅ 通过 | AdminAccountDao/AdminSessionDao/RbacDao + in-mem SQLite |
 | `test_admin_api` | 21 | ✅ 通过 | HTTP集成测试、真实AdminServer、鉴权中间件 |
-| `test_router` | 5 | ✅ 通过 | 命令字路由分发 |
+| `test_router` | 6 | ✅ 通过 | 命令字路由分发、AuthGuard |
 | `test_mpmc_queue` | 5 | ✅ 通过 | Vyukov 无锁队列 |
 | `test_conn_manager` | 4 | ✅ 通过 | 多端连接管理 |
-| `test_user_service` | 37 | ✅ 通过 | 邮箱注册/登录、设备管理、心跳、多端同步 |
+| `test_user_service` | 53 | ✅ 通过 | 邮箱注册/登录、设备管理、心跳、多端同步、搜索、资料 |
+| `test_application` | 17 | ✅ 通过 | AppHelper/Application 启动、数据库初始化 |
+| `test_friend_service` | 23 | ✅ 通过 | 好友申请/同意/拒绝/删除/拉黑/列表 |
+| `test_msg_service` | 22 | ✅ 通过 | 发送/撤回/送达确认/已读确认/幂等去重 |
+| `test_conv_service` | 23 | ✅ 通过 | 会话列表/删除/免打扰/置顶/多用户隔离 |
 
 ## 测试执行脚本
 
