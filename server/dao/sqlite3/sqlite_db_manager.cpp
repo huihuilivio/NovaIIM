@@ -73,6 +73,7 @@ bool SqliteDbManager::InitSchema() {
     db_.execute("CREATE INDEX IF NOT EXISTS idx_session_token ON admin_sessions(token_hash)");
     db_.execute("CREATE INDEX IF NOT EXISTS idx_session_admin ON admin_sessions(admin_id)");
     db_.execute("CREATE INDEX IF NOT EXISTS idx_userfile_user_type ON user_files(user_id, file_type)");
+    db_.execute("CREATE INDEX IF NOT EXISTS idx_user_nickname ON users(nickname)");
 
     if (!ok) {
         NOVA_NLOG_ERROR(kLogTag, "Failed to initialize database schema");

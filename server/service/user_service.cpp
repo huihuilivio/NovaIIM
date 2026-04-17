@@ -283,7 +283,7 @@ void UserService::HandleLogout(ConnectionPtr conn, Packet& pkt) {
         conn->set_user_id(0);
         conn->set_uid("");
         conn->set_device_id("");
-        NOVA_NLOG_INFO(kLogTag, "user id={}, uid={}, logged out", user_id, uid);
+        NOVA_NLOG_INFO(kLogTag, "user id={} uid={} logged out", user_id, uid);
     }
 
     SendPacket(conn, Cmd::kLogout, pkt.seq, 0, proto::RspBase{ec::kOk.code, "goodbye"});
@@ -425,12 +425,21 @@ void UserService::HandleUpdateProfile(ConnectionPtr conn, Packet& pkt) {
     // 校验 avatar
     if (!req->avatar.empty() && req->avatar.size() > 512) {
         SendPacket(conn, Cmd::kUpdateProfileAck, seq, 0,
-                   proto::UpdateProfileAck{ec::user::kUpdateProfileFailed.code, "avatar path too long"});
+                   proto::UpdateProfileAck{ec::user::kUpdateProfileFailed.code, "avatar path exceeds 512 characters"});
         return;
     }
 
     std::string uid = conn->uid();
 
+    // 先查询用户是否存在，避免半更新
+    auto user = ctx_.dao().User().FindByUid(uid);
+    if (!user) {
+        SendPacket(conn, Cmd::kUpdateProfileAck, seq, 0,
+                   proto::UpdateProfileAck{ec::user::kUserNotFound.code, ec::user::kUserNotFound.msg});
+        return;
+    }
+
+    // 同时更新 nickname 和 avatar，保证原子性
     if (!req->nickname.empty()) {
         if (!ctx_.dao().User().UpdateNickname(uid, req->nickname)) {
             SendPacket(conn, Cmd::kUpdateProfileAck, seq, 0,
@@ -441,6 +450,10 @@ void UserService::HandleUpdateProfile(ConnectionPtr conn, Packet& pkt) {
 
     if (!req->avatar.empty()) {
         if (!ctx_.dao().User().UpdateAvatar(uid, req->avatar)) {
+            // 回滚 nickname：恢复原值
+            if (!req->nickname.empty()) {
+                ctx_.dao().User().UpdateNickname(uid, user->nickname);
+            }
             SendPacket(conn, Cmd::kUpdateProfileAck, seq, 0,
                        proto::UpdateProfileAck{ec::user::kUpdateProfileFailed.code, ec::user::kUpdateProfileFailed.msg});
             return;
