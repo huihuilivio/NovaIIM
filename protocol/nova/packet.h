@@ -133,9 +133,7 @@ enum class Cmd : uint16_t {
     kSyncUnread     = 0x0202,
     kSyncUnreadResp = 0x0203,
 
-    // 文件 / 个人资料
-    kUpdateAvatar      = 0x0300,  // 已废弃，头像更新统一走 kUpdateProfile
-    kUpdateAvatarAck   = 0x0301,  // 已废弃
+    // 个人资料
     kGetUserProfile    = 0x0302,
     kGetUserProfileAck = 0x0303,
 

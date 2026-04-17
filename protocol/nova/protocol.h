@@ -156,21 +156,8 @@ struct SyncUnreadResp {
 };
 
 // ============================================================
-//  文件 / 个人资料
+//  个人资料
 // ============================================================
-
-// C→S  Cmd::kUpdateAvatar (0x0300)
-struct UpdateAvatarReq {
-    std::string avatar_path;  // 头像路径或 URL
-    std::string file_hash;    // 可选，文件哈希
-};
-
-// S→C  Cmd::kUpdateAvatarAck (0x0301)
-struct UpdateAvatarAck {
-    int32_t code = 0;
-    std::string msg;
-    std::string avatar_path;  // 更新后的路径（服务端可能做了规范化）
-};
 
 // C→S  Cmd::kGetUserProfile (0x0302)
 struct GetUserProfileReq {

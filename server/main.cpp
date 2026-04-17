@@ -3,7 +3,6 @@
 #include "service/user_service.h"
 #include "service/msg_service.h"
 #include "service/sync_service.h"
-#include "service/file_service.h"
 #include "service/errors/common.h"
 #include "core/thread_pool.h"
 #include "core/logger.h"
@@ -90,7 +89,6 @@ int main(int argc, char* argv[]) {
     UserService user_svc(ctx);
     MsgService msg_svc(ctx);
     SyncService sync_svc(ctx);
-    FileService file_svc(ctx);
 
     // 注册路由
     Router router;
@@ -108,8 +106,6 @@ int main(int argc, char* argv[]) {
 
     router.Register(Cmd::kSyncMsg, [&](ConnectionPtr c, Packet& p) { sync_svc.HandleSyncMsg(c, p); });
     router.Register(Cmd::kSyncUnread, [&](ConnectionPtr c, Packet& p) { sync_svc.HandleSyncUnread(c, p); });
-
-    // kUpdateAvatar 已废弃，头像更新统一走 kUpdateProfile
 
     router.Freeze();  // 禁止后续注册，确保多线程安全
 
