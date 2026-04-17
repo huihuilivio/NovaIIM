@@ -13,6 +13,8 @@ class ConversationDaoImplT : public ConversationDao {
 public:
     explicit ConversationDaoImplT(DbMgr& db) : db_(db) {}
 
+    bool CreateConversation(Conversation& conv) override;
+    bool AddMember(ConversationMember& member) override;
     int64_t IncrMaxSeq(int64_t conversation_id) override;
     std::vector<ConversationMember> GetMembersByUser(int64_t user_id) override;
     std::vector<ConversationMember> GetMembersByConversation(int64_t conversation_id) override;

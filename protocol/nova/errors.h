@@ -84,4 +84,25 @@ inline constexpr Error kNotMember {4001, "not a member of this conversation"};
 
 }  // namespace sync
 
+// ================================================================
+// Friend (5001 - 5099)
+// ================================================================
+namespace friend_ {
+
+// clang-format off
+inline constexpr Error kCannotAddSelf       {5001, "cannot add yourself"};
+inline constexpr Error kAlreadyFriends      {5002, "already friends"};
+inline constexpr Error kRequestPending      {5003, "friend request already pending"};
+inline constexpr Error kRequestNotFound     {5004, "friend request not found"};
+inline constexpr Error kNotFriends          {5005, "not friends"};
+inline constexpr Error kAlreadyBlocked      {5006, "user already blocked"};
+inline constexpr Error kNotBlocked          {5007, "user not blocked"};
+inline constexpr Error kBlockedByTarget     {5008, "blocked by target user"};
+inline constexpr Error kTargetUidRequired   {5009, "target_uid is required"};
+inline constexpr Error kRequestIdRequired   {5010, "request_id is required"};
+inline constexpr Error kInvalidAction       {5011, "action must be accept or reject"};
+// clang-format on
+
+}  // namespace friend_
+
 }  // namespace nova::errc

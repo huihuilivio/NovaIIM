@@ -211,6 +211,108 @@ struct UpdateProfileAck {
 };
 
 // ============================================================
+//  好友
+// ============================================================
+
+// C→S  Cmd::kAddFriend (0x0030)
+struct AddFriendReq {
+    std::string target_uid;   // 目标用户 uid
+    std::string remark;       // 验证消息（可选，最长 200 字符）
+};
+
+// S→C  Cmd::kAddFriendAck (0x0031)
+struct AddFriendAck {
+    int32_t code = 0;
+    std::string msg;
+    int64_t request_id = 0;   // 好友申请 ID
+};
+
+// C→S  Cmd::kHandleFriendReq (0x0032)
+struct HandleFriendReqReq {
+    int64_t request_id = 0;
+    int32_t action     = 0;   // 1=accept, 2=reject
+};
+
+// S→C  Cmd::kHandleFriendReqAck (0x0033)
+struct HandleFriendReqAck {
+    int32_t code            = 0;
+    std::string msg;
+    int64_t conversation_id = 0;  // 同意时返回私聊会话 ID
+};
+
+// C→S  Cmd::kDeleteFriend (0x0034)
+struct DeleteFriendReq  { std::string target_uid; };
+// S→C  Cmd::kDeleteFriendAck (0x0035)
+struct DeleteFriendAck  { int32_t code = 0; std::string msg; };
+
+// C→S  Cmd::kBlockFriend (0x0036)
+struct BlockFriendReq   { std::string target_uid; };
+// S→C  Cmd::kBlockFriendAck (0x0037)
+struct BlockFriendAck   { int32_t code = 0; std::string msg; };
+
+// C→S  Cmd::kUnblockFriend (0x0038)
+struct UnblockFriendReq { std::string target_uid; };
+// S→C  Cmd::kUnblockFriendAck (0x0039)
+struct UnblockFriendAck { int32_t code = 0; std::string msg; };
+
+// 好友列表条目
+struct FriendItem {
+    std::string uid;
+    std::string nickname;
+    std::string avatar;
+    int64_t conversation_id = 0;  // 对应私聊会话 ID
+};
+
+// C→S  Cmd::kGetFriendList (0x003A)  — body 可为空
+struct GetFriendListReq {
+    int32_t _reserved = 0;  // struct_pack 不允许空结构体
+};
+
+// S→C  Cmd::kGetFriendListAck (0x003B)
+struct GetFriendListAck {
+    int32_t code = 0;
+    std::string msg;
+    std::vector<FriendItem> friends;
+};
+
+// 好友申请条目
+struct FriendRequestItem {
+    int64_t request_id = 0;
+    std::string from_uid;
+    std::string from_nickname;
+    std::string from_avatar;
+    std::string remark;
+    std::string created_at;
+    int32_t status = 0;  // 0=pending, 1=accepted, 2=rejected
+};
+
+// C→S  Cmd::kGetFriendRequests (0x003C)
+struct GetFriendRequestsReq {
+    int32_t page      = 1;
+    int32_t page_size = 20;
+};
+
+// S→C  Cmd::kGetFriendRequestsAck (0x003D)
+struct GetFriendRequestsAck {
+    int32_t code = 0;
+    std::string msg;
+    std::vector<FriendRequestItem> requests;
+    int64_t total = 0;
+};
+
+// S→C  Cmd::kFriendNotify (0x003E)
+// notify_type: 1=新申请, 2=已同意, 3=已拒绝, 4=已删除
+struct FriendNotifyMsg {
+    int32_t notify_type     = 0;
+    std::string from_uid;
+    std::string from_nickname;
+    std::string from_avatar;
+    std::string remark;
+    int64_t request_id      = 0;
+    int64_t conversation_id = 0;  // 同意时附带私聊会话 ID
+};
+
+// ============================================================
 //  序列化 / 反序列化便捷函数
 // ============================================================
 

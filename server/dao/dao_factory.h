@@ -12,6 +12,7 @@ class AdminSessionDao;
 class AdminAccountDao;
 class RbacDao;
 class FileDao;
+class FriendDao;
 struct DatabaseConfig;
 
 /// RAII 会话：将一条 DB 连接固定到当前线程
@@ -38,6 +39,7 @@ public:
     virtual AdminAccountDao& AdminAccount() = 0;
     virtual RbacDao& Rbac()                 = 0;
     virtual FileDao& File()                 = 0;
+    virtual FriendDao& Friend()             = 0;
 
     /// 开启会话：当前作用域内所有 DAO 操作复用同一 DB 连接
     /// 用法: auto session = ctx_.dao().Session();

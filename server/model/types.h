@@ -201,4 +201,37 @@ inline constexpr std::string_view get_alias_struct_name(UserFile*) {
     return "user_files";
 }
 
+// ---- 好友系统 ----
+
+enum class FriendRequestStatus : int { Pending = 0, Accepted = 1, Rejected = 2 };
+enum class FriendshipStatus : int { Normal = 1, Blocked = 2, Deleted = 3 };
+
+// 好友申请
+struct FriendRequest {
+    int64_t id         = 0;
+    int64_t from_id    = 0;  // 发起方 user.id
+    int64_t to_id      = 0;  // 接收方 user.id
+    std::string message;      // 验证消息
+    int status = static_cast<int>(FriendRequestStatus::Pending);
+    std::string created_at;
+    std::string updated_at;
+};
+inline constexpr std::string_view get_alias_struct_name(FriendRequest*) {
+    return "friend_requests";
+}
+
+// 好友关系（双向各一条记录）
+struct Friendship {
+    int64_t id              = 0;
+    int64_t user_id         = 0;  // 本方
+    int64_t friend_id       = 0;  // 对方
+    int64_t conversation_id = 0;  // 对应私聊会话
+    int status = static_cast<int>(FriendshipStatus::Normal);
+    std::string created_at;
+    std::string updated_at;
+};
+inline constexpr std::string_view get_alias_struct_name(Friendship*) {
+    return "friendships";
+}
+
 }  // namespace nova

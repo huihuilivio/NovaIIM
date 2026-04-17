@@ -9,6 +9,7 @@
 #include "../service/user_service.h"
 #include "../service/msg_service.h"
 #include "../service/sync_service.h"
+#include "../service/friend_service.h"
 #include <nova/errors.h>
 #include "../admin/admin_server.h"
 #include "../dao/dao_factory.h"
@@ -77,7 +78,7 @@ void WarnJwtSecret(const AdminConfig& admin_cfg) {
     }
 }
 
-void RegisterRoutes(Router& router, UserService& user_svc, MsgService& msg_svc, SyncService& sync_svc) {
+void RegisterRoutes(Router& router, UserService& user_svc, MsgService& msg_svc, SyncService& sync_svc, FriendService& friend_svc) {
     router.Register(Cmd::kLogin,    [&](ConnectionPtr c, Packet& p) { user_svc.HandleLogin(c, p); });
     router.Register(Cmd::kRegister, [&](ConnectionPtr c, Packet& p) { user_svc.HandleRegister(c, p); });
     router.Register(Cmd::kLogout,   [&](ConnectionPtr c, Packet& p) { user_svc.HandleLogout(c, p); });
@@ -92,6 +93,14 @@ void RegisterRoutes(Router& router, UserService& user_svc, MsgService& msg_svc, 
 
     router.Register(Cmd::kSyncMsg,    [&](ConnectionPtr c, Packet& p) { sync_svc.HandleSyncMsg(c, p); });
     router.Register(Cmd::kSyncUnread, [&](ConnectionPtr c, Packet& p) { sync_svc.HandleSyncUnread(c, p); });
+
+    router.Register(Cmd::kAddFriend,         [&](ConnectionPtr c, Packet& p) { friend_svc.HandleAddFriend(c, p); });
+    router.Register(Cmd::kHandleFriendReq,   [&](ConnectionPtr c, Packet& p) { friend_svc.HandleRequest(c, p); });
+    router.Register(Cmd::kDeleteFriend,      [&](ConnectionPtr c, Packet& p) { friend_svc.HandleDeleteFriend(c, p); });
+    router.Register(Cmd::kBlockFriend,       [&](ConnectionPtr c, Packet& p) { friend_svc.HandleBlock(c, p); });
+    router.Register(Cmd::kUnblockFriend,     [&](ConnectionPtr c, Packet& p) { friend_svc.HandleUnblock(c, p); });
+    router.Register(Cmd::kGetFriendList,     [&](ConnectionPtr c, Packet& p) { friend_svc.HandleGetFriendList(c, p); });
+    router.Register(Cmd::kGetFriendRequests, [&](ConnectionPtr c, Packet& p) { friend_svc.HandleGetRequests(c, p); });
 
     router.Freeze();
 }
@@ -132,9 +141,10 @@ int Application::Run(const AppConfig& cfg) {
     UserService user_svc(ctx);
     MsgService msg_svc(ctx);
     SyncService sync_svc(ctx);
+    FriendService friend_svc(ctx);
 
     Router router;
-    detail::RegisterRoutes(router, user_svc, msg_svc, sync_svc);
+    detail::RegisterRoutes(router, user_svc, msg_svc, sync_svc, friend_svc);
 
     // 5. 信号处理
     g_running.store(true, std::memory_order_relaxed);

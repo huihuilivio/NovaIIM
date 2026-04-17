@@ -142,6 +142,23 @@ enum class Cmd : uint16_t {
     kSearchUserAck     = 0x0401,
     kUpdateProfile     = 0x0402,
     kUpdateProfileAck  = 0x0403,
+
+    // 好友
+    kAddFriend            = 0x0030,
+    kAddFriendAck         = 0x0031,
+    kHandleFriendReq      = 0x0032,
+    kHandleFriendReqAck   = 0x0033,
+    kDeleteFriend         = 0x0034,
+    kDeleteFriendAck      = 0x0035,
+    kBlockFriend          = 0x0036,
+    kBlockFriendAck       = 0x0037,
+    kUnblockFriend        = 0x0038,
+    kUnblockFriendAck     = 0x0039,
+    kGetFriendList        = 0x003A,
+    kGetFriendListAck     = 0x003B,
+    kGetFriendRequests    = 0x003C,
+    kGetFriendRequestsAck = 0x003D,
+    kFriendNotify         = 0x003E,
 };
 
 }  // namespace nova::proto

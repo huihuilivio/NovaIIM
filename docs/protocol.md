@@ -323,7 +323,7 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| target_user_id | int64 | ✅ | 目标用户 ID |
+| target_uid | string | ✅ | 目标用户 UID（Snowflake） |
 | remark | string | | 验证消息 / 备注（最长 200 字符） |
 
 **AddFriendAck** (S→C, 0x0031):
@@ -332,22 +332,24 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 |------|------|------|
 | code | int32 | 0=已发送申请 |
 | msg | string | 错误描述 |
+| request_id | int64 | 好友申请 ID（可用于跟踪状态） |
 
 **服务端处理：**
-1. 校验 target_user_id 存在且非自己
+1. 通过 `target_uid` 查找目标用户，校验非自己
 2. 检查是否已是好友 / 是否已被拉黑 / 是否有未处理的申请
-3. 写入 `friendships` 表（status=0 待确认），双向写入两条记录
-4. 向对方推送 `kFriendNotify`（type=申请）
+3. 写入 `friend_requests` 表（status=0 待确认）
+4. 向对方推送 `kFriendNotify`（type=1 申请）
 
 **错误码：**
 
 | code | 含义 |
 |------|------|
-| 1 | 目标用户不存在 |
-| 2 | 不能添加自己 |
-| 3 | 已经是好友 |
-| 4 | 对方已拉黑你 |
-| 5 | 已有待处理的好友申请 |
+| 5001 | 不能添加自己 |
+| 5002 | 已经是好友 |
+| 5003 | 已有待处理的好友申请 |
+| 5008 | 对方已拉黑你 |
+| 5009 | target_uid 为空 |
+| 1019 | 目标用户不存在 |
 
 #### 3.6.2 处理好友申请 (kHandleFriendReq / kHandleFriendReqAck)
 
@@ -355,7 +357,7 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| from_user_id | int64 | ✅ | 申请发起方用户 ID |
+| request_id | int64 | ✅ | 好友申请 ID（来自 AddFriendAck 或 FriendNotify） |
 | action | int32 | ✅ | 1=同意，2=拒绝 |
 
 **HandleFriendReqAck** (S→C, 0x0033):
@@ -367,9 +369,18 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 | conversation_id | int64 | 同意时返回私聊会话 ID（自动创建），拒绝时为 0 |
 
 **服务端处理（同意）：**
-1. 更新 `friendships` 双方记录 status=1（已通过）
+1. 更新 `friend_requests` 记录 status=1（已通过）
 2. 自动创建私聊 `Conversation`（type=Private），双方为成员
-3. 向对方推送 `kFriendNotify`（type=已同意）
+3. 双向写入 `friendships` 记录（status=1 正常）
+4. 向申请发起方推送 `kFriendNotify`（type=2 已同意）
+
+**错误码：**
+
+| code | 含义 |
+|------|------|
+| 5004 | 申请不存在或已处理 |
+| 5010 | request_id 无效 |
+| 5011 | action 必须为 1 或 2 |
 
 #### 3.6.3 删除好友 (kDeleteFriend / kDeleteFriendAck)
 
@@ -377,7 +388,7 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| target_user_id | int64 | ✅ | 要删除的好友用户 ID |
+| target_uid | string | ✅ | 要删除的好友 UID |
 
 **DeleteFriendAck** (S→C, 0x0035):
 
@@ -389,7 +400,15 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 **服务端处理：**
 1. 更新双方 `friendships` 记录 status=3（已删除）
 2. 保留私聊 Conversation 和历史消息（不删除）
-3. 向对方推送 `kFriendNotify`（type=已删除）
+3. 向对方推送 `kFriendNotify`（type=4 已删除）
+
+**错误码：**
+
+| code | 含义 |
+|------|------|
+| 5005 | 不是好友 |
+| 5009 | target_uid 为空 |
+| 1019 | 目标用户不存在 |
 
 #### 3.6.4 拉黑/取消拉黑 (kBlockFriend / kUnblockFriend)
 
@@ -397,7 +416,7 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| target_user_id | int64 | ✅ | 要拉黑的用户 ID |
+| target_uid | string | ✅ | 要拉黑的用户 UID |
 
 **BlockFriendAck** (S→C, 0x0037):
 
@@ -411,7 +430,16 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 **拉黑规则：**
 - 拉黑后对方无法发送好友申请、无法发送消息
 - 拉黑是单向的，不通知对方
-- 取消拉黑后对方可重新申请好友
+- 取消拉黑后状态变为已删除（不自动恢复好友），对方可重新申请
+
+**错误码：**
+
+| code | 含义 |
+|------|------|
+| 5006 | 已经拉黑（Block） |
+| 5007 | 未拉黑（Unblock） |
+| 5009 | target_uid 为空 |
+| 1019 | 目标用户不存在 |
 
 #### 3.6.5 获取好友列表 (kGetFriendList / kGetFriendListAck)
 
@@ -433,10 +461,9 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| user_id | int64 | 好友用户 ID |
+| uid | string | 好友 UID（Snowflake） |
 | nickname | string | 昵称 |
 | avatar | string | 头像 |
-| status | int32 | 关系状态：1=正常好友，4=已被你拉黑 |
 | conversation_id | int64 | 对应私聊会话 ID |
 
 #### 3.6.6 获取好友申请列表 (kGetFriendRequests / kGetFriendRequestsAck)
@@ -454,16 +481,17 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 |------|------|------|
 | code | int32 | 0=成功 |
 | msg | string | 错误描述 |
-| requests | FriendRequest[] | 申请列表 |
-| total | int32 | 总数 |
+| requests | FriendRequestItem[] | 申请列表 |
+| total | int64 | 总数 |
 
-**FriendRequest 结构：**
+**FriendRequestItem 结构：**
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| from_user_id | int64 | 申请人 ID |
-| nickname | string | 申请人昵称 |
-| avatar | string | 申请人头像 |
+| request_id | int64 | 申请 ID |
+| from_uid | string | 申请人 UID |
+| from_nickname | string | 申请人昵称 |
+| from_avatar | string | 申请人头像 |
 | remark | string | 验证消息 |
 | status | int32 | 0=待处理，1=已同意，2=已拒绝 |
 | created_at | string | 申请时间 |
@@ -472,17 +500,19 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 
 服务端主动推送，通知好友关系变化。
 
-**FriendNotify** (S→C, 0x003E):
+**FriendNotifyMsg** (S→C, 0x003E):
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| type | int32 | 事件类型（见下） |
-| user_id | int64 | 相关用户 ID |
-| nickname | string | 相关用户昵称 |
-| remark | string | 验证消息（仅申请时） |
-| conversation_id | int64 | 相关私聊会话 ID（同意时） |
+| notify_type | int32 | 事件类型（见下） |
+| from_uid | string | 相关用户 UID |
+| from_nickname | string | 相关用户昵称 |
+| from_avatar | string | 相关用户头像 |
+| remark | string | 验证消息（仅申请时有值） |
+| request_id | int64 | 申请 ID（申请/同意/拒绝时有值） |
+| conversation_id | int64 | 私聊会话 ID（同意时有值） |
 
-**type 事件类型：**
+**notify_type 事件类型：**
 
 | type | 含义 |
 |------|------|

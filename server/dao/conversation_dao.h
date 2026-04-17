@@ -13,6 +13,12 @@ class ConversationDao {
 public:
     virtual ~ConversationDao() = default;
 
+    // 创建会话，返回插入后的 id
+    virtual bool CreateConversation(Conversation& conv) = 0;
+
+    // 添加会话成员
+    virtual bool AddMember(ConversationMember& member) = 0;
+
     // 原子递增 max_seq 并返回新值（seq 生成核心）
     virtual int64_t IncrMaxSeq(int64_t conversation_id) = 0;
 

@@ -21,6 +21,7 @@ public:
     AdminAccountDao& AdminAccount() override;
     RbacDao& Rbac() override;
     FileDao& File() override;
+    FriendDao& Friend() override;
 
 private:
     struct Impl;

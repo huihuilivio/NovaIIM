@@ -8,6 +8,22 @@
 namespace nova {
 
 template <typename DbMgr>
+bool ConversationDaoImplT<DbMgr>::CreateConversation(Conversation& conv) {
+    auto id = db_.DB().get_insert_id_after_insert(conv);
+    if (id == 0) return false;
+    conv.id = static_cast<int64_t>(id);
+    return true;
+}
+
+template <typename DbMgr>
+bool ConversationDaoImplT<DbMgr>::AddMember(ConversationMember& member) {
+    auto id = db_.DB().get_insert_id_after_insert(member);
+    if (id == 0) return false;
+    member.id = static_cast<int64_t>(id);
+    return true;
+}
+
+template <typename DbMgr>
 int64_t ConversationDaoImplT<DbMgr>::IncrMaxSeq(int64_t conversation_id) {
     // 分片锁：同一 conversation 串行，不同 conversation 可并行
     std::lock_guard<std::mutex> lock(GetSeqMutex(conversation_id));

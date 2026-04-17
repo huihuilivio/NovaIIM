@@ -64,3 +64,10 @@ nova_add_test(
     SOURCES test_application.cpp
     LIBS    im_server_lib
 )
+
+# FriendService 好友链路: AddFriend, HandleRequest, DeleteFriend, Block/Unblock, GetFriendList, GetRequests
+nova_add_test(
+    NAME    test_friend_service
+    SOURCES test_friend_service.cpp
+    LIBS    im_server_lib
+)

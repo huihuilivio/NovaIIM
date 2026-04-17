@@ -8,6 +8,7 @@
 #include "../impl/admin_account_dao_impl.h"
 #include "../impl/rbac_dao_impl.h"
 #include "../impl/file_dao_impl.h"
+#include "../impl/friend_dao_impl.h"
 #include "../seed.h"
 
 #include "../../core/logger.h"
@@ -25,9 +26,10 @@ struct SqliteDaoFactory::Impl {
     AdminAccountDaoImplT<SqliteDbManager> admin_account;
     RbacDaoImplT<SqliteDbManager> rbac;
     FileDaoImplT<SqliteDbManager> file;
+    FriendDaoImplT<SqliteDbManager> friend_;
 
     explicit Impl(const std::string& path)
-        : user(db), message(db), conversation(db), audit_log(db), admin_session(db), admin_account(db), rbac(db), file(db) {
+        : user(db), message(db), conversation(db), audit_log(db), admin_session(db), admin_account(db), rbac(db), file(db), friend_(db) {
         if (!db.Open(path)) {
             throw std::runtime_error("failed to open sqlite database: " + path);
         }
@@ -68,6 +70,9 @@ RbacDao& SqliteDaoFactory::Rbac() {
 }
 FileDao& SqliteDaoFactory::File() {
     return impl_->file;
+}
+FriendDao& SqliteDaoFactory::Friend() {
+    return impl_->friend_;
 }
 
 }  // namespace nova
