@@ -9,7 +9,7 @@
 #include "../service/user_service.h"
 #include "../service/msg_service.h"
 #include "../service/sync_service.h"
-#include "../service/errors/common.h"
+#include <nova/errors.h>
 #include "../admin/admin_server.h"
 #include "../dao/dao_factory.h"
 #include <nova/packet.h>

@@ -1,12 +1,3 @@
 #pragma once
-// SyncService 错误码
-
-#include "common.h"
-
-namespace nova::errc::sync {
-
-// clang-format off
-inline constexpr Error kNotMember {4001, "not a member of this conversation"};
-// clang-format on
-
-}  // namespace nova::errc::sync
+// 向后兼容 —— 错误码已移至协议层 <nova/errors.h>
+#include <nova/errors.h>
