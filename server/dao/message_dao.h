@@ -34,6 +34,9 @@ public:
     // 根据 ID 查找
     virtual std::optional<Message> FindById(int64_t id) = 0;
 
+    // 根据会话 + seq 查找单条消息
+    virtual std::optional<Message> FindByConvSeq(int64_t conversation_id, int64_t seq) = 0;
+
     // 批量获取多个会话的最近 N 条消息（用于未读预览，避免 N+1 查询）
     // 返回所有匹配的消息，调用方按 conversation_id 分组
     virtual std::vector<Message>

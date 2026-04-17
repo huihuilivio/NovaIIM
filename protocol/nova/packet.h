@@ -121,11 +121,14 @@ enum class Cmd : uint16_t {
     kHeartbeatAck = 0x0011,
 
     // 消息
-    kSendMsg    = 0x0100,
-    kSendMsgAck = 0x0101,
-    kPushMsg    = 0x0102,
-    kDeliverAck = 0x0103,
-    kReadAck    = 0x0104,
+    kSendMsg       = 0x0100,
+    kSendMsgAck    = 0x0101,
+    kPushMsg       = 0x0102,
+    kDeliverAck    = 0x0103,
+    kReadAck       = 0x0104,
+    kRecallMsg     = 0x0105,
+    kRecallMsgAck  = 0x0106,
+    kRecallNotify  = 0x0107,
 
     // 同步
     kSyncMsg        = 0x0200,

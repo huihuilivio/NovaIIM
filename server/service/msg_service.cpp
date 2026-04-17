@@ -15,7 +15,8 @@ static constexpr const char* kLogTag = "MsgService";
 MsgService::MsgService(ServerContext& ctx)
     : ServiceBase(ctx),
       max_dedup_cache_size_(static_cast<size_t>(ctx.config().server.dedup_cache_size)),
-      max_content_size_(static_cast<size_t>(ctx.config().server.max_content_size)) {}
+      max_content_size_(static_cast<size_t>(ctx.config().server.max_content_size)),
+      recall_timeout_secs_(ctx.config().server.recall_timeout_secs) {}
 
 // ---- LRU dedup 缓存实现 ----
 
@@ -203,6 +204,114 @@ void MsgService::HandleSendMsg(ConnectionPtr conn, Packet& pkt) {
     BroadcastEncoded(sender_id, conn->device_id(), req->conversation_id, encoded);
 
     NOVA_NLOG_DEBUG(kLogTag, "msg sent: conv={}, sender={}, seq={}", req->conversation_id, sender_id, server_seq);
+}
+
+void MsgService::HandleRecallMsg(ConnectionPtr conn, Packet& pkt) {
+    auto session      = ctx_.dao().Session();
+    uint32_t seq      = pkt.seq;
+    int64_t sender_id = conn->user_id();
+
+    if (sender_id == 0) {
+        SendPacket(conn, Cmd::kRecallMsgAck, seq, 0,
+                   proto::RecallMsgAck{ec::kNotAuthenticated.code, ec::kNotAuthenticated.msg});
+        return;
+    }
+
+    auto req = proto::Deserialize<proto::RecallMsgReq>(pkt.body);
+    if (!req) {
+        SendPacket(conn, Cmd::kRecallMsgAck, seq, 0,
+                   proto::RecallMsgAck{ec::kInvalidBody.code, ec::kInvalidBody.msg});
+        return;
+    }
+
+    if (req->conversation_id <= 0 || req->server_seq <= 0) {
+        SendPacket(conn, Cmd::kRecallMsgAck, seq, 0,
+                   proto::RecallMsgAck{ec::msg::kInvalidConversation.code, ec::msg::kInvalidConversation.msg});
+        return;
+    }
+
+    // 检查是否为会话成员
+    if (!ctx_.dao().Conversation().IsMember(req->conversation_id, sender_id)) {
+        SendPacket(conn, Cmd::kRecallMsgAck, seq, 0,
+                   proto::RecallMsgAck{ec::msg::kNotMember.code, ec::msg::kNotMember.msg});
+        return;
+    }
+
+    // 查找消息
+    auto msg_opt = ctx_.dao().Message().FindByConvSeq(req->conversation_id, req->server_seq);
+    if (!msg_opt) {
+        SendPacket(conn, Cmd::kRecallMsgAck, seq, 0,
+                   proto::RecallMsgAck{ec::msg::kMsgNotFound.code, ec::msg::kMsgNotFound.msg});
+        return;
+    }
+
+    auto& msg = *msg_opt;
+
+    // 已撤回
+    if (msg.status == static_cast<int>(MsgStatus::kRecalled)) {
+        SendPacket(conn, Cmd::kRecallMsgAck, seq, 0,
+                   proto::RecallMsgAck{ec::msg::kRecallAlready.code, ec::msg::kRecallAlready.msg});
+        return;
+    }
+
+    // 权限校验：仅发送者本人可撤回
+    if (msg.sender_id != sender_id) {
+        SendPacket(conn, Cmd::kRecallMsgAck, seq, 0,
+                   proto::RecallMsgAck{ec::msg::kRecallNoPermission.code, ec::msg::kRecallNoPermission.msg});
+        return;
+    }
+
+    // 2 分钟时间限制
+    if (!msg.created_at.empty()) {
+        struct tm tm_msg {};
+#ifdef _MSC_VER
+        // 解析 "YYYY-MM-DD HH:MM:SS" 格式
+        sscanf_s(msg.created_at.c_str(), "%d-%d-%d %d:%d:%d",
+                 &tm_msg.tm_year, &tm_msg.tm_mon, &tm_msg.tm_mday,
+                 &tm_msg.tm_hour, &tm_msg.tm_min, &tm_msg.tm_sec);
+#else
+        std::sscanf(msg.created_at.c_str(), "%d-%d-%d %d:%d:%d",
+                    &tm_msg.tm_year, &tm_msg.tm_mon, &tm_msg.tm_mday,
+                    &tm_msg.tm_hour, &tm_msg.tm_min, &tm_msg.tm_sec);
+#endif
+        tm_msg.tm_year -= 1900;
+        tm_msg.tm_mon -= 1;
+#ifdef _MSC_VER
+        auto msg_time = _mkgmtime(&tm_msg);
+#else
+        auto msg_time = timegm(&tm_msg);
+#endif
+        auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+        if (msg_time > 0 && std::difftime(now, msg_time) > recall_timeout_secs_) {
+            SendPacket(conn, Cmd::kRecallMsgAck, seq, 0,
+                       proto::RecallMsgAck{ec::msg::kRecallTimeout.code, ec::msg::kRecallTimeout.msg});
+            return;
+        }
+    }
+
+    // 更新消息状态为已撤回
+    if (!ctx_.dao().Message().UpdateStatus(msg.id, static_cast<int8_t>(MsgStatus::kRecalled))) {
+        SendPacket(conn, Cmd::kRecallMsgAck, seq, 0,
+                   proto::RecallMsgAck{ec::kDatabaseError.code, ec::kDatabaseError.msg});
+        return;
+    }
+
+    // 返回成功
+    SendPacket(conn, Cmd::kRecallMsgAck, seq, 0, proto::RecallMsgAck{ec::kOk.code, ec::kOk.msg});
+
+    // 推送撤回通知给会话所有在线成员
+    proto::RecallNotify notify{req->conversation_id, req->server_seq, conn->uid()};
+
+    Packet notify_pkt;
+    notify_pkt.cmd  = static_cast<uint16_t>(Cmd::kRecallNotify);
+    notify_pkt.seq  = 0;
+    notify_pkt.uid  = 0;
+    notify_pkt.body = proto::Serialize(notify);
+
+    std::string encoded = notify_pkt.Encode();
+    BroadcastEncoded(sender_id, conn->device_id(), req->conversation_id, encoded);
+
+    NOVA_NLOG_DEBUG(kLogTag, "msg recalled: conv={}, seq={}, by={}", req->conversation_id, req->server_seq, sender_id);
 }
 
 void MsgService::HandleDeliverAck(ConnectionPtr conn, Packet& pkt) {

@@ -1,9 +1,12 @@
 #include "friend_service.h"
 #include <nova/errors.h>
 #include "../core/logger.h"
+#include "../core/defer.h"
 #include "../dao/friend_dao.h"
 #include "../dao/user_dao.h"
 #include "../dao/conversation_dao.h"
+
+#include <unordered_map>
 
 namespace nova {
 
@@ -163,45 +166,67 @@ void FriendService::HandleRequest(ConnectionPtr conn, Packet& pkt) {
     int new_status = (req->action == 1) ? static_cast<int>(FriendRequestStatus::Accepted)
                                         : static_cast<int>(FriendRequestStatus::Rejected);
 
-    ctx_.dao().Friend().UpdateRequestStatus(req->request_id, new_status);
-
     int64_t conversation_id = 0;
 
     if (req->action == 1) {
-        // 同意：创建私聊会话 + 双向好友关系
+        // 同意：事务包裹 UpdateRequestStatus + 创建会话 + 双向好友关系
+        if (!ctx_.dao().BeginTransaction()) {
+            SendPacket(conn, Cmd::kHandleFriendReqAck, seq, 0,
+                       proto::HandleFriendReqAck{ec::kDatabaseError.code, ec::kDatabaseError.msg});
+            return;
+        }
+
+        bool committed = false;
+        NOVA_DEFER {
+            if (!committed) ctx_.dao().Rollback();
+        };
+
+        ctx_.dao().Friend().UpdateRequestStatus(req->request_id, new_status);
+
         Conversation conv;
         conv.type = static_cast<int>(ConvType::kPrivate);
-        if (ctx_.dao().Conversation().CreateConversation(conv)) {
-            conversation_id = conv.id;
-
-            ConversationMember m1;
-            m1.conversation_id = conv.id;
-            m1.user_id         = fr->from_id;
-            ctx_.dao().Conversation().AddMember(m1);
-
-            ConversationMember m2;
-            m2.conversation_id = conv.id;
-            m2.user_id         = fr->to_id;
-            ctx_.dao().Conversation().AddMember(m2);
-
-            // 双向写入 friendship
-            Friendship f1;
-            f1.user_id         = fr->from_id;
-            f1.friend_id       = fr->to_id;
-            f1.conversation_id = conv.id;
-            f1.status          = static_cast<int>(FriendshipStatus::Normal);
-            ctx_.dao().Friend().InsertFriendship(f1);
-
-            Friendship f2;
-            f2.user_id         = fr->to_id;
-            f2.friend_id       = fr->from_id;
-            f2.conversation_id = conv.id;
-            f2.status          = static_cast<int>(FriendshipStatus::Normal);
-            ctx_.dao().Friend().InsertFriendship(f2);
-
-            NOVA_NLOG_INFO(kLogTag, "friend accepted: {} <-> {} (conv={})", fr->from_id, fr->to_id, conv.id);
+        if (!ctx_.dao().Conversation().CreateConversation(conv)) {
+            SendPacket(conn, Cmd::kHandleFriendReqAck, seq, 0,
+                       proto::HandleFriendReqAck{ec::kDatabaseError.code, ec::kDatabaseError.msg});
+            return;
         }
+        conversation_id = conv.id;
+
+        ConversationMember m1;
+        m1.conversation_id = conv.id;
+        m1.user_id         = fr->from_id;
+        ctx_.dao().Conversation().AddMember(m1);
+
+        ConversationMember m2;
+        m2.conversation_id = conv.id;
+        m2.user_id         = fr->to_id;
+        ctx_.dao().Conversation().AddMember(m2);
+
+        // 双向写入 friendship
+        Friendship f1;
+        f1.user_id         = fr->from_id;
+        f1.friend_id       = fr->to_id;
+        f1.conversation_id = conv.id;
+        f1.status          = static_cast<int>(FriendshipStatus::Normal);
+        ctx_.dao().Friend().InsertFriendship(f1);
+
+        Friendship f2;
+        f2.user_id         = fr->to_id;
+        f2.friend_id       = fr->from_id;
+        f2.conversation_id = conv.id;
+        f2.status          = static_cast<int>(FriendshipStatus::Normal);
+        ctx_.dao().Friend().InsertFriendship(f2);
+
+        if (!ctx_.dao().Commit()) {
+            SendPacket(conn, Cmd::kHandleFriendReqAck, seq, 0,
+                       proto::HandleFriendReqAck{ec::kDatabaseError.code, ec::kDatabaseError.msg});
+            return;
+        }
+        committed = true;
+
+        NOVA_NLOG_INFO(kLogTag, "friend accepted: {} <-> {} (conv={})", fr->from_id, fr->to_id, conv.id);
     } else {
+        ctx_.dao().Friend().UpdateRequestStatus(req->request_id, new_status);
         NOVA_NLOG_INFO(kLogTag, "friend rejected: {} -> {}", fr->from_id, fr->to_id);
     }
 
@@ -367,17 +392,32 @@ void FriendService::HandleGetFriendList(ConnectionPtr conn, Packet& pkt) {
 
     auto friends = ctx_.dao().Friend().GetFriendsByUser(conn->user_id());
 
+    // 批量查询好友用户信息（1 次查询代替 N 次 FindById）
+    std::vector<int64_t> friend_ids;
+    friend_ids.reserve(friends.size());
+    for (auto& f : friends) {
+        friend_ids.push_back(f.friend_id);
+    }
+    auto users = ctx_.dao().User().FindByIds(friend_ids);
+
+    std::unordered_map<int64_t, const User*> user_map;
+    user_map.reserve(users.size());
+    for (const auto& u : users) {
+        user_map[u.id] = &u;
+    }
+
     proto::GetFriendListAck ack;
     ack.code = ec::kOk.code;
     ack.msg  = ec::kOk.msg;
 
     for (auto& f : friends) {
-        auto user = ctx_.dao().User().FindById(f.friend_id);
-        if (!user) continue;
+        auto it = user_map.find(f.friend_id);
+        if (it == user_map.end()) continue;
+        const auto& user = *(it->second);
         proto::FriendItem item;
-        item.uid             = user->uid;
-        item.nickname        = user->nickname;
-        item.avatar          = user->avatar;
+        item.uid             = user.uid;
+        item.nickname        = user.nickname;
+        item.avatar          = user.avatar;
         item.conversation_id = f.conversation_id;
         ack.friends.push_back(std::move(item));
     }

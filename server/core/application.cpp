@@ -87,7 +87,8 @@ void RegisterRoutes(Router& router, UserService& user_svc, MsgService& msg_svc, 
     router.Register(Cmd::kGetUserProfile,[&](ConnectionPtr c, Packet& p) { user_svc.HandleGetProfile(c, p); });
     router.Register(Cmd::kUpdateProfile, [&](ConnectionPtr c, Packet& p) { user_svc.HandleUpdateProfile(c, p); });
 
-    router.Register(Cmd::kSendMsg,    [&](ConnectionPtr c, Packet& p) { msg_svc.HandleSendMsg(c, p); });
+    router.Register(Cmd::kSendMsg,     [&](ConnectionPtr c, Packet& p) { msg_svc.HandleSendMsg(c, p); });
+    router.Register(Cmd::kRecallMsg,  [&](ConnectionPtr c, Packet& p) { msg_svc.HandleRecallMsg(c, p); });
     router.Register(Cmd::kDeliverAck, [&](ConnectionPtr c, Packet& p) { msg_svc.HandleDeliverAck(c, p); });
     router.Register(Cmd::kReadAck,    [&](ConnectionPtr c, Packet& p) { msg_svc.HandleReadAck(c, p); });
 

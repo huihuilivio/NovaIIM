@@ -51,6 +51,23 @@ std::optional<User> UserDaoImplT<DbMgr>::FindById(int64_t id) {
 }
 
 template <typename DbMgr>
+std::vector<User> UserDaoImplT<DbMgr>::FindByIds(const std::vector<int64_t>& ids) {
+    if (ids.empty())
+        return {};
+
+    // 构建 IN 子句（int64_t 转字符串，无注入风险）
+    std::string in_clause = "id IN (";
+    for (size_t i = 0; i < ids.size(); ++i) {
+        if (i > 0)
+            in_clause += ",";
+        in_clause += std::to_string(ids[i]);
+    }
+    in_clause += ") AND status!=3";
+
+    return db_.DB().template query_s<User>(in_clause);
+}
+
+template <typename DbMgr>
 UserListResult UserDaoImplT<DbMgr>::ListUsers(const std::string& keyword, int status, int page, int page_size) {
     UserListResult result;
     int offset = (page - 1) * page_size;

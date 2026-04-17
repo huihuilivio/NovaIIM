@@ -46,6 +46,14 @@ public:
     ///       ctx_.dao().User().FindByUid(...);  // 复用 session 连接
     /// 支持嵌套（内层为空操作），线程安全
     virtual std::unique_ptr<DaoScopedConn> Session() { return nullptr; }
+
+    /// 事务控制（跨 DAO 原子操作）
+    /// 用法: ctx_.dao().BeginTransaction();
+    ///       ... 多个 DAO 写操作 ...
+    ///       ctx_.dao().Commit();   // 或 Rollback()
+    virtual bool BeginTransaction() { return false; }
+    virtual bool Commit() { return false; }
+    virtual bool Rollback() { return false; }
 };
 
 /// 根据数据库配置创建对应的 DaoFactory 实例

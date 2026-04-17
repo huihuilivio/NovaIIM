@@ -20,6 +20,7 @@ struct ServerConfig {
     int heartbeat_ms       = 30000; // 心跳超时（毫秒）
     int max_content_size   = 4096;  // 单条消息最大字节数
     int dedup_cache_size   = 10000; // 幂等去重 LRU 缓存大小
+    int recall_timeout_secs = 120;  // 消息撤回时间限制（秒）
     int sync_default       = 20;    // 消息同步默认每页条数
     int sync_max           = 100;   // 消息同步最大每页条数
     int login_max_attempts = 5;     // IM 登录频率限制：最大失败次数

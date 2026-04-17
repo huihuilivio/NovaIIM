@@ -75,4 +75,14 @@ FriendDao& SqliteDaoFactory::Friend() {
     return impl_->friend_;
 }
 
+bool SqliteDaoFactory::BeginTransaction() {
+    return impl_->db.DB().execute("BEGIN");
+}
+bool SqliteDaoFactory::Commit() {
+    return impl_->db.DB().execute("COMMIT");
+}
+bool SqliteDaoFactory::Rollback() {
+    return impl_->db.DB().execute("ROLLBACK");
+}
+
 }  // namespace nova

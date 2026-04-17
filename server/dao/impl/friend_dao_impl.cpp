@@ -4,7 +4,26 @@
 #include "../mysql/mysql_db_manager.h"
 #endif
 
+#include <chrono>
+#include <ctime>
+
 namespace nova {
+
+namespace {
+inline std::string NowUtcStr() {
+    auto now = std::chrono::system_clock::now();
+    auto t   = std::chrono::system_clock::to_time_t(now);
+    char buf[32];
+    struct tm tm_buf {};
+#ifdef _MSC_VER
+    gmtime_s(&tm_buf, &t);
+#else
+    gmtime_r(&t, &tm_buf);
+#endif
+    std::strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", &tm_buf);
+    return buf;
+}
+}  // namespace
 
 // ---- FriendRequest ----
 
@@ -33,8 +52,9 @@ std::optional<FriendRequest> FriendDaoImplT<DbMgr>::FindPendingRequest(int64_t f
 
 template <typename DbMgr>
 bool FriendDaoImplT<DbMgr>::UpdateRequestStatus(int64_t id, int status) {
+    std::string now = NowUtcStr();
     std::string sql = "UPDATE friend_requests SET status = " + std::to_string(status) +
-                      ", updated_at = datetime('now') WHERE id = " + std::to_string(id);
+                      ", updated_at = '" + now + "' WHERE id = " + std::to_string(id);
     return db_.DB().execute(sql);
 }
 
@@ -77,8 +97,9 @@ std::optional<Friendship> FriendDaoImplT<DbMgr>::FindFriendship(int64_t user_id,
 
 template <typename DbMgr>
 bool FriendDaoImplT<DbMgr>::UpdateFriendshipStatus(int64_t user_id, int64_t friend_id, int status) {
+    std::string now = NowUtcStr();
     std::string sql = "UPDATE friendships SET status = " + std::to_string(status) +
-                      ", updated_at = datetime('now') WHERE user_id = " + std::to_string(user_id) +
+                      ", updated_at = '" + now + "' WHERE user_id = " + std::to_string(user_id) +
                       " AND friend_id = " + std::to_string(friend_id);
     return db_.DB().execute(sql);
 }

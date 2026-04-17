@@ -45,19 +45,19 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 | kLogin | 0x0001 | C→S | 登录请求 |
 | kLoginAck | 0x0002 | S→C | 登录响应 |
 | kLogout | 0x0003 | C→S | 登出请求 |
-| kLogoutAck | 0x0004 | S→C | 登出响应 |
-| kRegister | 0x0005 | C→S | 注册请求 |
-| kRegisterAck | 0x0006 | S→C | 注册响应 |
+| kRegister | 0x0004 | C→S | 注册请求 |
+| kRegisterAck | 0x0005 | S→C | 注册响应 |
 | **心跳** |
 | kHeartbeat | 0x0010 | C→S | 心跳请求 |
 | kHeartbeatAck | 0x0011 | S→C | 心跳响应 |
-| **用户** |
-| kSearchUser | 0x0020 | C→S | 搜索用户（by email / nickname） |
-| kSearchUserAck | 0x0021 | S→C | 搜索用户响应 |
-| kGetUserProfile | 0x0022 | C→S | 获取用户资料 |
-| kGetUserProfileAck | 0x0023 | S→C | 用户资料响应 |
-| kUpdateProfile | 0x0024 | C→S | 修改个人资料（昵称/头像） |
-| kUpdateProfileAck | 0x0025 | S→C | 修改资料响应 |
+| **个人资料** |
+| kGetUserProfile | 0x0302 | C→S | 获取用户资料 |
+| kGetUserProfileAck | 0x0303 | S→C | 用户资料响应 |
+| **用户搜索 / 资料编辑** |
+| kSearchUser | 0x0400 | C→S | 搜索用户（by email / nickname） |
+| kSearchUserAck | 0x0401 | S→C | 搜索用户响应 |
+| kUpdateProfile | 0x0402 | C→S | 修改个人资料（昵称/头像） |
+| kUpdateProfileAck | 0x0403 | S→C | 修改资料响应 |
 | **好友** |
 | kAddFriend | 0x0030 | C→S | 发起好友申请 |
 | kAddFriendAck | 0x0031 | S→C | 好友申请响应 |
@@ -138,7 +138,7 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 
 ### 3.1 注册 (kRegister / kRegisterAck)
 
-**RegisterReq** (C→S, 0x0005):
+**RegisterReq** (C→S, 0x0004):
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
@@ -146,29 +146,28 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 | nickname | string | ✅ | 昵称，可重复，最长 100 字符，自动 trim 首尾空白，禁止控制字符 |
 | password | string | ✅ | 密码，6–128 字符 |
 
-**RegisterAck** (S→C, 0x0006):
+**RegisterAck** (S→C, 0x0005):
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | code | int32 | 0=成功，>0 错误 |
 | msg | string | 错误描述 |
-| uid | string | 服务端生成的唯一 UID（Snowflake，内部标识） |
-| user_id | int64 | 用户内部 ID |
+| uid | string | 服务端生成的唯一 UID（Snowflake） |
 
 **注册错误码:**
 
 | code | 含义 |
 |------|------|
-| 1 | 邮箱为空 |
-| 6 | 邮箱格式无效 |
-| 7 | 邮箱超过 255 字符 |
-| 8 | 邮箱已注册 |
-| 10 | 昵称为空 |
-| 11 | 昵称超过 100 字符 |
-| 12 | 昵称包含非法字符（控制字符） |
-| 13 | 密码少于 6 字符 |
-| 14 | 密码超过 128 字符 |
-| 16 | 注册失败（服务端内部错误） |
+| 1001 | 邮箱为空 |
+| 1006 | 邮箱格式无效 |
+| 1007 | 邮箱超过 255 字符 |
+| 1008 | 邮箱已注册 |
+| 1010 | 昵称为空 |
+| 1011 | 昵称超过 100 字符 |
+| 1012 | 昵称包含非法字符（控制字符） |
+| 1013 | 密码少于 6 字符 |
+| 1014 | 密码超过 128 字符 |
+| 1016 | 注册失败（服务端内部错误） |
 
 ### 3.2 登录 (kLogin / kLoginAck)
 
@@ -187,7 +186,7 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 |------|------|------|
 | code | int32 | 0=成功，>0 错误 |
 | msg | string | 错误描述 |
-| user_id | int64 | 用户内部 ID |
+| uid | string | 用户 UID（Snowflake） |
 | nickname | string | 昵称 |
 | avatar | string | 头像 URL |
 
@@ -195,10 +194,11 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 
 | code | 含义 |
 |------|------|
-| 1 | 邮箱为空 |
-| 2 | 邮箱或密码错误（含封禁） |
-| 3 | 密码为空 |
-| 5 | 登录频率限制（防暴力破解） |
+| 1001 | 邮箱为空 |
+| 1002 | 邮箱或密码错误 |
+| 1003 | 密码为空 |
+| 1004 | 用户已封禁 |
+| 1005 | 登录频率限制（防暴力破解） |
 
 ### 3.3 登出 (kLogout / kLogoutAck)
 
@@ -210,7 +210,7 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 |------|------|------|------|
 | （body 可为空） | | | 使用帧头 uid 标识用户 |
 
-**LogoutAck** (S→C, 0x0004):
+**LogoutAck** (S→C, 0x0003) — 复用 RspBase:
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
@@ -236,31 +236,27 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 
 按邮箱或昵称搜索其他用户，支持分页。
 
-**SearchUserReq** (C→S, 0x0020):
+**SearchUserReq** (C→S, 0x0400):
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| keyword | string | ✅ | 搜索关键词（邮箱精确匹配 或 昵称模糊匹配） |
-| page | int32 | | 页码，默认 1 |
-| page_size | int32 | | 每页条数，默认 20，最大 50 |
+| keyword | string | ✅ | 搜索关键词（含 `@` 按邮箱精确匹配，否则按昵称模糊搜索） |
 
-**SearchUserAck** (S→C, 0x0021):
+**SearchUserAck** (S→C, 0x0401):
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | code | int32 | 0=成功 |
 | msg | string | 错误描述 |
-| users | UserBrief[] | 用户列表 |
-| total | int32 | 匹配总数 |
+| users | SearchUserItem[] | 用户列表 |
 
-**UserBrief 结构：**
+**SearchUserItem 结构：**
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| user_id | int64 | 用户 ID |
+| uid | string | 用户 UID（Snowflake） |
 | nickname | string | 昵称 |
 | avatar | string | 头像 URL |
-| email | string | 邮箱（脱敏：`a***b@example.com`） |
 
 **搜索规则：**
 - `keyword` 包含 `@` 时按邮箱精确匹配（不区分大小写）
@@ -274,39 +270,39 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 |------|------|
 | -1 | 请求体格式无效 |
 | -2 | 未登录 |
-| 1 | keyword 为空 |
-| 2 | keyword 超过 255 字符 |
+| 1017 | keyword 为空 |
+| 1018 | keyword 超长 |
 
 ---
 
 ### 3.5 获取/修改个人资料 (kGetUserProfile / kUpdateProfile)
 
-**GetUserProfileReq** (C→S, 0x0022):
+**GetUserProfileReq** (C→S, 0x0302):
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| target_user_id | int64 | | 目标用户 ID，0 或省略表示查自己 |
+| target_uid | string | | 目标用户 UID，空表示查自己 |
 
-**GetUserProfileAck** (S→C, 0x0023):
+**GetUserProfileAck** (S→C, 0x0303):
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | code | int32 | 0=成功 |
 | msg | string | 错误描述 |
-| user_id | int64 | 用户 ID |
-| uid | string | Snowflake UID |
+| uid | string | 用户 UID（Snowflake） |
 | nickname | string | 昵称 |
 | avatar | string | 头像 URL |
-| email | string | 邮箱（查他人时脱敏） |
+| email | string | 邮箱（仅查自己时返回，查他人为空） |
 
-**UpdateProfileReq** (C→S, 0x0024):
+**UpdateProfileReq** (C→S, 0x0402):
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | nickname | string | | 新昵称（为空则不修改），1–100 字符 |
 | avatar | string | | 新头像路径/URL（为空则不修改） |
+| file_hash | string | | 头像文件哈希（仅当 avatar 非空时有意义） |
 
-**UpdateProfileAck** (S→C, 0x0025):
+**UpdateProfileAck** (S→C, 0x0403):
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
@@ -574,13 +570,11 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 
 | code | 含义 |
 |------|------|
-| 1 | 会话不存在 |
-| 2 | 非会话成员 |
-| 3 | 已被对方拉黑（私聊） |
-| 4 | 你已被禁言（群聊） |
-| 5 | content 为空 |
-| 6 | content 超长 |
-| 7 | 无效的 msg_type |
+| 2001 | content 为空 |
+| 2002 | content 超长 |
+| 2003 | 无效的 conversation_id |
+| 2004 | 会话不存在 |
+| 2005 | 非会话成员 |
 
 #### 3.7.3 消息推送 (kPushMsg)
 
@@ -589,12 +583,11 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | conversation_id | int64 | 会话 ID |
-| sender_id | int64 | 发送者用户 ID |
+| sender_uid | string | 发送者 UID（Snowflake） |
 | content | string | 消息内容 |
 | server_seq | int64 | 服务端消息序号 |
 | server_time | int64 | 服务端时间戳（epoch ms） |
-| msg_type | int32 | 消息类型 |
-| client_msg_id | string | 客户端幂等 ID（可选） |
+| msg_type | MsgType | 消息类型 |
 
 **推送流程：**
 1. 消息入库后，查询会话所有在线成员
@@ -644,14 +637,24 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 |------|------|------|
 | conversation_id | int64 | 会话 ID |
 | server_seq | int64 | 被撤回的消息 seq |
-| operator_id | int64 | 撤回操作者 ID |
+| operator_uid | string | 撤回操作者 UID（Snowflake） |
 
 **撤回规则：**
 - 仅消息发送者可撤回自己的消息
-- 群管理员/群主可撤回任意成员的消息
-- 撤回时间限制：发送后 2 分钟内（可配置）
-- 撤回后消息 status 置为 `Recalled`，content 清空
+- 群管理员/群主撤回任意成员消息（待后续实现）
+- 撤回时间限制：发送后 2 分钟内（可配置，`server.recall_timeout_secs`）
+- 撤回后消息 status 置为 `Recalled`
 - 对所有在线会话成员推送 `kRecallNotify`
+
+**撤回错误码：**
+
+| code | 含义 |
+|------|------|
+| 2005 | 非会话成员 |
+| 2006 | 消息不存在 |
+| 2007 | 超过撤回时间限制 |
+| 2008 | 无权撤回该消息（非发送者） |
+| 2009 | 消息已撤回 |
 
 ---
 
@@ -1151,11 +1154,11 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | server_seq | int64 | 消息序号 |
-| sender_id | int64 | 发送者 ID |
+| sender_uid | string | 发送者 UID（Snowflake） |
 | content | string | 消息内容 |
-| msg_type | int32 | 消息类型 |
+| msg_type | MsgType | 消息类型 |
 | server_time | string | 发送时间 |
-| status | int32 | 0=正常，1=已撤回，2=已删除 |
+| status | MsgStatus | 0=正常，1=已撤回，2=已删除 |
 
 #### 3.11.2 拉取未读 (kSyncUnread / kSyncUnreadResp)
 

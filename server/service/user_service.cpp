@@ -1,6 +1,7 @@
 #include "user_service.h"
 #include "errors/user_errors.h"
 #include "../core/logger.h"
+#include "../core/defer.h"
 #include "../admin/password_utils.h"
 #include "../dao/user_dao.h"
 #include "../dao/file_dao.h"
@@ -440,7 +441,18 @@ void UserService::HandleUpdateProfile(ConnectionPtr conn, Packet& pkt) {
         return;
     }
 
-    // 同时更新 nickname 和 avatar，保证原子性
+    // 事务包裹 nickname + avatar 更新，保证原子性
+    if (!ctx_.dao().BeginTransaction()) {
+        SendPacket(conn, Cmd::kUpdateProfileAck, seq, 0,
+                   proto::UpdateProfileAck{ec::kDatabaseError.code, ec::kDatabaseError.msg});
+        return;
+    }
+
+    bool committed = false;
+    NOVA_DEFER {
+        if (!committed) ctx_.dao().Rollback();
+    };
+
     if (!req->nickname.empty()) {
         if (!ctx_.dao().User().UpdateNickname(uid, req->nickname)) {
             SendPacket(conn, Cmd::kUpdateProfileAck, seq, 0,
@@ -451,10 +463,6 @@ void UserService::HandleUpdateProfile(ConnectionPtr conn, Packet& pkt) {
 
     if (!req->avatar.empty()) {
         if (!ctx_.dao().User().UpdateAvatar(uid, req->avatar)) {
-            // 回滚 nickname：恢复原值
-            if (!req->nickname.empty()) {
-                ctx_.dao().User().UpdateNickname(uid, user->nickname);
-            }
             SendPacket(conn, Cmd::kUpdateProfileAck, seq, 0,
                        proto::UpdateProfileAck{ec::user::kUpdateProfileFailed.code, ec::user::kUpdateProfileFailed.msg});
             return;
@@ -468,6 +476,13 @@ void UserService::HandleUpdateProfile(ConnectionPtr conn, Packet& pkt) {
         file.hash      = req->file_hash;
         ctx_.dao().File().Insert(file);
     }
+
+    if (!ctx_.dao().Commit()) {
+        SendPacket(conn, Cmd::kUpdateProfileAck, seq, 0,
+                   proto::UpdateProfileAck{ec::kDatabaseError.code, ec::kDatabaseError.msg});
+        return;
+    }
+    committed = true;
 
     NOVA_NLOG_INFO(kLogTag, "user uid={} updated profile: nickname='{}', avatar='{}'", uid, req->nickname, req->avatar);
     SendPacket(conn, Cmd::kUpdateProfileAck, seq, 0,

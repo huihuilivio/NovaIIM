@@ -22,6 +22,9 @@ public:
     virtual std::optional<User> FindByEmail(const std::string& email) = 0;
     virtual std::optional<User> FindById(int64_t id)              = 0;
 
+    // 批量查询（避免 N+1）
+    virtual std::vector<User> FindByIds(const std::vector<int64_t>& ids) = 0;
+
     // 分页查询，keyword 可匹配 uid/nickname，status=-1 表示不过滤
     virtual UserListResult ListUsers(const std::string& keyword, int status, int page, int page_size) = 0;
 

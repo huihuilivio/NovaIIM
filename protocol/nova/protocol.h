@@ -99,6 +99,25 @@ struct PushMsg {
     MsgType msg_type    = MsgType::kText;
 };
 
+// C→S  Cmd::kRecallMsg (0x0105)
+struct RecallMsgReq {
+    int64_t conversation_id = 0;
+    int64_t server_seq      = 0;
+};
+
+// S→C  Cmd::kRecallMsgAck (0x0106)
+struct RecallMsgAck {
+    int32_t code = 0;
+    std::string msg;
+};
+
+// S→C  Cmd::kRecallNotify (0x0107)
+struct RecallNotify {
+    int64_t conversation_id = 0;
+    int64_t server_seq      = 0;
+    std::string operator_uid;   // 撤回操作者 uid
+};
+
 // C→S  Cmd::kDeliverAck (0x0103)
 struct DeliverAckReq {
     int64_t conversation_id = 0;

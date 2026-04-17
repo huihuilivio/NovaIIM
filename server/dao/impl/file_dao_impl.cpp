@@ -48,9 +48,11 @@ std::optional<UserFile> FileDaoImplT<DbMgr>::FindById(int64_t id) {
 template <typename DbMgr>
 std::optional<UserFile> FileDaoImplT<DbMgr>::FindLatestByUserAndType(int64_t user_id,
                                                                      const std::string& file_type) {
-    auto res =
-        db_.DB().template query_s<UserFile>("user_id=? AND file_type=? AND status=1 ORDER BY id DESC LIMIT 1" /* Active */,
-                                            user_id, file_type);
+    // 使用 raw SQL 避免 ormpp WHERE-stripping bug（条件含 ORDER BY / LIMIT 时可能丢失 WHERE）
+    // file_type 来自服务端内部常量（"avatar" 等），无注入风险
+    std::string sql = "SELECT * FROM user_files WHERE user_id = " + std::to_string(user_id) +
+                      " AND file_type = '" + file_type + "' AND status = 1 ORDER BY id DESC LIMIT 1";
+    auto res = db_.DB().template query_s<UserFile>(sql);
     if (res.empty())
         return std::nullopt;
     return res[0];
@@ -58,8 +60,9 @@ std::optional<UserFile> FileDaoImplT<DbMgr>::FindLatestByUserAndType(int64_t use
 
 template <typename DbMgr>
 std::vector<UserFile> FileDaoImplT<DbMgr>::ListByUserAndType(int64_t user_id, const std::string& file_type) {
-    return db_.DB().template query_s<UserFile>("user_id=? AND file_type=? AND status=1 ORDER BY id DESC" /* Active */,
-                                               user_id, file_type);
+    std::string sql = "SELECT * FROM user_files WHERE user_id = " + std::to_string(user_id) +
+                      " AND file_type = '" + file_type + "' AND status = 1 ORDER BY id DESC";
+    return db_.DB().template query_s<UserFile>(sql);
 }
 
 template <typename DbMgr>

@@ -69,6 +69,10 @@ inline constexpr Error kContentTooLarge         {2002, "content too large"};
 inline constexpr Error kInvalidConversation     {2003, "invalid conversation_id"};
 inline constexpr Error kConversationNotFound    {2004, "conversation not found"};
 inline constexpr Error kNotMember               {2005, "not a member of this conversation"};
+inline constexpr Error kMsgNotFound              {2006, "message not found"};
+inline constexpr Error kRecallTimeout            {2007, "recall time limit exceeded"};
+inline constexpr Error kRecallNoPermission       {2008, "no permission to recall this message"};
+inline constexpr Error kRecallAlready            {2009, "message already recalled"};
 // clang-format on
 
 }  // namespace msg

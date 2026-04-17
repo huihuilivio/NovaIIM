@@ -13,8 +13,11 @@ bool MessageDaoImplT<DbMgr>::Insert(const Message& msg) {
 
 template <typename DbMgr>
 std::vector<Message> MessageDaoImplT<DbMgr>::GetAfterSeq(int64_t conversation_id, int64_t after_seq, int limit) {
-    return db_.DB().query_s<Message>("conversation_id=? AND seq>? ORDER BY seq ASC LIMIT ?", conversation_id, after_seq,
-                                     limit);
+    // 使用 raw SQL 避免 ormpp WHERE-stripping bug（条件含 ORDER BY / LIMIT 时可能丢失 WHERE）
+    std::string sql = "SELECT * FROM messages WHERE conversation_id = " + std::to_string(conversation_id) +
+                      " AND seq > " + std::to_string(after_seq) +
+                      " ORDER BY seq ASC LIMIT " + std::to_string(limit);
+    return db_.DB().template query_s<Message>(sql);
 }
 
 template <typename DbMgr>
@@ -61,6 +64,14 @@ MessageListResult MessageDaoImplT<DbMgr>::ListMessages(int64_t conversation_id, 
 template <typename DbMgr>
 std::optional<Message> MessageDaoImplT<DbMgr>::FindById(int64_t id) {
     auto res = db_.DB().query_s<Message>("id=?", id);
+    if (res.empty())
+        return std::nullopt;
+    return res[0];
+}
+
+template <typename DbMgr>
+std::optional<Message> MessageDaoImplT<DbMgr>::FindByConvSeq(int64_t conversation_id, int64_t seq) {
+    auto res = db_.DB().query_s<Message>("conversation_id=? AND seq=?", conversation_id, seq);
     if (res.empty())
         return std::nullopt;
     return res[0];

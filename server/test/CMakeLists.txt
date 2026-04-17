@@ -71,3 +71,10 @@ nova_add_test(
     SOURCES test_friend_service.cpp
     LIBS    im_server_lib
 )
+
+# MsgService 消息链路: SendMsg, RecallMsg, DeliverAck, ReadAck, 幂等去重
+nova_add_test(
+    NAME    test_msg_service
+    SOURCES test_msg_service.cpp
+    LIBS    im_server_lib
+)

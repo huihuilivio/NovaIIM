@@ -23,6 +23,10 @@ public:
     FileDao& File() override;
     FriendDao& Friend() override;
 
+    bool BeginTransaction() override;
+    bool Commit() override;
+    bool Rollback() override;
+
 private:
     struct Impl;
     std::unique_ptr<Impl> impl_;

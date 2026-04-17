@@ -14,6 +14,7 @@ public:
     std::optional<User> FindByUid(const std::string& uid) override;
     std::optional<User> FindByEmail(const std::string& email) override;
     std::optional<User> FindById(int64_t id) override;
+    std::vector<User> FindByIds(const std::vector<int64_t>& ids) override;
     UserListResult ListUsers(const std::string& keyword, int status, int page, int page_size) override;
     std::vector<User> SearchByNickname(const std::string& keyword, int limit) override;
     bool Insert(User& user) override;

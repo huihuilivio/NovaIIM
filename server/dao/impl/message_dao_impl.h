@@ -17,6 +17,7 @@ public:
     MessageListResult ListMessages(int64_t conversation_id, const std::string& start_time, const std::string& end_time,
                                    int page, int page_size) override;
     std::optional<Message> FindById(int64_t id) override;
+    std::optional<Message> FindByConvSeq(int64_t conversation_id, int64_t seq) override;
     std::vector<Message> GetLatestByConversations(const std::vector<std::pair<int64_t, int64_t>>& conv_from_seqs,
                                                   int limit_per_conv) override;
 
