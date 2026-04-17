@@ -20,6 +20,8 @@
 
 namespace nova {
 
+static constexpr char kLogTag[] = "App";
+
 // ---- 信号处理 ----
 static std::atomic<bool> g_running{true};
 static std::atomic<int> g_signal{0};
@@ -55,20 +57,20 @@ static bool InitDatabase(ServerContext& ctx, const DatabaseConfig& db_cfg) {
     try {
         ctx.set_dao(CreateDaoFactory(db_cfg));
     } catch (const std::exception& e) {
-        NOVA_LOG_ERROR("Failed to initialize database: {}", e.what());
+        NOVA_NLOG_ERROR(kLogTag, "Failed to initialize database: {}", e.what());
         return false;
     }
-    NOVA_LOG_INFO("Database initialized ({}): {}", db_cfg.type, db_cfg.path);
+    NOVA_NLOG_INFO(kLogTag, "Database initialized ({}): {}", db_cfg.type, db_cfg.path);
     return true;
 }
 
 static void WarnJwtSecret(const AdminConfig& admin_cfg) {
     if (!admin_cfg.enabled || admin_cfg.jwt_secret.empty()) return;
     if (admin_cfg.jwt_secret == "change-me-in-production") {
-        NOVA_LOG_WARN("!!! JWT secret is still the default value. Change it in production !!!");
+        NOVA_NLOG_WARN(kLogTag, "!!! JWT secret is still the default value. Change it in production !!!");
     }
     if (admin_cfg.jwt_secret.size() < 16) {
-        NOVA_LOG_WARN("JWT secret is shorter than 16 chars, consider using a stronger secret");
+        NOVA_NLOG_WARN(kLogTag, "JWT secret is shorter than 16 chars, consider using a stronger secret");
     }
 }
 
@@ -94,7 +96,7 @@ static void RegisterRoutes(Router& router, UserService& user_svc, MsgService& ms
 static Gateway::PacketHandler MakePacketHandler(Router& router, ThreadPool& pool, ServerContext& ctx) {
     return [&](ConnectionPtr conn, Packet& pkt) {
         if (!pool.Submit([&router, conn, pkt]() mutable { router.Dispatch(std::move(conn), pkt); })) {
-            NOVA_LOG_WARN("worker queue full, rejecting cmd=0x{:04X}", pkt.cmd);
+            NOVA_NLOG_WARN(kLogTag, "worker queue full, rejecting cmd=0x{:04X}", pkt.cmd);
             Packet err;
             err.cmd  = pkt.cmd;
             err.seq  = pkt.seq;
@@ -111,8 +113,8 @@ static Gateway::PacketHandler MakePacketHandler(Router& router, ThreadPool& pool
 int Application::Run(const AppConfig& cfg) {
     // 1. 日志
     InitLog(cfg);
-    NOVA_LOG_INFO("NovaIIM Server starting...");
-    NOVA_LOG_DEBUG("AppConfig:\n{}", cfg);
+    NOVA_NLOG_INFO(kLogTag, "NovaIIM Server starting...");
+    NOVA_NLOG_DEBUG(kLogTag, "AppConfig:\n{}", cfg);
 
     // 2. 服务上下文 + 数据库
     ServerContext ctx(cfg);
@@ -137,7 +139,7 @@ int Application::Run(const AppConfig& cfg) {
     // 6. Worker 线程池
     auto qcap = RoundUpPow2(static_cast<size_t>(cfg.server.queue_capacity));
     if (qcap != static_cast<size_t>(cfg.server.queue_capacity)) {
-        NOVA_LOG_WARN("queue_capacity {} is not a power of 2, rounded up to {}", cfg.server.queue_capacity, qcap);
+        NOVA_NLOG_WARN(kLogTag, "queue_capacity {} is not a power of 2, rounded up to {}", cfg.server.queue_capacity, qcap);
     }
     ThreadPool worker_pool(cfg.server.worker_threads, qcap);
 
@@ -148,10 +150,10 @@ int Application::Run(const AppConfig& cfg) {
     gateway.SetPacketHandler(MakePacketHandler(router, worker_pool, ctx));
 
     if (gateway.Start(cfg.server.port) != 0) {
-        NOVA_LOG_ERROR("Failed to start server on port {}", cfg.server.port);
+        NOVA_NLOG_ERROR(kLogTag, "Failed to start server on port {}", cfg.server.port);
         return 1;
     }
-    NOVA_LOG_INFO("NovaIIM Server listening on port {}", cfg.server.port);
+    NOVA_NLOG_INFO(kLogTag, "NovaIIM Server listening on port {}", cfg.server.port);
 
     // 8. Admin HTTP 面板
     std::unique_ptr<AdminServer> admin;
@@ -162,7 +164,7 @@ int Application::Run(const AppConfig& cfg) {
         opts.jwt_secret  = cfg.admin.jwt_secret;
         opts.jwt_expires = cfg.admin.jwt_expires;
         if (admin->Start(opts) != 0) {
-            NOVA_LOG_WARN("Admin server failed to start, continuing without it");
+            NOVA_NLOG_WARN(kLogTag, "Admin server failed to start, continuing without it");
             admin.reset();
         }
     }
@@ -173,11 +175,11 @@ int Application::Run(const AppConfig& cfg) {
     }
 
     // 10. 有序关闭：Admin → Gateway → ThreadPool
-    NOVA_LOG_INFO("Received signal {}, shutting down...", g_signal.load());
+    NOVA_NLOG_INFO(kLogTag, "Received signal {}, shutting down...", g_signal.load());
     if (admin) admin->Stop();
     gateway.Stop();
     worker_pool.Stop();
-    NOVA_LOG_INFO("NovaIIM Server stopped");
+    NOVA_NLOG_INFO(kLogTag, "NovaIIM Server stopped");
     return 0;
 }
 
