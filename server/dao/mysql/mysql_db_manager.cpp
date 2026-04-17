@@ -158,6 +158,22 @@ std::unique_ptr<DaoScopedConn> MysqlDbManager::CreateSession() {
 }
 
 bool MysqlDbManager::InitSchema() {
+    // ormpp 需要显式注册 auto_key 才能在 insert 时跳过 id 列
+    // emplace 天然幂等，多次调用安全
+    ormpp::add_auto_key_field("nova::User", "id");
+    ormpp::add_auto_key_field("nova::Admin", "id");
+    ormpp::add_auto_key_field("nova::UserDevice", "id");
+    ormpp::add_auto_key_field("nova::Message", "id");
+    ormpp::add_auto_key_field("nova::Conversation", "id");
+    ormpp::add_auto_key_field("nova::ConversationMember", "id");
+    ormpp::add_auto_key_field("nova::AuditLog", "id");
+    ormpp::add_auto_key_field("nova::AdminSession", "id");
+    ormpp::add_auto_key_field("nova::Role", "id");
+    ormpp::add_auto_key_field("nova::Permission", "id");
+    ormpp::add_auto_key_field("nova::RolePermission", "id");
+    ormpp::add_auto_key_field("nova::AdminRole", "id");
+    ormpp::add_auto_key_field("nova::UserFile", "id");
+
     auto db = DB();
     bool ok = true;
 
