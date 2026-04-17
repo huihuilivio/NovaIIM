@@ -8,7 +8,7 @@
 #
 # 用法：
 #   include(dependencies)  → 自动拉取所有依赖
-#   target_link_libraries(xxx PRIVATE spdlog::spdlog hv_static ...)
+#   target_link_libraries(xxx PRIVATE spdlog::spdlog hv ...)
 
 include(FetchContent)
 
@@ -54,7 +54,7 @@ macro(nova_fetch_spdlog)
             message(FATAL_ERROR "[NovaIIM] thirdparty/spdlog not found.")
         endif()
         message(STATUS "[NovaIIM] Using local spdlog from thirdparty/")
-        # header-only 模式
+        # 使用 bundled fmt（不依赖外部 fmt）
         set(SPDLOG_FMT_EXTERNAL OFF CACHE BOOL "" FORCE)
         add_subdirectory(${_SPDLOG_DIR} ${CMAKE_BINARY_DIR}/_spdlog EXCLUDE_FROM_ALL SYSTEM)
     else()
@@ -77,24 +77,28 @@ macro(nova_fetch_libhv)
             SYSTEM
             EXCLUDE_FROM_ALL
         )
-        # libhv 构建选项
-        set(BUILD_SHARED OFF CACHE BOOL "" FORCE)
+        # libhv 构建选项（动态库）
+        set(BUILD_SHARED ON CACHE BOOL "" FORCE)
         set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
         set(WITH_OPENSSL OFF CACHE BOOL "" FORCE)
         set(WITH_EVPP ON CACHE BOOL "" FORCE)
 
-        # libhv v1.3.4+: BUILD_SHARED=OFF 时 install(TARGET_PDB_FILE:hv) 会失败
-        # (无 shared target). 先 populate, patch, 再 add_subdirectory.
-        FetchContent_GetProperties(libhv)
-        if(NOT libhv_POPULATED)
-            FetchContent_Populate(libhv)
-            file(READ "${libhv_SOURCE_DIR}/CMakeLists.txt" _libhv_content)
-            string(REPLACE
-                "install(FILES \$<TARGET_PDB_FILE:\${PROJECT_NAME}> DESTINATION bin OPTIONAL)"
-                "# install(FILES ... TARGET_PDB_FILE) removed by NovaIIM (BUILD_SHARED=OFF)"
-                _libhv_content "${_libhv_content}")
-            file(WRITE "${libhv_SOURCE_DIR}/CMakeLists.txt" "${_libhv_content}")
-            add_subdirectory(${libhv_SOURCE_DIR} ${libhv_BINARY_DIR} EXCLUDE_FROM_ALL SYSTEM)
+        FetchContent_MakeAvailable(libhv)
+
+        # 设置 hv.dll 输出到 bin 目录，并拷贝到 test 目录供测试使用
+        if(WIN32 AND TARGET hv)
+            set_target_properties(hv PROPERTIES
+                RUNTIME_OUTPUT_DIRECTORY "${NOVA_OUTPUT_DIR}/bin"
+                RUNTIME_OUTPUT_DIRECTORY_DEBUG "${NOVA_OUTPUT_DIR}/bin"
+                RUNTIME_OUTPUT_DIRECTORY_RELEASE "${NOVA_OUTPUT_DIR}/bin"
+            )
+            add_custom_target(nova_copy_hv_dll ALL
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    $<TARGET_FILE:hv>
+                    ${NOVA_OUTPUT_DIR}/test/$<TARGET_FILE_NAME:hv>
+                COMMENT "[NovaIIM] Copying hv.dll to output/test"
+            )
+            add_dependencies(nova_copy_hv_dll hv)
         endif()
     else()
         message(STATUS "[NovaIIM] Found system libhv")

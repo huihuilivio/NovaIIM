@@ -10,27 +10,23 @@ namespace nova::log {
 
 static constexpr const char* kDefaultPattern = "[%Y-%m-%d %H:%M:%S.%e] [%^%l%$] [%s:%#] %v";
 
-// 所有 logger 共享的 sinks 和 pattern，在 Init() 中创建
+// 所有 logger 共享的 sinks 和 pattern
 static std::vector<spdlog::sink_ptr> g_sinks;
 static std::string g_pattern;
-static std::once_flag g_defaults_flag;
-static std::once_flag g_init_flag;
+static std::once_flag g_setup_flag;   // Init() 或 EnsureDefaults() 中首先触发的一方生效
 static std::mutex g_get_mutex;
 
 // 确保至少有默认 sink 和 pattern（惰性初始化，供 Init() 未被调用时使用）
 static void EnsureDefaults() {
-    std::call_once(g_defaults_flag, [] {
+    std::call_once(g_setup_flag, [] {
         g_sinks.push_back(std::make_shared<spdlog::sinks::stdout_color_sink_mt>());
         g_pattern = kDefaultPattern;
     });
 }
 
 void Init(const LogOptions& opts) {
-    std::call_once(g_init_flag, [&] {
-        EnsureDefaults();
-
-        // 重新配置 sinks
-        g_sinks.clear();
+    std::call_once(g_setup_flag, [&] {
+        // 控制台 sink（带颜色）
         g_sinks.push_back(std::make_shared<spdlog::sinks::stdout_color_sink_mt>());
 
         // 可选：文件轮转 sink
