@@ -78,3 +78,10 @@ nova_add_test(
     SOURCES test_msg_service.cpp
     LIBS    im_server_lib
 )
+
+# ConvService 会话管理: GetConvList, DeleteConv, MuteConv, PinConv, 自动恢复
+nova_add_test(
+    NAME    test_conv_service
+    SOURCES test_conv_service.cpp
+    LIBS    im_server_lib
+)

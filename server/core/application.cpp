@@ -10,6 +10,7 @@
 #include "../service/msg_service.h"
 #include "../service/sync_service.h"
 #include "../service/friend_service.h"
+#include "../service/conv_service.h"
 #include <nova/errors.h>
 #include "../admin/admin_server.h"
 #include "../dao/dao_factory.h"
@@ -78,7 +79,7 @@ void WarnJwtSecret(const AdminConfig& admin_cfg) {
     }
 }
 
-void RegisterRoutes(Router& router, UserService& user_svc, MsgService& msg_svc, SyncService& sync_svc, FriendService& friend_svc) {
+void RegisterRoutes(Router& router, UserService& user_svc, MsgService& msg_svc, SyncService& sync_svc, FriendService& friend_svc, ConvService& conv_svc) {
     router.Register(Cmd::kLogin,    [&](ConnectionPtr c, Packet& p) { user_svc.HandleLogin(c, p); });
     router.Register(Cmd::kRegister, [&](ConnectionPtr c, Packet& p) { user_svc.HandleRegister(c, p); });
     router.Register(Cmd::kLogout,   [&](ConnectionPtr c, Packet& p) { user_svc.HandleLogout(c, p); });
@@ -102,6 +103,11 @@ void RegisterRoutes(Router& router, UserService& user_svc, MsgService& msg_svc, 
     router.Register(Cmd::kUnblockFriend,     [&](ConnectionPtr c, Packet& p) { friend_svc.HandleUnblock(c, p); });
     router.Register(Cmd::kGetFriendList,     [&](ConnectionPtr c, Packet& p) { friend_svc.HandleGetFriendList(c, p); });
     router.Register(Cmd::kGetFriendRequests, [&](ConnectionPtr c, Packet& p) { friend_svc.HandleGetRequests(c, p); });
+
+    router.Register(Cmd::kGetConvList,    [&](ConnectionPtr c, Packet& p) { conv_svc.HandleGetConvList(c, p); });
+    router.Register(Cmd::kDeleteConv,     [&](ConnectionPtr c, Packet& p) { conv_svc.HandleDeleteConv(c, p); });
+    router.Register(Cmd::kMuteConv,       [&](ConnectionPtr c, Packet& p) { conv_svc.HandleMuteConv(c, p); });
+    router.Register(Cmd::kPinConv,        [&](ConnectionPtr c, Packet& p) { conv_svc.HandlePinConv(c, p); });
 
     router.Freeze();
 }
@@ -143,9 +149,10 @@ int Application::Run(const AppConfig& cfg) {
     MsgService msg_svc(ctx);
     SyncService sync_svc(ctx);
     FriendService friend_svc(ctx);
+    ConvService conv_svc(ctx);
 
     Router router;
-    detail::RegisterRoutes(router, user_svc, msg_svc, sync_svc, friend_svc);
+    detail::RegisterRoutes(router, user_svc, msg_svc, sync_svc, friend_svc, conv_svc);
 
     // 5. 信号处理
     g_running.store(true, std::memory_order_relaxed);

@@ -332,6 +332,87 @@ struct FriendNotifyMsg {
 };
 
 // ============================================================
+//  会话管理
+// ============================================================
+
+// C→S  Cmd::kGetConvList (0x0112)
+struct GetConvListReq {
+    int32_t _reserved = 0;
+};
+
+// 最后一条消息摘要
+struct LastMsgBrief {
+    std::string sender_uid;
+    std::string sender_nickname;
+    std::string content;
+    int32_t msg_type    = 0;
+    int64_t server_time = 0;
+};
+
+// 会话列表条目
+struct ConvItem {
+    int64_t conversation_id = 0;
+    int32_t type            = 0;    // 1=私聊，2=群聊
+    std::string name;               // 私聊=对方昵称，群聊=群名
+    std::string avatar;             // 私聊=对方头像，群聊=群头像
+    int64_t unread_count    = 0;
+    LastMsgBrief last_msg;
+    int32_t mute            = 0;    // 0=正常，1=免打扰
+    int32_t pinned          = 0;    // 0=不置顶，1=置顶
+    std::string updated_at;
+};
+
+// S→C  Cmd::kGetConvListAck (0x0113)
+struct GetConvListAck {
+    int32_t code = 0;
+    std::string msg;
+    std::vector<ConvItem> conversations;
+};
+
+// C→S  Cmd::kDeleteConv (0x0114)
+struct DeleteConvReq {
+    int64_t conversation_id = 0;
+};
+
+// S→C  Cmd::kDeleteConvAck (0x0115)
+struct DeleteConvAck {
+    int32_t code = 0;
+    std::string msg;
+};
+
+// C→S  Cmd::kMuteConv (0x0116)
+struct MuteConvReq {
+    int64_t conversation_id = 0;
+    int32_t mute            = 0;  // 0=取消免打扰, 1=开启免打扰
+};
+
+// S→C  Cmd::kMuteConvAck (0x0117)
+struct MuteConvAck {
+    int32_t code = 0;
+    std::string msg;
+};
+
+// C→S  Cmd::kPinConv (0x0118)
+struct PinConvReq {
+    int64_t conversation_id = 0;
+    int32_t pinned          = 0;  // 0=取消置顶, 1=置顶
+};
+
+// S→C  Cmd::kPinConvAck (0x0119)
+struct PinConvAck {
+    int32_t code = 0;
+    std::string msg;
+};
+
+// S→C  Cmd::kConvUpdate (0x011A)
+// update_type: 1=新消息, 2=成员变化, 3=会话信息变更, 4=会话解散
+struct ConvUpdateMsg {
+    int64_t conversation_id = 0;
+    int32_t update_type     = 0;
+    std::string data;               // JSON 附加数据
+};
+
+// ============================================================
 //  序列化 / 反序列化便捷函数
 // ============================================================
 

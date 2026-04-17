@@ -5,6 +5,7 @@
 #include "../dao/message_dao.h"
 
 #include <chrono>
+#include <nova/protocol.h>
 
 namespace nova {
 
@@ -189,6 +190,14 @@ void MsgService::HandleSendMsg(ConnectionPtr conn, Packet& pkt) {
 
     // 5. 返回 SendMsgAck 给发送方
     SendPacket(conn, Cmd::kSendMsgAck, seq, 0, ack);
+
+    // 5.5 自动恢复隐藏的会话（新消息到来时 unhide）
+    auto members = ctx_.dao().Conversation().GetMembersByConversation(req->conversation_id);
+    for (const auto& m : members) {
+        if (m.hidden != 0) {
+            ctx_.dao().Conversation().UpdateMemberHidden(req->conversation_id, m.user_id, 0);
+        }
+    }
 
     // 6. 构建 PushMsg 并一次性编码，广播时避免重复编码
     proto::PushMsg push{req->conversation_id, conn->uid(), req->content, server_seq, epoch_ms, req->msg_type};

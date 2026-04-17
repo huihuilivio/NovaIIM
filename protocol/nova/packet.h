@@ -162,6 +162,17 @@ enum class Cmd : uint16_t {
     kGetFriendRequests    = 0x003C,
     kGetFriendRequestsAck = 0x003D,
     kFriendNotify         = 0x003E,
+
+    // 会话
+    kGetConvList        = 0x0112,
+    kGetConvListAck     = 0x0113,
+    kDeleteConv         = 0x0114,
+    kDeleteConvAck      = 0x0115,
+    kMuteConv           = 0x0116,
+    kMuteConvAck        = 0x0117,
+    kPinConv            = 0x0118,
+    kPinConvAck         = 0x0119,
+    kConvUpdate         = 0x011A,
 };
 
 }  // namespace nova::proto

@@ -161,7 +161,7 @@
 - [x] FriendService::GetRequests (好友申请列表, 分页)
 - [x] FriendNotify 推送 (申请/同意/拒绝/删除, 多端推送)
 
-### 消息服务 ✅
+### 消息服务 ✅⚠️
 - [x] MsgService::SendMsg (消息投递 + seq 递增 + LRU 幂等去重 + in-flight 防 TOCTOU)
 - [x] MsgService::RecallMsg (消息撤回 + 可配置时间限制 + 仅发送者 + 广播通知)
 - [x] MsgService::DeliverAck (送达确认, 更新 last_ack_seq, 成员校验)

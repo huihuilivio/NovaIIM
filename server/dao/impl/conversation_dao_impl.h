@@ -24,6 +24,11 @@ public:
     std::optional<Conversation> FindById(int64_t id) override;
     std::vector<Conversation> FindByIds(const std::vector<int64_t>& ids) override;
 
+    bool UpdateMemberMute(int64_t conversation_id, int64_t user_id, int mute) override;
+    bool UpdateMemberPinned(int64_t conversation_id, int64_t user_id, int pinned) override;
+    bool UpdateMemberHidden(int64_t conversation_id, int64_t user_id, int hidden) override;
+    std::optional<ConversationMember> FindMember(int64_t conversation_id, int64_t user_id) override;
+
 private:
     DbMgr& db_;
 

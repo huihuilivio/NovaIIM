@@ -109,6 +109,8 @@ struct ConversationMember {
     int64_t last_read_seq   = 0;
     int64_t last_ack_seq    = 0;
     int mute                = 0;
+    int pinned              = 0;
+    int hidden              = 0;
     std::string joined_at;
 };
 inline constexpr std::string_view get_alias_struct_name(ConversationMember*) {

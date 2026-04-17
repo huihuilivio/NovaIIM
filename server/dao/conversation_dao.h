@@ -42,6 +42,12 @@ public:
 
     // 批量获取会话信息（避免 N+1 查询）
     virtual std::vector<Conversation> FindByIds(const std::vector<int64_t>& ids) = 0;
+
+    // 会话管理：免打扰 / 置顶 / 隐藏
+    virtual bool UpdateMemberMute(int64_t conversation_id, int64_t user_id, int mute) = 0;
+    virtual bool UpdateMemberPinned(int64_t conversation_id, int64_t user_id, int pinned) = 0;
+    virtual bool UpdateMemberHidden(int64_t conversation_id, int64_t user_id, int hidden) = 0;
+    virtual std::optional<ConversationMember> FindMember(int64_t conversation_id, int64_t user_id) = 0;
 };
 
 }  // namespace nova

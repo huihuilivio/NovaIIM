@@ -121,6 +121,38 @@ bool ConversationDaoImplT<DbMgr>::UpdateLastAckSeq(int64_t conversation_id, int6
     return db_.DB().execute(sql);
 }
 
+template <typename DbMgr>
+bool ConversationDaoImplT<DbMgr>::UpdateMemberMute(int64_t conversation_id, int64_t user_id, int mute) {
+    std::string sql = "UPDATE conversation_members SET mute = " + std::to_string(mute) +
+                      " WHERE conversation_id = " + std::to_string(conversation_id) +
+                      " AND user_id = " + std::to_string(user_id);
+    return db_.DB().execute(sql);
+}
+
+template <typename DbMgr>
+bool ConversationDaoImplT<DbMgr>::UpdateMemberPinned(int64_t conversation_id, int64_t user_id, int pinned) {
+    std::string sql = "UPDATE conversation_members SET pinned = " + std::to_string(pinned) +
+                      " WHERE conversation_id = " + std::to_string(conversation_id) +
+                      " AND user_id = " + std::to_string(user_id);
+    return db_.DB().execute(sql);
+}
+
+template <typename DbMgr>
+bool ConversationDaoImplT<DbMgr>::UpdateMemberHidden(int64_t conversation_id, int64_t user_id, int hidden) {
+    std::string sql = "UPDATE conversation_members SET hidden = " + std::to_string(hidden) +
+                      " WHERE conversation_id = " + std::to_string(conversation_id) +
+                      " AND user_id = " + std::to_string(user_id);
+    return db_.DB().execute(sql);
+}
+
+template <typename DbMgr>
+std::optional<ConversationMember> ConversationDaoImplT<DbMgr>::FindMember(int64_t conversation_id, int64_t user_id) {
+    auto res = db_.DB().query_s<ConversationMember>("conversation_id=? AND user_id=?", conversation_id, user_id);
+    if (res.empty())
+        return std::nullopt;
+    return res[0];
+}
+
 // 显式实例化
 template class ConversationDaoImplT<SqliteDbManager>;
 #ifdef ORMPP_ENABLE_MYSQL
