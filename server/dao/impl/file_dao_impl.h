@@ -16,6 +16,7 @@ public:
     std::optional<UserFile> FindLatestByUserAndType(int64_t user_id, const std::string& file_type) override;
     std::vector<UserFile> ListByUserAndType(int64_t user_id, const std::string& file_type) override;
     bool SoftDelete(int64_t id) override;
+    bool UpdatePath(int64_t id, const std::string& path) override;
     bool SoftDeleteByUserAndType(int64_t user_id, const std::string& file_type) override;
 
 private:

@@ -18,6 +18,7 @@ public:
     int64_t IncrMaxSeq(int64_t conversation_id) override;
     std::vector<ConversationMember> GetMembersByUser(int64_t user_id) override;
     std::vector<ConversationMember> GetMembersByConversation(int64_t conversation_id) override;
+    std::vector<ConversationMember> GetMembersByConversationIds(const std::vector<int64_t>& ids) override;
     bool UpdateLastReadSeq(int64_t conversation_id, int64_t user_id, int64_t seq) override;
     bool UpdateLastAckSeq(int64_t conversation_id, int64_t user_id, int64_t seq) override;
     bool IsMember(int64_t conversation_id, int64_t user_id) override;
@@ -28,6 +29,11 @@ public:
     bool UpdateMemberPinned(int64_t conversation_id, int64_t user_id, int pinned) override;
     bool UpdateMemberHidden(int64_t conversation_id, int64_t user_id, int hidden) override;
     std::optional<ConversationMember> FindMember(int64_t conversation_id, int64_t user_id) override;
+    bool RemoveMember(int64_t conversation_id, int64_t user_id) override;
+    bool RemoveAllMembers(int64_t conversation_id) override;
+    bool UpdateConversation(const Conversation& conv) override;
+    int CountMembers(int64_t conversation_id) override;
+    bool UpdateMemberRole(int64_t conversation_id, int64_t user_id, int role) override;
 
 private:
     DbMgr& db_;

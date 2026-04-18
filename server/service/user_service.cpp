@@ -170,6 +170,7 @@ void UserService::HandleLogin(ConnectionPtr conn, Packet& pkt) {
         ctx_.conn_manager().Remove(conn->user_id(), conn.get());
         conn->set_user_id(0);
         conn->set_uid("");
+        conn->set_device_id("");
     }
 
     // 1. 反序列化 body → LoginReq
@@ -258,8 +259,10 @@ void UserService::HandleLogin(ConnectionPtr conn, Packet& pkt) {
     conn->set_user_id(user.id);
     conn->set_uid(user.uid);
     if (!req->device_id.empty()) {
+        if (req->device_id.size() > 128) req->device_id.resize(128);
         conn->set_device_id(req->device_id);
     }
+    if (req->device_type.size() > 64) req->device_type.resize(64);
 
     // 7. 注册到连接管理器（ConnManager 自动维护在线计数）
     ctx_.conn_manager().Add(user.id, conn);
@@ -306,6 +309,12 @@ void UserService::HandleHeartbeat(ConnectionPtr conn, Packet& pkt) {
 void UserService::HandleSearchUser(ConnectionPtr conn, Packet& pkt) {
     auto session = ctx_.dao().Session();
     uint32_t seq = pkt.seq;
+
+    if (conn->user_id() == 0) {
+        SendPacket(conn, Cmd::kSearchUserAck, seq, 0,
+                   proto::SearchUserAck{ec::kNotAuthenticated.code, ec::kNotAuthenticated.msg});
+        return;
+    }
 
     auto req = proto::Deserialize<proto::SearchUserReq>(pkt.body);
     if (!req) {
@@ -356,6 +365,12 @@ void UserService::HandleGetProfile(ConnectionPtr conn, Packet& pkt) {
     auto session = ctx_.dao().Session();
     uint32_t seq = pkt.seq;
 
+    if (conn->user_id() == 0) {
+        SendPacket(conn, Cmd::kGetUserProfileAck, seq, 0,
+                   proto::GetUserProfileAck{ec::kNotAuthenticated.code, ec::kNotAuthenticated.msg});
+        return;
+    }
+
     auto req = proto::Deserialize<proto::GetUserProfileReq>(pkt.body);
     if (!req) {
         SendPacket(conn, Cmd::kGetUserProfileAck, seq, 0,
@@ -393,6 +408,12 @@ void UserService::HandleGetProfile(ConnectionPtr conn, Packet& pkt) {
 void UserService::HandleUpdateProfile(ConnectionPtr conn, Packet& pkt) {
     auto session = ctx_.dao().Session();
     uint32_t seq = pkt.seq;
+
+    if (conn->user_id() == 0) {
+        SendPacket(conn, Cmd::kUpdateProfileAck, seq, 0,
+                   proto::UpdateProfileAck{ec::kNotAuthenticated.code, ec::kNotAuthenticated.msg});
+        return;
+    }
 
     auto req = proto::Deserialize<proto::UpdateProfileReq>(pkt.body);
     if (!req) {
@@ -474,7 +495,11 @@ void UserService::HandleUpdateProfile(ConnectionPtr conn, Packet& pkt) {
         file.file_type = "avatar";
         file.file_path = req->avatar;
         file.hash      = req->file_hash;
-        ctx_.dao().File().Insert(file);
+        if (!ctx_.dao().File().Insert(file)) {
+            SendPacket(conn, Cmd::kUpdateProfileAck, seq, 0,
+                       proto::UpdateProfileAck{ec::user::kUpdateProfileFailed.code, ec::user::kUpdateProfileFailed.msg});
+            return;
+        }
     }
 
     if (!ctx_.dao().Commit()) {

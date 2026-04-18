@@ -46,6 +46,12 @@ public:
 
         auto now = CurrentMillis();
 
+        if (now < last_ms_) {
+            // Clock moved backward — wait until it catches up to avoid duplicate IDs.
+            // This can happen during NTP step corrections.
+            now = WaitNextMillis(last_ms_);
+        }
+
         if (now == last_ms_) {
             sequence_ = (sequence_ + 1) & kMaxSequence;
             if (sequence_ == 0) {

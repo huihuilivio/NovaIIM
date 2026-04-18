@@ -13,6 +13,15 @@ namespace ec = errc;
 
 static constexpr const char* kLogTag = "ConvSvc";
 
+// UTF-8 安全截断
+static std::string TruncateUtf8(const std::string& s, size_t max_len) {
+    if (s.size() <= max_len) return s;
+    size_t pos = max_len;
+    while (pos > 0 && (static_cast<unsigned char>(s[pos]) & 0xC0) == 0x80)
+        --pos;
+    return s.substr(0, pos);
+}
+
 // ---- ConvUpdate 推送辅助 ----
 
 void BroadcastConvUpdate(ServerContext& ctx, int64_t conversation_id,
@@ -30,6 +39,7 @@ void BroadcastConvUpdate(ServerContext& ctx, int64_t conversation_id,
         auto conns = ctx.conn_manager().GetConns(m.user_id);
         for (auto& c : conns) {
             c->Send(pkt);
+            ctx.incr_messages_out();
         }
     }
 }
@@ -103,19 +113,22 @@ void ConvService::HandleGetConvList(ConnectionPtr conn, Packet& pkt) {
     std::vector<int64_t> needed_ids;
     std::unordered_map<int64_t, int64_t> private_other_map;
 
+    // 收集私聊会话 ID，批量查询成员（避免 N+1）
+    std::vector<int64_t> private_conv_ids;
     for (const auto& m : visible) {
         auto it = conv_map.find(m.conversation_id);
         if (it == conv_map.end())
             continue;
-        const auto& conv = *(it->second);
-        if (conv.type == static_cast<int>(ConvType::kPrivate)) {
-            auto members = ctx_.dao().Conversation().GetMembersByConversation(m.conversation_id);
-            for (const auto& member : members) {
-                if (member.user_id != user_id) {
-                    needed_ids.push_back(member.user_id);
-                    private_other_map[m.conversation_id] = member.user_id;
-                    break;
-                }
+        if (it->second->type == static_cast<int>(ConvType::kPrivate)) {
+            private_conv_ids.push_back(m.conversation_id);
+        }
+    }
+    if (!private_conv_ids.empty()) {
+        auto all_private_members = ctx_.dao().Conversation().GetMembersByConversationIds(private_conv_ids);
+        for (const auto& member : all_private_members) {
+            if (member.user_id != user_id) {
+                needed_ids.push_back(member.user_id);
+                private_other_map[member.conversation_id] = member.user_id;
             }
         }
     }
@@ -157,6 +170,8 @@ void ConvService::HandleGetConvList(ConnectionPtr conn, Packet& pkt) {
                 if (uit != user_cache.end()) {
                     item.name   = uit->second->nickname;
                     item.avatar = uit->second->avatar;
+                } else {
+                    item.name = "[deleted]";
                 }
             }
         } else {
@@ -176,7 +191,7 @@ void ConvService::HandleGetConvList(ConnectionPtr conn, Packet& pkt) {
             auto uit = user_cache.find(msg->sender_id);
             item.last_msg.sender_uid      = uit != user_cache.end() ? uit->second->uid : "";
             item.last_msg.sender_nickname = uit != user_cache.end() ? uit->second->nickname : "";
-            item.last_msg.content         = msg->content.size() > 100 ? msg->content.substr(0, 100) : msg->content;
+            item.last_msg.content         = TruncateUtf8(msg->content, 100);
             item.last_msg.msg_type        = msg->msg_type;
             // server_time: 使用 created_at 的 epoch ms（简化处理，返回 0 让客户端用时间字符串）
             item.last_msg.server_time     = 0;
@@ -215,7 +230,11 @@ void ConvService::HandleDeleteConv(ConnectionPtr conn, Packet& pkt) {
     }
 
     // 标记隐藏（不删除数据，收到新消息自动恢复）
-    ctx_.dao().Conversation().UpdateMemberHidden(req->conversation_id, user_id, 1);
+    if (!ctx_.dao().Conversation().UpdateMemberHidden(req->conversation_id, user_id, 1)) {
+        SendPacket(conn, Cmd::kDeleteConvAck, seq, 0,
+                   proto::DeleteConvAck{ec::kDatabaseError.code, ec::kDatabaseError.msg});
+        return;
+    }
 
     NOVA_NLOG_INFO(kLogTag, "conv hidden: user={}, conv={}", user_id, req->conversation_id);
     SendPacket(conn, Cmd::kDeleteConvAck, seq, 0,
@@ -253,7 +272,11 @@ void ConvService::HandleMuteConv(ConnectionPtr conn, Packet& pkt) {
         return;
     }
 
-    ctx_.dao().Conversation().UpdateMemberMute(req->conversation_id, user_id, req->mute);
+    if (!ctx_.dao().Conversation().UpdateMemberMute(req->conversation_id, user_id, req->mute)) {
+        SendPacket(conn, Cmd::kMuteConvAck, seq, 0,
+                   proto::MuteConvAck{ec::kDatabaseError.code, ec::kDatabaseError.msg});
+        return;
+    }
 
     NOVA_NLOG_INFO(kLogTag, "conv mute: user={}, conv={}, mute={}", user_id, req->conversation_id, req->mute);
     SendPacket(conn, Cmd::kMuteConvAck, seq, 0,
@@ -291,7 +314,11 @@ void ConvService::HandlePinConv(ConnectionPtr conn, Packet& pkt) {
         return;
     }
 
-    ctx_.dao().Conversation().UpdateMemberPinned(req->conversation_id, user_id, req->pinned);
+    if (!ctx_.dao().Conversation().UpdateMemberPinned(req->conversation_id, user_id, req->pinned)) {
+        SendPacket(conn, Cmd::kPinConvAck, seq, 0,
+                   proto::PinConvAck{ec::kDatabaseError.code, ec::kDatabaseError.msg});
+        return;
+    }
 
     NOVA_NLOG_INFO(kLogTag, "conv pin: user={}, conv={}, pinned={}", user_id, req->conversation_id, req->pinned);
     SendPacket(conn, Cmd::kPinConvAck, seq, 0,

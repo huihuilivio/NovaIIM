@@ -98,11 +98,11 @@ MessageDaoImplT<DbMgr>::GetLatestByConversations(const std::vector<std::pair<int
         for (size_t i = offset; i < end; ++i) {
             if (i > offset)
                 sql += " UNION ALL ";
-            sql += "SELECT * FROM messages WHERE conversation_id = " + std::to_string(conv_from_seqs[i].first) +
+            sql += "(SELECT * FROM messages WHERE conversation_id = " + std::to_string(conv_from_seqs[i].first) +
                    " AND seq > " + std::to_string(conv_from_seqs[i].second) + " ORDER BY seq DESC LIMIT " +
-                   std::to_string(limit_per_conv);
+                   std::to_string(limit_per_conv) + ")";
         }
-        sql += ")";
+        sql += ") AS _preview";
 
         auto batch = db_.DB().template query_s<Message>(sql);
         all_results.insert(all_results.end(), std::make_move_iterator(batch.begin()),

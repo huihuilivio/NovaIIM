@@ -28,6 +28,9 @@ public:
     // 获取会话的所有成员
     virtual std::vector<ConversationMember> GetMembersByConversation(int64_t conversation_id) = 0;
 
+    // 批量获取多个会话的所有成员（避免 N+1）
+    virtual std::vector<ConversationMember> GetMembersByConversationIds(const std::vector<int64_t>& ids) = 0;
+
     // 更新 last_read_seq（已读回执）
     virtual bool UpdateLastReadSeq(int64_t conversation_id, int64_t user_id, int64_t seq) = 0;
 
@@ -48,6 +51,11 @@ public:
     virtual bool UpdateMemberPinned(int64_t conversation_id, int64_t user_id, int pinned) = 0;
     virtual bool UpdateMemberHidden(int64_t conversation_id, int64_t user_id, int hidden) = 0;
     virtual std::optional<ConversationMember> FindMember(int64_t conversation_id, int64_t user_id) = 0;
+    virtual bool RemoveMember(int64_t conversation_id, int64_t user_id) = 0;
+    virtual bool RemoveAllMembers(int64_t conversation_id) = 0;
+    virtual bool UpdateConversation(const Conversation& conv) = 0;
+    virtual int CountMembers(int64_t conversation_id) = 0;
+    virtual bool UpdateMemberRole(int64_t conversation_id, int64_t user_id, int role) = 0;
 };
 
 }  // namespace nova

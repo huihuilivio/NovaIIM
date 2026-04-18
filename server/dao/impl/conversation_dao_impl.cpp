@@ -73,6 +73,20 @@ std::vector<ConversationMember> ConversationDaoImplT<DbMgr>::GetMembersByConvers
 }
 
 template <typename DbMgr>
+std::vector<ConversationMember> ConversationDaoImplT<DbMgr>::GetMembersByConversationIds(const std::vector<int64_t>& ids) {
+    if (ids.empty())
+        return {};
+    std::string in_clause = "conversation_id IN (";
+    for (size_t i = 0; i < ids.size(); ++i) {
+        if (i > 0)
+            in_clause += ",";
+        in_clause += std::to_string(ids[i]);
+    }
+    in_clause += ")";
+    return db_.DB().query_s<ConversationMember>(in_clause);
+}
+
+template <typename DbMgr>
 std::optional<Conversation> ConversationDaoImplT<DbMgr>::FindById(int64_t id) {
     auto res = db_.DB().query_s<Conversation>("id=?", id);
     if (res.empty())
@@ -105,6 +119,7 @@ bool ConversationDaoImplT<DbMgr>::IsMember(int64_t conversation_id, int64_t user
 
 template <typename DbMgr>
 bool ConversationDaoImplT<DbMgr>::UpdateLastReadSeq(int64_t conversation_id, int64_t user_id, int64_t seq) {
+    if (seq < 0) return false;
     // 原子更新：只允许向前推进（WHERE last_read_seq < ? 防止回退）
     std::string sql = "UPDATE conversation_members SET last_read_seq = " + std::to_string(seq) +
                       " WHERE conversation_id = " + std::to_string(conversation_id) +
@@ -114,6 +129,7 @@ bool ConversationDaoImplT<DbMgr>::UpdateLastReadSeq(int64_t conversation_id, int
 
 template <typename DbMgr>
 bool ConversationDaoImplT<DbMgr>::UpdateLastAckSeq(int64_t conversation_id, int64_t user_id, int64_t seq) {
+    if (seq < 0) return false;
     // 原子更新：只允许向前推进（WHERE last_ack_seq < ? 防止回退）
     std::string sql = "UPDATE conversation_members SET last_ack_seq = " + std::to_string(seq) +
                       " WHERE conversation_id = " + std::to_string(conversation_id) +
@@ -151,6 +167,43 @@ std::optional<ConversationMember> ConversationDaoImplT<DbMgr>::FindMember(int64_
     if (res.empty())
         return std::nullopt;
     return res[0];
+}
+
+template <typename DbMgr>
+bool ConversationDaoImplT<DbMgr>::RemoveMember(int64_t conversation_id, int64_t user_id) {
+    std::string sql = "DELETE FROM conversation_members WHERE conversation_id = " +
+                      std::to_string(conversation_id) + " AND user_id = " + std::to_string(user_id);
+    return db_.DB().execute(sql);
+}
+
+template <typename DbMgr>
+bool ConversationDaoImplT<DbMgr>::RemoveAllMembers(int64_t conversation_id) {
+    std::string sql = "DELETE FROM conversation_members WHERE conversation_id = " +
+                      std::to_string(conversation_id);
+    return db_.DB().execute(sql);
+}
+
+template <typename DbMgr>
+bool ConversationDaoImplT<DbMgr>::UpdateConversation(const Conversation& conv) {
+    return db_.DB().update(conv) == 1;
+}
+
+template <typename DbMgr>
+int ConversationDaoImplT<DbMgr>::CountMembers(int64_t conversation_id) {
+    auto res = db_.DB().template query_s<std::tuple<int64_t>>(
+        "SELECT count(*) FROM conversation_members WHERE conversation_id = " +
+        std::to_string(conversation_id));
+    if (res.empty())
+        return 0;
+    return static_cast<int>(std::get<0>(res[0]));
+}
+
+template <typename DbMgr>
+bool ConversationDaoImplT<DbMgr>::UpdateMemberRole(int64_t conversation_id, int64_t user_id, int role) {
+    std::string sql = "UPDATE conversation_members SET role = " + std::to_string(role) +
+                      " WHERE conversation_id = " + std::to_string(conversation_id) +
+                      " AND user_id = " + std::to_string(user_id);
+    return db_.DB().execute(sql);
 }
 
 // 显式实例化

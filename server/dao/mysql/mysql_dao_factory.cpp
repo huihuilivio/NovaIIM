@@ -10,6 +10,8 @@
 #include "../impl/admin_account_dao_impl.h"
 #include "../impl/rbac_dao_impl.h"
 #include "../impl/file_dao_impl.h"
+#include "../impl/friend_dao_impl.h"
+#include "../impl/group_dao_impl.h"
 #include "../seed.h"
 #include "../../core/app_config.h"
 
@@ -28,9 +30,11 @@ struct MysqlDaoFactory::Impl {
     AdminAccountDaoImplT<MysqlDbManager> admin_account;
     RbacDaoImplT<MysqlDbManager> rbac;
     FileDaoImplT<MysqlDbManager> file;
+    FriendDaoImplT<MysqlDbManager> friend_;
+    GroupDaoImplT<MysqlDbManager> group;
 
     explicit Impl(const DatabaseConfig& config)
-        : user(db), message(db), conversation(db), audit_log(db), admin_session(db), admin_account(db), rbac(db), file(db) {
+        : user(db), message(db), conversation(db), audit_log(db), admin_session(db), admin_account(db), rbac(db), file(db), friend_(db), group(db) {
         if (!db.Open(config)) {
             throw std::runtime_error("failed to open MySQL connection pool");
         }
@@ -71,6 +75,12 @@ RbacDao& MysqlDaoFactory::Rbac() {
 }
 FileDao& MysqlDaoFactory::File() {
     return impl_->file;
+}
+FriendDao& MysqlDaoFactory::Friend() {
+    return impl_->friend_;
+}
+GroupDao& MysqlDaoFactory::Group() {
+    return impl_->group;
 }
 
 std::unique_ptr<DaoScopedConn> MysqlDaoFactory::Session() {

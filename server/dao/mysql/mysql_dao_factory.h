@@ -24,6 +24,8 @@ public:
     AdminAccountDao& AdminAccount() override;
     RbacDao& Rbac() override;
     FileDao& File() override;
+    FriendDao& Friend() override;
+    GroupDao& Group() override;
 
     std::unique_ptr<DaoScopedConn> Session() override;
 

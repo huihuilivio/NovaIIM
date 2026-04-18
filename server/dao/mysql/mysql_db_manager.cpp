@@ -173,6 +173,10 @@ bool MysqlDbManager::InitSchema() {
     ormpp::add_auto_key_field("nova::RolePermission", "id");
     ormpp::add_auto_key_field("nova::AdminRole", "id");
     ormpp::add_auto_key_field("nova::UserFile", "id");
+    ormpp::add_auto_key_field("nova::FriendRequest", "id");
+    ormpp::add_auto_key_field("nova::Friendship", "id");
+    ormpp::add_auto_key_field("nova::Group", "id");
+    ormpp::add_auto_key_field("nova::GroupJoinRequest", "id");
 
     auto db = DB();
     bool ok = true;
@@ -191,6 +195,10 @@ bool MysqlDbManager::InitSchema() {
     ok = ok && db.create_datatable<RolePermission>(ormpp_auto_key{"id"}, ormpp_unique{{"role_id", "permission_id"}});
     ok = ok && db.create_datatable<AdminRole>(ormpp_auto_key{"id"}, ormpp_unique{{"admin_id", "role_id"}});
     ok = ok && db.create_datatable<UserFile>(ormpp_auto_key{"id"});
+    ok = ok && db.create_datatable<FriendRequest>(ormpp_auto_key{"id"});
+    ok = ok && db.create_datatable<Friendship>(ormpp_auto_key{"id"}, ormpp_unique{{"user_id", "friend_id"}});
+    ok = ok && db.create_datatable<Group>(ormpp_auto_key{"id"});
+    ok = ok && db.create_datatable<GroupJoinRequest>(ormpp_auto_key{"id"});
 
     db.execute("CREATE INDEX IF NOT EXISTS idx_msg_conv_time ON messages(conversation_id, created_at)");
     db.execute("CREATE INDEX IF NOT EXISTS idx_msg_conv_seq ON messages(conversation_id, seq)");
@@ -202,6 +210,11 @@ bool MysqlDbManager::InitSchema() {
     db.execute("CREATE INDEX IF NOT EXISTS idx_session_admin ON admin_sessions(admin_id)");
     db.execute("CREATE INDEX IF NOT EXISTS idx_userfile_user_type ON user_files(user_id, file_type)");
     db.execute("CREATE INDEX IF NOT EXISTS idx_user_nickname ON users(nickname)");
+    db.execute("CREATE INDEX IF NOT EXISTS idx_fr_to_id ON friend_requests(to_id, status)");
+    db.execute("CREATE INDEX IF NOT EXISTS idx_fr_from_to ON friend_requests(from_id, to_id, status)");
+    db.execute("CREATE INDEX IF NOT EXISTS idx_fs_user ON friendships(user_id, status)");
+    db.execute("CREATE INDEX IF NOT EXISTS idx_group_conv ON groups(conversation_id)");
+    db.execute("CREATE INDEX IF NOT EXISTS idx_gjr_conv_user ON group_join_requests(conversation_id, user_id, status)");
 
     if (!ok) {
         NOVA_NLOG_ERROR(kLogTag, "Failed to initialize MySQL schema");

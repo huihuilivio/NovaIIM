@@ -81,6 +81,7 @@ inline constexpr ApiError kNicknameTooLong      {ApiCode::kParamError,      "nic
 inline constexpr ApiError kNicknameInvalid      {ApiCode::kParamError,      "nickname contains invalid characters",     400};
 inline constexpr ApiError kCreateUserFailed     {ApiCode::kInternal,        "failed to create user",                    500};
 inline constexpr ApiError kRecallFailed         {ApiCode::kInternal,        "failed to recall message",                 500};
+inline constexpr ApiError kDatabaseError        {ApiCode::kInternal,        "database error",                           500};
 }  // namespace api_err
 // clang-format on
 

@@ -413,6 +413,208 @@ struct ConvUpdateMsg {
 };
 
 // ============================================================
+//  群组管理
+// ============================================================
+
+// C→S  Cmd::kCreateGroup (0x0500)
+struct CreateGroupReq {
+    std::string name;
+    std::string avatar;
+    std::vector<int64_t> member_ids;  // 初始成员 ID（不含自己）
+};
+
+// S→C  Cmd::kCreateGroupAck (0x0501)
+struct CreateGroupAck {
+    int32_t code            = 0;
+    std::string msg;
+    int64_t conversation_id = 0;
+    int64_t group_id        = 0;
+};
+
+// C→S  Cmd::kDismissGroup (0x0502)
+struct DismissGroupReq {
+    int64_t conversation_id = 0;
+};
+
+// S→C  Cmd::kDismissGroupAck (0x0503)
+using DismissGroupAck = RspBase;
+
+// C→S  Cmd::kJoinGroup (0x0504)
+struct JoinGroupReq {
+    int64_t conversation_id = 0;
+    std::string remark;
+};
+
+// S→C  Cmd::kJoinGroupAck (0x0505)
+using JoinGroupAck = RspBase;
+
+// C→S  Cmd::kHandleJoinReq (0x0506)
+struct HandleJoinReqReq {
+    int64_t request_id = 0;
+    int32_t action     = 0;  // 1=accept, 2=reject
+};
+
+// S→C  Cmd::kHandleJoinReqAck (0x0507)
+using HandleJoinReqAck = RspBase;
+
+// C→S  Cmd::kLeaveGroup (0x0508)
+struct LeaveGroupReq {
+    int64_t conversation_id = 0;
+};
+
+// S→C  Cmd::kLeaveGroupAck (0x0509)
+using LeaveGroupAck = RspBase;
+
+// C→S  Cmd::kKickMember (0x050A)
+struct KickMemberReq {
+    int64_t conversation_id = 0;
+    int64_t target_user_id  = 0;
+};
+
+// S→C  Cmd::kKickMemberAck (0x050B)
+using KickMemberAck = RspBase;
+
+// C→S  Cmd::kGetGroupInfo (0x050C)
+struct GetGroupInfoReq {
+    int64_t conversation_id = 0;
+};
+
+// S→C  Cmd::kGetGroupInfoAck (0x050D)
+struct GetGroupInfoAck {
+    int32_t code            = 0;
+    std::string msg;
+    int64_t conversation_id = 0;
+    std::string name;
+    std::string avatar;
+    int64_t owner_id        = 0;
+    std::string notice;
+    int32_t member_count    = 0;
+    std::string created_at;
+};
+
+// C→S  Cmd::kUpdateGroup (0x050E)
+struct UpdateGroupReq {
+    int64_t conversation_id = 0;
+    std::string name;       // 空=不修改
+    std::string avatar;     // 空=不修改
+    std::string notice;     // 空=不修改, 特殊值 "\0" 表示清空
+};
+
+// S→C  Cmd::kUpdateGroupAck (0x050F)
+using UpdateGroupAck = RspBase;
+
+// 群成员条目
+struct GroupMemberItem {
+    int64_t user_id = 0;
+    std::string uid;
+    std::string nickname;
+    std::string avatar;
+    int32_t role    = 0;  // 0=成员, 1=管理员, 2=群主
+    std::string joined_at;
+};
+
+// C→S  Cmd::kGetGroupMembers (0x0510)
+struct GetGroupMembersReq {
+    int64_t conversation_id = 0;
+};
+
+// S→C  Cmd::kGetGroupMembersAck (0x0511)
+struct GetGroupMembersAck {
+    int32_t code = 0;
+    std::string msg;
+    std::vector<GroupMemberItem> members;
+};
+
+// 我的群列表条目
+struct MyGroupItem {
+    int64_t conversation_id = 0;
+    std::string name;
+    std::string avatar;
+    int32_t member_count = 0;
+    int32_t my_role      = 0;
+};
+
+// C→S  Cmd::kGetMyGroups (0x0512)
+struct GetMyGroupsReq {
+    int32_t _reserved = 0;
+};
+
+// S→C  Cmd::kGetMyGroupsAck (0x0513)
+struct GetMyGroupsAck {
+    int32_t code = 0;
+    std::string msg;
+    std::vector<MyGroupItem> groups;
+};
+
+// C→S  Cmd::kSetMemberRole (0x0514)
+struct SetMemberRoleReq {
+    int64_t conversation_id = 0;
+    int64_t target_user_id  = 0;
+    int32_t role            = 0;  // 0=成员, 1=管理员
+};
+
+// S→C  Cmd::kSetMemberRoleAck (0x0515)
+using SetMemberRoleAck = RspBase;
+
+// S→C  Cmd::kGroupNotify (0x0516)
+struct GroupNotifyMsg {
+    int64_t conversation_id = 0;
+    int32_t notify_type     = 0;  // 1=创建,2=解散,3=加入,4=退出,5=踢出,6=信息变更,7=角色变更
+    int64_t operator_id     = 0;
+    std::vector<int64_t> target_ids;
+    std::string data;  // JSON 附加数据
+};
+
+// ============================================================
+//  文件上传/下载
+// ============================================================
+
+// C→S  Cmd::kUploadReq (0x0600)
+struct UploadReq {
+    std::string file_name;
+    int64_t file_size   = 0;
+    std::string mime_type;
+    std::string file_hash;   // SHA-256, 秒传去重
+    std::string file_type;   // avatar/image/voice/video/file
+};
+
+// S→C  Cmd::kUploadAck (0x0601)
+struct UploadAckMsg {
+    int32_t code         = 0;
+    std::string msg;
+    int64_t file_id      = 0;
+    std::string upload_url;
+    int32_t already_exists = 0;  // 1=秒传命中
+};
+
+// C→S  Cmd::kUploadComplete (0x0602)
+struct UploadCompleteReq {
+    int64_t file_id = 0;
+};
+
+// S→C  Cmd::kUploadCompleteAck (0x0603)
+struct UploadCompleteAckMsg {
+    int32_t code = 0;
+    std::string msg;
+    std::string file_path;
+};
+
+// C→S  Cmd::kDownloadReq (0x0604)
+struct DownloadReq {
+    int64_t file_id = 0;
+    int32_t thumb   = 0;  // 1=缩略图
+};
+
+// S→C  Cmd::kDownloadAck (0x0605)
+struct DownloadAckMsg {
+    int32_t code = 0;
+    std::string msg;
+    std::string download_url;
+    std::string file_name;
+    int64_t file_size = 0;
+};
+
+// ============================================================
 //  序列化 / 反序列化便捷函数
 // ============================================================
 

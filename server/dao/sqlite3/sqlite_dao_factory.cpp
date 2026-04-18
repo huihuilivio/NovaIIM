@@ -9,6 +9,7 @@
 #include "../impl/rbac_dao_impl.h"
 #include "../impl/file_dao_impl.h"
 #include "../impl/friend_dao_impl.h"
+#include "../impl/group_dao_impl.h"
 #include "../seed.h"
 
 #include "../../core/logger.h"
@@ -27,9 +28,10 @@ struct SqliteDaoFactory::Impl {
     RbacDaoImplT<SqliteDbManager> rbac;
     FileDaoImplT<SqliteDbManager> file;
     FriendDaoImplT<SqliteDbManager> friend_;
+    GroupDaoImplT<SqliteDbManager> group;
 
     explicit Impl(const std::string& path)
-        : user(db), message(db), conversation(db), audit_log(db), admin_session(db), admin_account(db), rbac(db), file(db), friend_(db) {
+        : user(db), message(db), conversation(db), audit_log(db), admin_session(db), admin_account(db), rbac(db), file(db), friend_(db), group(db) {
         if (!db.Open(path)) {
             throw std::runtime_error("failed to open sqlite database: " + path);
         }
@@ -73,6 +75,9 @@ FileDao& SqliteDaoFactory::File() {
 }
 FriendDao& SqliteDaoFactory::Friend() {
     return impl_->friend_;
+}
+GroupDao& SqliteDaoFactory::Group() {
+    return impl_->group;
 }
 
 bool SqliteDaoFactory::BeginTransaction() {

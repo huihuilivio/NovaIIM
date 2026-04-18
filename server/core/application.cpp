@@ -11,6 +11,8 @@
 #include "../service/sync_service.h"
 #include "../service/friend_service.h"
 #include "../service/conv_service.h"
+#include "../service/group_service.h"
+#include "../service/file_service.h"
 #include <nova/errors.h>
 #include "../admin/admin_server.h"
 #include "../dao/dao_factory.h"
@@ -79,7 +81,7 @@ void WarnJwtSecret(const AdminConfig& admin_cfg) {
     }
 }
 
-void RegisterRoutes(Router& router, UserService& user_svc, MsgService& msg_svc, SyncService& sync_svc, FriendService& friend_svc, ConvService& conv_svc) {
+void RegisterRoutes(Router& router, UserService& user_svc, MsgService& msg_svc, SyncService& sync_svc, FriendService& friend_svc, ConvService& conv_svc, GroupService& group_svc, FileService& file_svc) {
     router.Register(Cmd::kLogin,    [&](ConnectionPtr c, Packet& p) { user_svc.HandleLogin(c, p); });
     router.Register(Cmd::kRegister, [&](ConnectionPtr c, Packet& p) { user_svc.HandleRegister(c, p); });
     router.Register(Cmd::kLogout,   [&](ConnectionPtr c, Packet& p) { user_svc.HandleLogout(c, p); });
@@ -108,6 +110,22 @@ void RegisterRoutes(Router& router, UserService& user_svc, MsgService& msg_svc, 
     router.Register(Cmd::kDeleteConv,     [&](ConnectionPtr c, Packet& p) { conv_svc.HandleDeleteConv(c, p); });
     router.Register(Cmd::kMuteConv,       [&](ConnectionPtr c, Packet& p) { conv_svc.HandleMuteConv(c, p); });
     router.Register(Cmd::kPinConv,        [&](ConnectionPtr c, Packet& p) { conv_svc.HandlePinConv(c, p); });
+
+    router.Register(Cmd::kCreateGroup,     [&](ConnectionPtr c, Packet& p) { group_svc.HandleCreateGroup(c, p); });
+    router.Register(Cmd::kDismissGroup,    [&](ConnectionPtr c, Packet& p) { group_svc.HandleDismissGroup(c, p); });
+    router.Register(Cmd::kJoinGroup,       [&](ConnectionPtr c, Packet& p) { group_svc.HandleJoinGroup(c, p); });
+    router.Register(Cmd::kHandleJoinReq,   [&](ConnectionPtr c, Packet& p) { group_svc.HandleJoinReq(c, p); });
+    router.Register(Cmd::kLeaveGroup,      [&](ConnectionPtr c, Packet& p) { group_svc.HandleLeaveGroup(c, p); });
+    router.Register(Cmd::kKickMember,      [&](ConnectionPtr c, Packet& p) { group_svc.HandleKickMember(c, p); });
+    router.Register(Cmd::kGetGroupInfo,    [&](ConnectionPtr c, Packet& p) { group_svc.HandleGetGroupInfo(c, p); });
+    router.Register(Cmd::kUpdateGroup,     [&](ConnectionPtr c, Packet& p) { group_svc.HandleUpdateGroup(c, p); });
+    router.Register(Cmd::kGetGroupMembers, [&](ConnectionPtr c, Packet& p) { group_svc.HandleGetGroupMembers(c, p); });
+    router.Register(Cmd::kGetMyGroups,     [&](ConnectionPtr c, Packet& p) { group_svc.HandleGetMyGroups(c, p); });
+    router.Register(Cmd::kSetMemberRole,   [&](ConnectionPtr c, Packet& p) { group_svc.HandleSetMemberRole(c, p); });
+
+    router.Register(Cmd::kUploadReq,       [&](ConnectionPtr c, Packet& p) { file_svc.HandleUpload(c, p); });
+    router.Register(Cmd::kUploadComplete,  [&](ConnectionPtr c, Packet& p) { file_svc.HandleUploadComplete(c, p); });
+    router.Register(Cmd::kDownloadReq,     [&](ConnectionPtr c, Packet& p) { file_svc.HandleDownload(c, p); });
 
     router.Freeze();
 }
@@ -150,9 +168,11 @@ int Application::Run(const AppConfig& cfg) {
     SyncService sync_svc(ctx);
     FriendService friend_svc(ctx);
     ConvService conv_svc(ctx);
+    GroupService group_svc(ctx);
+    FileService file_svc(ctx);
 
     Router router;
-    detail::RegisterRoutes(router, user_svc, msg_svc, sync_svc, friend_svc, conv_svc);
+    detail::RegisterRoutes(router, user_svc, msg_svc, sync_svc, friend_svc, conv_svc, group_svc, file_svc);
 
     // 5. 信号处理
     g_running.store(true, std::memory_order_relaxed);

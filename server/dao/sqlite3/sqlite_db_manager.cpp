@@ -48,6 +48,8 @@ bool SqliteDbManager::InitSchema() {
     ormpp::add_auto_key_field("nova::UserFile", "id");
     ormpp::add_auto_key_field("nova::FriendRequest", "id");
     ormpp::add_auto_key_field("nova::Friendship", "id");
+    ormpp::add_auto_key_field("nova::Group", "id");
+    ormpp::add_auto_key_field("nova::GroupJoinRequest", "id");
 
     bool ok = true;
 
@@ -67,6 +69,8 @@ bool SqliteDbManager::InitSchema() {
     ok = ok && db_.create_datatable<UserFile>(ormpp_auto_key{"id"});
     ok = ok && db_.create_datatable<FriendRequest>(ormpp_auto_key{"id"});
     ok = ok && db_.create_datatable<Friendship>(ormpp_auto_key{"id"}, ormpp_unique{{"user_id", "friend_id"}});
+    ok = ok && db_.create_datatable<Group>(ormpp_auto_key{"id"});
+    ok = ok && db_.create_datatable<GroupJoinRequest>(ormpp_auto_key{"id"});
 
     db_.execute("CREATE INDEX IF NOT EXISTS idx_msg_conv_time ON messages(conversation_id, created_at)");
     db_.execute("CREATE INDEX IF NOT EXISTS idx_msg_conv_seq ON messages(conversation_id, seq)");
@@ -81,6 +85,8 @@ bool SqliteDbManager::InitSchema() {
     db_.execute("CREATE INDEX IF NOT EXISTS idx_fr_to_id ON friend_requests(to_id, status)");
     db_.execute("CREATE INDEX IF NOT EXISTS idx_fr_from_to ON friend_requests(from_id, to_id, status)");
     db_.execute("CREATE INDEX IF NOT EXISTS idx_fs_user ON friendships(user_id, status)");
+    db_.execute("CREATE INDEX IF NOT EXISTS idx_group_conv ON groups(conversation_id)");
+    db_.execute("CREATE INDEX IF NOT EXISTS idx_gjr_conv_user ON group_join_requests(conversation_id, user_id, status)");
 
     if (!ok) {
         NOVA_NLOG_ERROR(kLogTag, "Failed to initialize database schema");

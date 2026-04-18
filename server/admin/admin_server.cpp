@@ -7,11 +7,13 @@
 #include "../dao/dao_factory.h"
 #include "../dao/user_dao.h"
 #include "../dao/message_dao.h"
+#include "../dao/conversation_dao.h"
 #include "../dao/audit_log_dao.h"
 #include "../dao/admin_session_dao.h"
 #include "../dao/admin_account_dao.h"
 #include "../dao/rbac_dao.h"
 
+#include <nova/protocol.h>
 #include <hv/json.hpp>
 
 #include <mbedtls/sha256.h>
@@ -210,6 +212,14 @@ int AdminServer::AuthMiddleware(HttpRequest* req, HttpResponse* resp) {
     // 注入 admin_id
     req->SetHeader("X-Nova-Admin-Id", std::to_string(claims->admin_id));
 
+    // 检查管理员账户状态（禁止被封禁/删除的管理员使用有效 JWT）
+    auto admin_account = ctx_.dao().AdminAccount().FindById(claims->admin_id);
+    if (!admin_account || admin_account->status == static_cast<int>(AccountStatus::Banned) ||
+        admin_account->status == static_cast<int>(AccountStatus::Deleted)) {
+        JsonError(resp, api_err::kAccountDisabled);
+        return 403;
+    }
+
     // 注入 permissions（逗号分隔）
     auto perms = ctx_.dao().Rbac().GetUserPermissions(claims->admin_id);
     std::string perms_str;
@@ -234,10 +244,18 @@ std::string AdminServer::GetClientIp(HttpRequest* req) const {
         auto xff = req->GetHeader("X-Forwarded-For");
         if (!xff.empty()) {
             auto comma = xff.find(',');
-            return comma != std::string::npos ? xff.substr(0, comma) : xff;
+            std::string ip = comma != std::string::npos ? xff.substr(0, comma) : xff;
+            // 裁剪空白并限制长度，防止恶意内容写入审计日志
+            auto start = ip.find_first_not_of(" \t");
+            auto end   = ip.find_last_not_of(" \t");
+            if (start != std::string::npos) {
+                ip = ip.substr(start, end - start + 1);
+                if (!ip.empty() && ip.size() <= 45)  // max IPv6 length
+                    return ip;
+            }
         }
         auto real_ip = req->GetHeader("X-Real-IP");
-        if (!real_ip.empty())
+        if (!real_ip.empty() && real_ip.size() <= 45)
             return real_ip;
     }
     return req->client_addr.ip;
@@ -360,7 +378,8 @@ int AdminServer::HandleLogin(HttpRequest* req, HttpResponse* resp) {
     std::strftime(exp_buf, sizeof(exp_buf), "%Y-%m-%d %H:%M:%S", &tm_buf);
     session.expires_at = exp_buf;
     if (!ctx_.dao().AdminSession().Insert(session)) {
-        NOVA_NLOG_WARN(kLogTag, "failed to persist session for admin_id={}, token irrevocable until expiry", admin->id);
+        NOVA_NLOG_ERROR(kLogTag, "failed to persist session for admin_id={}, rejecting login", admin->id);
+        return JsonError(resp, api_err::kDatabaseError);
     }
 
     // 审计
@@ -786,15 +805,20 @@ int AdminServer::HandleListMessages(HttpRequest* req, HttpResponse* resp) {
 
     auto result = ctx_.dao().Message().ListMessages(conversation_id, start_time, end_time, pg.page, pg.page_size);
 
-    // sender_uid 缓存，避免 N+1 查询
+    // 批量查询所有 sender uid（避免 N+1）
+    std::vector<int64_t> sender_ids;
+    sender_ids.reserve(result.items.size());
+    for (const auto& m : result.items) {
+        sender_ids.push_back(m.sender_id);
+    }
+    auto sender_users = ctx_.dao().User().FindByIds(sender_ids);
     std::unordered_map<int64_t, std::string> uid_cache;
-    auto resolve_uid = [&](int64_t id) -> const std::string& {
-        auto [it, inserted] = uid_cache.try_emplace(id);
-        if (inserted) {
-            auto u     = ctx_.dao().User().FindById(id);
-            it->second = u ? u->uid : "";
-        }
-        return it->second;
+    for (const auto& u : sender_users) {
+        uid_cache[u.id] = u.uid;
+    }
+    auto resolve_uid = [&](int64_t id) -> std::string {
+        auto it = uid_cache.find(id);
+        return it != uid_cache.end() ? it->second : "[deleted]";
     };
 
     nlohmann::json items = nlohmann::json::array();
@@ -838,6 +862,31 @@ int AdminServer::HandleRecallMessage(HttpRequest* req, HttpResponse* resp) {
         return JsonError(resp, api_err::kRecallFailed);
     }
 
+    // Push RecallNotify to all online conversation members so the recall
+    // takes effect immediately (not only after the next sync)
+    {
+        proto::RecallNotify notify;
+        notify.conversation_id = msg->conversation_id;
+        notify.server_seq      = msg->seq;
+        notify.operator_uid    = "";  // admin recall — no IM user uid
+
+        Packet npkt;
+        npkt.cmd  = static_cast<uint16_t>(Cmd::kRecallNotify);
+        npkt.seq  = 0;
+        npkt.uid  = 0;
+        npkt.body = proto::Serialize(notify);
+
+        std::string encoded = npkt.Encode();
+        auto members = ctx_.dao().Conversation().GetMembersByConversation(msg->conversation_id);
+        for (const auto& m : members) {
+            auto conns = ctx_.conn_manager().GetConns(m.user_id);
+            for (auto& c : conns) {
+                c->SendEncoded(encoded);
+                ctx_.incr_messages_out();
+            }
+        }
+    }
+
     int64_t admin_id = GetCurrentAdminId(req);
     WriteAuditLog(admin_id, "msg.recall", "message", id,
                   nlohmann::json({{"reason", reason}, {"conversation_id", msg->conversation_id}}).dump(),
@@ -868,15 +917,22 @@ int AdminServer::HandleListAuditLogs(HttpRequest* req, HttpResponse* resp) {
 
     auto result = ctx_.dao().AuditLog().List(admin_id, action, start_time, end_time, pg.page, pg.page_size);
 
-    // operator_uid 缓存，避免 N+1 查询
+    // 批量查询所有 admin uid（避免 N+1）
+    std::vector<int64_t> admin_ids;
+    admin_ids.reserve(result.items.size());
+    for (const auto& log : result.items) {
+        admin_ids.push_back(log.admin_id);
+    }
     std::unordered_map<int64_t, std::string> uid_cache;
-    auto resolve_uid = [&](int64_t id) -> const std::string& {
-        auto [it, inserted] = uid_cache.try_emplace(id);
-        if (inserted) {
-            auto a     = ctx_.dao().AdminAccount().FindById(id);
-            it->second = a ? a->uid : "";
+    for (auto aid : admin_ids) {
+        if (uid_cache.find(aid) == uid_cache.end()) {
+            auto a = ctx_.dao().AdminAccount().FindById(aid);
+            uid_cache[aid] = a ? a->uid : "[deleted]";
         }
-        return it->second;
+    }
+    auto resolve_uid = [&](int64_t id) -> std::string {
+        auto it = uid_cache.find(id);
+        return it != uid_cache.end() ? it->second : "[deleted]";
     };
 
     nlohmann::json items = nlohmann::json::array();

@@ -32,6 +32,26 @@ bool LoadConfig(AppConfig& cfg, const std::string& path) {
         return false;
     }
 
+    // 基本配置校验
+    if (cfg.server.port <= 0 || cfg.server.port > 65535) {
+        std::fprintf(stderr, "server.port must be in range 1-65535, got %d\n", cfg.server.port);
+        return false;
+    }
+    if (cfg.admin.enabled) {
+        if (cfg.admin.port <= 0 || cfg.admin.port > 65535) {
+            std::fprintf(stderr, "admin.port must be in range 1-65535, got %d\n", cfg.admin.port);
+            return false;
+        }
+        if (cfg.admin.jwt_secret.empty()) {
+            std::fprintf(stderr, "admin.enabled but jwt_secret is empty\n");
+            return false;
+        }
+    }
+    if (cfg.db.type == "mysql" && cfg.db.pool_size <= 0) {
+        std::fprintf(stderr, "db.pool_size must be > 0, got %d\n", cfg.db.pool_size);
+        return false;
+    }
+
     return true;
 }
 

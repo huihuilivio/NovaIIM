@@ -28,6 +28,9 @@ public:
     // 软删除
     virtual bool SoftDelete(int64_t id) = 0;
 
+    // 更新文件路径（Insert 后回填唯一路径）
+    virtual bool UpdatePath(int64_t id, const std::string& path) = 0;
+
     // 将用户某类型的旧文件全部标记为已删除（换头像时清理旧记录）
     virtual bool SoftDeleteByUserAndType(int64_t user_id, const std::string& file_type) = 0;
 };

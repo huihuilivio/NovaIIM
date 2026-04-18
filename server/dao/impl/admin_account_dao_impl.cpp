@@ -34,7 +34,7 @@ bool AdminAccountDaoImplT<DbMgr>::Insert(Admin& admin) {
 template <typename DbMgr>
 bool AdminAccountDaoImplT<DbMgr>::UpdatePassword(int64_t id, const std::string& password_hash) {
     auto&& conn = db_.DB();
-    auto res    = conn.query_s<Admin>("id=?", id);
+    auto res    = conn.query_s<Admin>("id=? AND status!=3", id);
     if (res.empty())
         return false;
     res[0].password_hash = password_hash;

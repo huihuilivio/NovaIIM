@@ -29,6 +29,9 @@ inline std::string NowUtcStr() {
 
 template <typename DbMgr>
 bool FriendDaoImplT<DbMgr>::InsertRequest(FriendRequest& req) {
+    if (req.created_at.empty())
+        req.created_at = NowUtcStr();
+    req.updated_at = req.created_at;
     auto id = db_.DB().get_insert_id_after_insert(req);
     if (id == 0) return false;
     req.id = static_cast<int64_t>(id);
@@ -81,6 +84,9 @@ FriendRequestPage FriendDaoImplT<DbMgr>::GetRequestsByUser(int64_t user_id, int3
 
 template <typename DbMgr>
 bool FriendDaoImplT<DbMgr>::InsertFriendship(Friendship& f) {
+    if (f.created_at.empty())
+        f.created_at = NowUtcStr();
+    f.updated_at = f.created_at;
     auto id = db_.DB().get_insert_id_after_insert(f);
     if (id == 0) return false;
     f.id = static_cast<int64_t>(id);

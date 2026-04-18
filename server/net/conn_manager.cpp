@@ -4,6 +4,7 @@
 namespace nova {
 
 void ConnManager::Add(int64_t user_id, ConnectionPtr conn) {
+    static constexpr size_t kMaxConnsPerUser = 10;
     std::vector<ConnectionPtr> to_close;  // 延迟关闭，避免锁内 Close()
     {
         auto& shard = GetShard(user_id);
@@ -21,6 +22,12 @@ void ConnManager::Add(int64_t user_id, ConnectionPtr conn) {
                     ++it;
                 }
             }
+        }
+
+        // 连接数上限：驱逐最旧的连接防止资源耗尽
+        while (vec.size() >= kMaxConnsPerUser) {
+            to_close.push_back(std::move(vec.front()));
+            vec.erase(vec.begin());
         }
 
         // 在移除旧连接之后判断是否为空，避免边界情况：

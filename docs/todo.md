@@ -177,8 +177,6 @@
 - [x] ConvService::PinConv (置顶开关, pinned 0/1)
 - [x] BroadcastConvUpdate (ConvUpdate 推送辅助函数)
 - [x] MsgService 自动恢复隐藏会话 (发送消息后 unhide)
-- [ ] ConvService::DeleteConv (隐藏会话, 新消息自动恢复)
-- [ ] ConvService::MuteConv / PinConv (免打扰/置顶)
 - [ ] ConvUpdate 推送 (新消息摘要/成员变化/信息变更)
 
 ### 群组服务 — 待实现 ⚠️

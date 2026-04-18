@@ -22,6 +22,7 @@ public:
     RbacDao& Rbac() override;
     FileDao& File() override;
     FriendDao& Friend() override;
+    GroupDao& Group() override;
 
     bool BeginTransaction() override;
     bool Commit() override;

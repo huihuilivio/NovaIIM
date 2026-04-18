@@ -125,4 +125,48 @@ inline constexpr Error kNotPinned                {6006, "conversation not pinned
 
 }  // namespace conv
 
+// ================================================================
+// Group (7001 - 7099)
+// ================================================================
+namespace group {
+
+// clang-format off
+inline constexpr Error kNameRequired             {7001, "group name is required"};
+inline constexpr Error kNameTooLong              {7002, "group name must be at most 100 characters"};
+inline constexpr Error kNoticeTooLong            {7003, "notice must be at most 1000 characters"};
+inline constexpr Error kNotEnoughMembers         {7004, "need at least 2 initial members"};
+inline constexpr Error kNotMember                {7005, "not a member of this group"};
+inline constexpr Error kNotOwner                 {7006, "only group owner can do this"};
+inline constexpr Error kNotAdminOrOwner          {7007, "only admin or owner can do this"};
+inline constexpr Error kCannotKickSelf           {7008, "cannot kick yourself"};
+inline constexpr Error kCannotKickHigherRole     {7009, "cannot kick higher role member"};
+inline constexpr Error kOwnerCannotLeave         {7010, "owner cannot leave, dismiss or transfer first"};
+inline constexpr Error kAlreadyMember            {7011, "already a member"};
+inline constexpr Error kGroupNotFound            {7012, "group not found"};
+inline constexpr Error kRequestPending           {7013, "join request already pending"};
+inline constexpr Error kRequestNotFound          {7014, "join request not found"};
+inline constexpr Error kInvalidRole              {7015, "invalid role value"};
+inline constexpr Error kCannotSetOwner           {7016, "cannot set owner role via this command"};
+inline constexpr Error kNothingToUpdate          {7017, "nothing to update"};
+// clang-format on
+
+}  // namespace group
+
+// ================================================================
+// File (3001 - 3099)
+// ================================================================
+namespace file {
+
+// clang-format off
+inline constexpr Error kFileNameRequired         {3001, "file_name is required"};
+inline constexpr Error kFileSizeInvalid          {3002, "invalid file_size"};
+inline constexpr Error kFileSizeTooLarge         {3003, "file too large"};
+inline constexpr Error kMimeTypeRequired         {3004, "mime_type is required"};
+inline constexpr Error kFileNotFound             {3005, "file not found"};
+inline constexpr Error kUploadFailed             {3006, "upload failed"};
+inline constexpr Error kInvalidFileType           {3007, "invalid file_type"};
+// clang-format on
+
+}  // namespace file
+
 }  // namespace nova::errc

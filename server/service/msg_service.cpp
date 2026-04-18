@@ -1,4 +1,5 @@
 #include "msg_service.h"
+#include "conv_service.h"
 #include "errors/msg_errors.h"
 #include "../core/logger.h"
 #include "../dao/conversation_dao.h"
@@ -12,6 +13,15 @@ namespace nova {
 namespace ec = errc;
 
 static constexpr const char* kLogTag = "MsgService";
+
+// UTF-8 安全截断：在 max_len 处截断时不破坏多字节字符
+static std::string TruncateUtf8(const std::string& s, size_t max_len) {
+    if (s.size() <= max_len) return s;
+    size_t pos = max_len;
+    while (pos > 0 && (static_cast<unsigned char>(s[pos]) & 0xC0) == 0x80)
+        --pos;
+    return s.substr(0, pos);
+}
 
 MsgService::MsgService(ServerContext& ctx)
     : ServiceBase(ctx),
@@ -31,6 +41,7 @@ proto::SendMsgAck* MsgService::DedupFind(const std::string& key) {
 }
 
 void MsgService::DedupInsert(const std::string& key, const proto::SendMsgAck& ack) {
+    if (max_dedup_cache_size_ == 0) return;
     auto it = dedup_index_.find(key);
     if (it != dedup_index_.end()) {
         it->second->second = ack;
@@ -172,7 +183,8 @@ void MsgService::HandleSendMsg(ConnectionPtr conn, Packet& pkt) {
     msg.created_at      = time_buf;
 
     if (!ctx_.dao().Message().Insert(msg)) {
-        NOVA_NLOG_ERROR(kLogTag, "failed to insert message conv={} sender={}", req->conversation_id, sender_id);
+        NOVA_NLOG_ERROR(kLogTag, "failed to insert message conv={} sender={} seq={} — seq gap created",
+                        req->conversation_id, sender_id, server_seq);
         DedupRemoveInflightIfNeeded(req->client_msg_id);
         SendPacket(conn, Cmd::kSendMsgAck, seq, 0,
                    proto::SendMsgAck{ec::kDatabaseError.code, ec::kDatabaseError.msg});
@@ -195,7 +207,9 @@ void MsgService::HandleSendMsg(ConnectionPtr conn, Packet& pkt) {
     auto members = ctx_.dao().Conversation().GetMembersByConversation(req->conversation_id);
     for (const auto& m : members) {
         if (m.hidden != 0) {
-            ctx_.dao().Conversation().UpdateMemberHidden(req->conversation_id, m.user_id, 0);
+            if (!ctx_.dao().Conversation().UpdateMemberHidden(req->conversation_id, m.user_id, 0)) {
+                NOVA_NLOG_WARN(kLogTag, "failed to unhide conv={} user={}", req->conversation_id, m.user_id);
+            }
         }
     }
 
@@ -211,6 +225,16 @@ void MsgService::HandleSendMsg(ConnectionPtr conn, Packet& pkt) {
     std::string encoded = push_pkt.Encode();
 
     BroadcastEncoded(sender_id, conn->device_id(), req->conversation_id, encoded);
+
+    // 7. ConvUpdate 推送：通知其他成员有新消息摘要
+    {
+        std::string preview = TruncateUtf8(req->content, 100);
+        proto::ConvUpdateMsg update;
+        update.conversation_id = req->conversation_id;
+        update.update_type     = 1;  // 新消息
+        update.data            = preview;
+        BroadcastConvUpdate(ctx_, req->conversation_id, sender_id, update);
+    }
 
     NOVA_NLOG_DEBUG(kLogTag, "msg sent: conv={}, sender={}, seq={}", req->conversation_id, sender_id, server_seq);
 }
@@ -271,18 +295,28 @@ void MsgService::HandleRecallMsg(ConnectionPtr conn, Packet& pkt) {
     }
 
     // 2 分钟时间限制
-    if (!msg.created_at.empty()) {
+    if (msg.created_at.empty()) {
+        NOVA_NLOG_WARN(kLogTag, "message has no created_at: msg_id={}", msg.id);
+        SendPacket(conn, Cmd::kRecallMsgAck, seq, 0,
+                   proto::RecallMsgAck{ec::kDatabaseError.code, "invalid message timestamp"});
+        return;
+    }
+    {
         struct tm tm_msg {};
 #ifdef _MSC_VER
-        // 解析 "YYYY-MM-DD HH:MM:SS" 格式
-        sscanf_s(msg.created_at.c_str(), "%d-%d-%d %d:%d:%d",
+        int parsed = sscanf_s(msg.created_at.c_str(), "%d-%d-%d %d:%d:%d",
                  &tm_msg.tm_year, &tm_msg.tm_mon, &tm_msg.tm_mday,
                  &tm_msg.tm_hour, &tm_msg.tm_min, &tm_msg.tm_sec);
 #else
-        std::sscanf(msg.created_at.c_str(), "%d-%d-%d %d:%d:%d",
+        int parsed = std::sscanf(msg.created_at.c_str(), "%d-%d-%d %d:%d:%d",
                     &tm_msg.tm_year, &tm_msg.tm_mon, &tm_msg.tm_mday,
                     &tm_msg.tm_hour, &tm_msg.tm_min, &tm_msg.tm_sec);
 #endif
+        if (parsed != 6) {
+            SendPacket(conn, Cmd::kRecallMsgAck, seq, 0,
+                       proto::RecallMsgAck{ec::kDatabaseError.code, "invalid message timestamp"});
+            return;
+        }
         tm_msg.tm_year -= 1900;
         tm_msg.tm_mon -= 1;
 #ifdef _MSC_VER
@@ -291,6 +325,11 @@ void MsgService::HandleRecallMsg(ConnectionPtr conn, Packet& pkt) {
         auto msg_time = timegm(&tm_msg);
 #endif
         auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+        if (msg_time < 0) {
+            SendPacket(conn, Cmd::kRecallMsgAck, seq, 0,
+                       proto::RecallMsgAck{ec::kDatabaseError.code, "invalid message timestamp"});
+            return;
+        }
         if (msg_time > 0 && std::difftime(now, msg_time) > recall_timeout_secs_) {
             SendPacket(conn, Cmd::kRecallMsgAck, seq, 0,
                        proto::RecallMsgAck{ec::msg::kRecallTimeout.code, ec::msg::kRecallTimeout.msg});
@@ -336,7 +375,9 @@ void MsgService::HandleDeliverAck(ConnectionPtr conn, Packet& pkt) {
     if (req->conversation_id > 0 && req->server_seq > 0) {
         // 仅处理用户所属会话的 ACK
         if (ctx_.dao().Conversation().IsMember(req->conversation_id, user_id)) {
-            ctx_.dao().Conversation().UpdateLastAckSeq(req->conversation_id, user_id, req->server_seq);
+            if (!ctx_.dao().Conversation().UpdateLastAckSeq(req->conversation_id, user_id, req->server_seq)) {
+                NOVA_NLOG_WARN(kLogTag, "failed to update last_ack_seq: conv={} user={}", req->conversation_id, user_id);
+            }
         }
     }
 }
@@ -364,7 +405,18 @@ void MsgService::HandleReadAck(ConnectionPtr conn, Packet& pkt) {
         return;
     }
 
-    ctx_.dao().Conversation().UpdateLastReadSeq(req->conversation_id, user_id, req->read_up_to_seq);
+    // 限制 read_up_to_seq 不超过会话当前最大 seq
+    auto conv_info = ctx_.dao().Conversation().FindById(req->conversation_id);
+    int64_t clamped = req->read_up_to_seq;
+    if (conv_info && conv_info->max_seq > 0) {
+        clamped = std::min(clamped, conv_info->max_seq);
+    }
+
+    if (!ctx_.dao().Conversation().UpdateLastReadSeq(req->conversation_id, user_id, clamped)) {
+        SendPacket(conn, Cmd::kReadAck, pkt.seq, 0,
+                   proto::RspBase{ec::kDatabaseError.code, ec::kDatabaseError.msg});
+        return;
+    }
     SendPacket(conn, Cmd::kReadAck, pkt.seq, 0, proto::RspBase{ec::kOk.code, {}});
 }
 

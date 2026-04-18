@@ -49,7 +49,16 @@ template <typename DbMgr>
 std::optional<UserFile> FileDaoImplT<DbMgr>::FindLatestByUserAndType(int64_t user_id,
                                                                      const std::string& file_type) {
     // 使用 raw SQL 避免 ormpp WHERE-stripping bug（条件含 ORDER BY / LIMIT 时可能丢失 WHERE）
-    // file_type 来自服务端内部常量（"avatar" 等），无注入风险
+    // 使用 std::to_string(user_id) 安全拼接整数; file_type 需要防御性处理
+    // 白名单校验：只允许已知的 file_type 值，防止 SQL 注入
+    static constexpr std::string_view kAllowed[] = {"avatar", "image", "voice", "video", "file"};
+    bool valid = false;
+    for (auto sv : kAllowed) {
+        if (file_type == sv) { valid = true; break; }
+    }
+    if (!valid)
+        return std::nullopt;
+
     std::string sql = "SELECT * FROM user_files WHERE user_id = " + std::to_string(user_id) +
                       " AND file_type = '" + file_type + "' AND status = 1 ORDER BY id DESC LIMIT 1";
     auto res = db_.DB().template query_s<UserFile>(sql);
@@ -60,6 +69,15 @@ std::optional<UserFile> FileDaoImplT<DbMgr>::FindLatestByUserAndType(int64_t use
 
 template <typename DbMgr>
 std::vector<UserFile> FileDaoImplT<DbMgr>::ListByUserAndType(int64_t user_id, const std::string& file_type) {
+    // 白名单校验：只允许已知的 file_type 值，防止 SQL 注入
+    static constexpr std::string_view kAllowed[] = {"avatar", "image", "voice", "video", "file"};
+    bool valid = false;
+    for (auto sv : kAllowed) {
+        if (file_type == sv) { valid = true; break; }
+    }
+    if (!valid)
+        return {};
+
     std::string sql = "SELECT * FROM user_files WHERE user_id = " + std::to_string(user_id) +
                       " AND file_type = '" + file_type + "' AND status = 1 ORDER BY id DESC";
     return db_.DB().template query_s<UserFile>(sql);
@@ -77,16 +95,29 @@ bool FileDaoImplT<DbMgr>::SoftDelete(int64_t id) {
 }
 
 template <typename DbMgr>
+bool FileDaoImplT<DbMgr>::UpdatePath(int64_t id, const std::string& path) {
+    auto&& conn = db_.DB();
+    auto res    = conn.template query_s<UserFile>("id=?", id);
+    if (res.empty())
+        return false;
+    res[0].file_path = path;
+    return conn.template update_some<&UserFile::file_path>(res[0]) == 1;
+}
+
+template <typename DbMgr>
 bool FileDaoImplT<DbMgr>::SoftDeleteByUserAndType(int64_t user_id, const std::string& file_type) {
     auto&& conn = db_.DB();
     auto rows   = conn.template query_s<UserFile>("user_id=? AND file_type=? AND status=1" /* Active */, user_id, file_type);
     auto now    = NowUtcStr();
+    bool all_ok = true;
     for (auto& f : rows) {
         f.status     = static_cast<int>(FileStatus::Deleted);
         f.updated_at = now;
-        conn.template update_some<&UserFile::status, &UserFile::updated_at>(f);
+        if (conn.template update_some<&UserFile::status, &UserFile::updated_at>(f) != 1) {
+            all_ok = false;
+        }
     }
-    return true;
+    return all_ok;
 }
 
 // 显式实例化

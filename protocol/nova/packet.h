@@ -173,6 +173,39 @@ enum class Cmd : uint16_t {
     kPinConv            = 0x0118,
     kPinConvAck         = 0x0119,
     kConvUpdate         = 0x011A,
+
+    // 群组
+    kCreateGroup        = 0x0500,
+    kCreateGroupAck     = 0x0501,
+    kDismissGroup       = 0x0502,
+    kDismissGroupAck    = 0x0503,
+    kJoinGroup          = 0x0504,
+    kJoinGroupAck       = 0x0505,
+    kHandleJoinReq      = 0x0506,
+    kHandleJoinReqAck   = 0x0507,
+    kLeaveGroup         = 0x0508,
+    kLeaveGroupAck      = 0x0509,
+    kKickMember         = 0x050A,
+    kKickMemberAck      = 0x050B,
+    kGetGroupInfo       = 0x050C,
+    kGetGroupInfoAck    = 0x050D,
+    kUpdateGroup        = 0x050E,
+    kUpdateGroupAck     = 0x050F,
+    kGetGroupMembers    = 0x0510,
+    kGetGroupMembersAck = 0x0511,
+    kGetMyGroups        = 0x0512,
+    kGetMyGroupsAck     = 0x0513,
+    kSetMemberRole      = 0x0514,
+    kSetMemberRoleAck   = 0x0515,
+    kGroupNotify        = 0x0516,
+
+    // 文件
+    kUploadReq          = 0x0600,
+    kUploadAck          = 0x0601,
+    kUploadComplete     = 0x0602,
+    kUploadCompleteAck  = 0x0603,
+    kDownloadReq        = 0x0604,
+    kDownloadAck        = 0x0605,
 };
 
 }  // namespace nova::proto

@@ -236,4 +236,32 @@ inline constexpr std::string_view get_alias_struct_name(Friendship*) {
     return "friendships";
 }
 
+// ---- 群组系统 ----
+
+struct Group {
+    int64_t id              = 0;
+    int64_t conversation_id = 0;
+    std::string name;
+    std::string avatar;
+    int64_t owner_id        = 0;
+    std::string notice;
+    std::string created_at;
+};
+inline constexpr std::string_view get_alias_struct_name(Group*) { return "groups"; }
+
+enum class JoinRequestStatus : int { Pending = 0, Accepted = 1, Rejected = 2 };
+
+struct GroupJoinRequest {
+    int64_t id              = 0;
+    int64_t conversation_id = 0;
+    int64_t user_id         = 0;
+    std::string remark;
+    int status = static_cast<int>(JoinRequestStatus::Pending);
+    std::string created_at;
+    std::string updated_at;
+};
+inline constexpr std::string_view get_alias_struct_name(GroupJoinRequest*) {
+    return "group_join_requests";
+}
+
 }  // namespace nova

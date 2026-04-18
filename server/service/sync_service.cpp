@@ -52,15 +52,20 @@ void SyncService::HandleSyncMsg(ConnectionPtr conn, Packet& pkt) {
     auto messages = ctx_.dao().Message().GetAfterSeq(req->conversation_id, req->last_seq, limit);
 
     // 3. 构建响应（需要将 sender_id 转为 sender_uid）
-    // sender_uid 缓存，避免 N+1 查询
+    // 批量查询所有 sender（避免 N+1）
+    std::vector<int64_t> sender_ids;
+    sender_ids.reserve(messages.size());
+    for (const auto& m : messages) {
+        sender_ids.push_back(m.sender_id);
+    }
+    auto sender_users = ctx_.dao().User().FindByIds(sender_ids);
     std::unordered_map<int64_t, std::string> uid_cache;
+    for (const auto& u : sender_users) {
+        uid_cache[u.id] = u.uid;
+    }
     auto resolve_uid = [&](int64_t id) -> std::string {
-        auto [it, inserted] = uid_cache.try_emplace(id);
-        if (inserted) {
-            auto u     = ctx_.dao().User().FindById(id);
-            it->second = u ? u->uid : "";
-        }
-        return it->second;
+        auto it = uid_cache.find(id);
+        return it != uid_cache.end() ? it->second : "[deleted]";
     };
 
     proto::SyncMsgResp resp;
@@ -139,15 +144,19 @@ void SyncService::HandleSyncUnread(ConnectionPtr conn, Packet& pkt) {
     if (!preview_convs.empty()) {
         auto all_previews = ctx_.dao().Message().GetLatestByConversations(preview_convs, 3);
 
-        // sender_uid 缓存
+        // 批量查询所有 sender（避免 N+1）
+        std::vector<int64_t> preview_sender_ids;
+        for (const auto& m : all_previews) {
+            preview_sender_ids.push_back(m.sender_id);
+        }
+        auto preview_users = ctx_.dao().User().FindByIds(preview_sender_ids);
         std::unordered_map<int64_t, std::string> uid_cache;
+        for (const auto& u : preview_users) {
+            uid_cache[u.id] = u.uid;
+        }
         auto resolve_uid = [&](int64_t id) -> std::string {
-            auto [it, inserted] = uid_cache.try_emplace(id);
-            if (inserted) {
-                auto u     = ctx_.dao().User().FindById(id);
-                it->second = u ? u->uid : "";
-            }
-            return it->second;
+            auto it = uid_cache.find(id);
+            return it != uid_cache.end() ? it->second : "";
         };
 
         // 按 conversation_id 分组

@@ -85,3 +85,17 @@ nova_add_test(
     SOURCES test_conv_service.cpp
     LIBS    im_server_lib
 )
+
+# GroupService 群组管理: CreateGroup, DismissGroup, JoinGroup, LeaveGroup, KickMember, UpdateGroup, SetRole
+nova_add_test(
+    NAME    test_group_service
+    SOURCES test_group_service.cpp
+    LIBS    im_server_lib
+)
+
+# FileService 文件元数据: Upload, UploadComplete, Download
+nova_add_test(
+    NAME    test_file_service
+    SOURCES test_file_service.cpp
+    LIBS    im_server_lib
+)
