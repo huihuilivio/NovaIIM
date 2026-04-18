@@ -2,7 +2,7 @@
 
 > **权威协议文档已迁移至 [protocol.md](../protocol.md)**
 >
-> 本文件为客户端集成指南。已实现：认证/用户/好友/消息/会话管理。待实现：群组、文件、同步。
+> 本文件为客户端集成指南。已实现：认证/用户/好友/消息/会话/群组/文件/同步，265 测试用例全通过。
 > 协议细节（命令字、消息体、错误码）以 protocol.md 为准。
 
 ---
@@ -48,8 +48,8 @@
 | 消息 | 0x0100-0x0107 | 发送/确认/已读/撤回 |
 | 会话 | 0x0110-0x011A | 创建/列表/删除/免打扰/置顶/推送 |
 | 同步 | 0x0200-0x0203 | 历史消息/未读拉取 |
-| 群组 | 0x0400-0x0416 | 建群/入退群/管理/推送 |
-| 文件 | 0x0500-0x0505 | 上传/下载 |
+| 群组 | 0x0500-0x0516 | 建群/入退群/管理/推送 |
+| 文件 | 0x0600-0x0605 | 上传/下载 |
 
 ---
 
@@ -86,9 +86,9 @@ SendMsgReq { conversation_id, content, msg_type, client_msg_id }
 ```
 
 **富媒体消息：**
-1. 先调用 `kUploadReq` 获取 `file_id` + `upload_url`
+1. 先调用 `kUploadReq` (0x0600) 获取 `file_id` + `upload_url`
 2. HTTP PUT 上传文件到 `upload_url`
-3. 调用 `kUploadComplete` 确认
+3. 调用 `kUploadComplete` (0x0602) 确认
 4. `SendMsgReq.content` 中引用 `file_id`（JSON 格式，见 protocol.md §3.7.1）
 
 ### 4.3 好友流程
@@ -126,6 +126,21 @@ SendMsgReq { conversation_id, content, msg_type, client_msg_id }
 断线后:   重连 TCP → 重新 kLogin → kSyncUnread 拉取未读
 ```
 
+### 4.7 同步流程
+
+```
+登录后: kSyncUnread → SyncUnreadResp { items[], total_unread }
+  每个有未读的会话:
+    kSyncMsg { conversation_id, last_seq=本地最大seq } → SyncMsgResp { messages[], has_more }
+    如果 has_more=true: 继续拉取直到 has_more=false
+```
+
+**注意事项：**
+- `last_seq` 必须 ≥ 0（负数会被拒绝）
+- `limit` 默认 20，最大 100
+- 返回消息按 seq 升序
+- 撤回的消息 status=1，客户端应显示"消息已撤回"
+
 ---
 
 ## 5. 通用错误码
@@ -137,6 +152,18 @@ SendMsgReq { conversation_id, content, msg_type, client_msg_id }
 | -2 | 未认证 | 需要先登录 |
 | -100 | 数据库错误 | 服务端错误，可重试 |
 | -503 | 服务繁忙 | 过载，退避重试 |
+
+**业务错误码分段（正数）：**
+
+| 范围 | 模块 |
+|------|------|
+| 1001-1099 | 用户 (登录/注册/搜索/资料) |
+| 2001-2099 | 消息 (发送/撤回) |
+| 3001-3099 | 文件 (上传/下载) |
+| 4001-4099 | 同步 |
+| 5001-5099 | 好友 |
+| 6001-6099 | 会话管理 |
+| 7001-7099 | 群组管理 |
 
 > 各命令的专属业务错误码（正数）见 [protocol.md §3](../protocol.md)。
 
