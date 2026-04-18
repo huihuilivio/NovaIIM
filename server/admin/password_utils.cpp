@@ -5,7 +5,6 @@
 #include <mbedtls/entropy.h>
 #include <mbedtls/ctr_drbg.h>
 
-#include <cstdio>
 #include <cstring>
 #include <sstream>
 #include <iomanip>
@@ -25,14 +24,22 @@ static std::string ToHex(const unsigned char* data, size_t len) {
     return oss.str();
 }
 
+static unsigned char HexCharToByte(char c) {
+    if (c >= '0' && c <= '9') return static_cast<unsigned char>(c - '0');
+    if (c >= 'a' && c <= 'f') return static_cast<unsigned char>(c - 'a' + 10);
+    if (c >= 'A' && c <= 'F') return static_cast<unsigned char>(c - 'A' + 10);
+    return 255;  // Invalid hex character
+}
+
 static bool FromHex(const std::string& hex, unsigned char* out, size_t out_len) {
     if (hex.size() != out_len * 2)
         return false;
     for (size_t i = 0; i < out_len; ++i) {
-        unsigned int byte;
-        if (std::sscanf(hex.c_str() + i * 2, "%02x", &byte) != 1)
+        unsigned char high = HexCharToByte(hex[i * 2]);
+        unsigned char low = HexCharToByte(hex[i * 2 + 1]);
+        if (high == 255 || low == 255)
             return false;
-        out[i] = static_cast<unsigned char>(byte);
+        out[i] = (high << 4) | low;
     }
     return true;
 }
