@@ -26,6 +26,12 @@ This directory contains scripts for managing the NovaIIM project on Windows (Pow
 - `deploy.ps1`: Deploys the built application.
   - Usage: `.\deploy.ps1 -DeployPath .\deploy -Config Release`
 
+- `start.ps1`: Starts the NovaIIM server service.
+  - Usage: `.\start.ps1 -ConfigFile .\configs\server.yaml -LogFile .\logs\server.log`
+
+- `stop.ps1`: Stops the NovaIIM server service.
+  - Usage: `.\stop.ps1`
+
 ### Batch (.bat)
 - `setup_env.bat`: Sets up the development environment.
   - Usage: `setup_env.bat`
@@ -47,6 +53,12 @@ This directory contains scripts for managing the NovaIIM project on Windows (Pow
 
 - `deploy.bat`: Deploys the built application.
   - Usage: `deploy.bat [deploy_path] [Release|Debug]`
+
+- `start.bat`: Starts the NovaIIM server service.
+  - Usage: `start.bat [config_file] [log_file]`
+
+- `stop.bat`: Stops the NovaIIM server service.
+  - Usage: `stop.bat`
 
 ## Linux Scripts (.sh)
 
@@ -70,6 +82,12 @@ This directory contains scripts for managing the NovaIIM project on Windows (Pow
 
 - `deploy.sh`: Deploys the built application.
   - Usage: `./deploy.sh [deploy_path] [Release|Debug]`
+
+- `start.sh`: Starts the NovaIIM server service.
+  - Usage: `./start.sh [config_file] [log_file]`
+
+- `stop.sh`: Stops the NovaIIM server service.
+  - Usage: `./stop.sh`
 
 ## Prerequisites
 
