@@ -1,106 +1,44 @@
 # Scripts Directory
 
-This directory contains scripts for managing the NovaIIM project on Windows (PowerShell and Batch) and Linux (Bash).
+This directory contains Python scripts for managing the NovaIIM project cross-platform.
 
-## Windows Scripts (.ps1 and .bat)
+## Python Scripts
 
-### PowerShell (.ps1)
-- `setup_env.ps1`: Sets up the development environment.
-  - Usage: `.\setup_env.ps1`
+- `setup_env.py`: Checks the development environment and reports missing tools.
+  - Usage: `python scripts/setup_env.py`
 
-- `configure.ps1`: Configures the CMake build system.
-  - Usage: `.\configure.ps1 -BuildType Debug` or `.\configure.ps1 -EnableCoverage`
+- `configure.py`: Configures the CMake build system.
+  - Usage: `python scripts/configure.py --build-type Debug`
+  - To enable coverage: `python scripts/configure.py --enable-coverage`
 
-- `build.ps1`: Compiles the project.
-  - Usage: `.\build.ps1 -Config Release`
+- `build.py`: Compiles the project.
+  - Usage: `python scripts/build.py --config Release`
 
-- `test.ps1`: Runs the test suite.
-  - Usage: `.\test.ps1`
+- `test.py`: Runs the test suite.
+  - Usage: `python scripts/test.py`
 
-- `coverage.ps1`: Generates code coverage report (requires lcov and gcov).
-  - Usage: `.\coverage.ps1`
+- `coverage.py`: Generates a code coverage report.
+  - Usage: `python scripts/coverage.py`
+  - Requires OpenCppCoverage or lcov/genhtml.
 
-- `production.ps1`: Builds the project for production.
-  - Usage: `.\production.ps1`
+- `production.py`: Builds the project for production.
+  - Usage: `python scripts/production.py`
 
-- `deploy.ps1`: Deploys the built application.
-  - Usage: `.\deploy.ps1 -DeployPath .\deploy -Config Release`
+- `deploy.py`: Deploys build artifacts to a target folder.
+  - Usage: `python scripts/deploy.py --deploy-path deploy --config Release`
 
-- `start.ps1`: Starts the NovaIIM server service.
-  - Usage: `.\start.ps1 -ConfigFile .\configs\server.yaml -LogFile .\logs\server.log`
+- `start.py`: Starts the NovaIIM server.
+  - Usage: `python scripts/start.py --config-file configs/server.yaml --log-file logs/server.log`
 
-- `stop.ps1`: Stops the NovaIIM server service.
-  - Usage: `.\stop.ps1`
-
-### Batch (.bat)
-- `setup_env.bat`: Sets up the development environment.
-  - Usage: `setup_env.bat`
-
-- `configure.bat`: Configures the CMake build system.
-  - Usage: `configure.bat [Release|Debug] [ON|OFF]`
-
-- `build.bat`: Compiles the project.
-  - Usage: `build.bat [Release|Debug]`
-
-- `test.bat`: Runs the test suite.
-  - Usage: `test.bat`
-
-- `coverage.bat`: Generates code coverage report (requires lcov and gcov).
-  - Usage: `coverage.bat`
-
-- `production.bat`: Builds the project for production.
-  - Usage: `production.bat`
-
-- `deploy.bat`: Deploys the built application.
-  - Usage: `deploy.bat [deploy_path] [Release|Debug]`
-
-- `start.bat`: Starts the NovaIIM server service.
-  - Usage: `start.bat [config_file] [log_file]`
-
-- `stop.bat`: Stops the NovaIIM server service.
-  - Usage: `stop.bat`
-
-## Linux Scripts (.sh)
-
-- `setup_env.sh`: Sets up the development environment.
-  - Usage: `./setup_env.sh`
-
-- `configure.sh`: Configures the CMake build system.
-  - Usage: `./configure.sh [Release|Debug] [ON|OFF for coverage]`
-
-- `build.sh`: Compiles the project.
-  - Usage: `./build.sh [Release|Debug]`
-
-- `test.sh`: Runs the test suite.
-  - Usage: `./test.sh`
-
-- `coverage.sh`: Generates code coverage report (requires lcov and gcov).
-  - Usage: `./coverage.sh`
-
-- `production.sh`: Builds the project for production.
-  - Usage: `./production.sh`
-
-- `deploy.sh`: Deploys the built application.
-  - Usage: `./deploy.sh [deploy_path] [Release|Debug]`
-
-- `start.sh`: Starts the NovaIIM server service.
-  - Usage: `./start.sh [config_file] [log_file]`
-
-- `stop.sh`: Stops the NovaIIM server service.
-  - Usage: `./stop.sh`
+- `stop.py`: Stops the NovaIIM server.
+  - Usage: `python scripts/stop.py`
 
 ## Prerequisites
 
-### Windows
-- PowerShell or Command Prompt
+- Python 3.8+
 - CMake
-- Ninja or Visual Studio Build Tools
-- For coverage: lcov, gcov (from GCC)
+- CTest
+- A supported CMake build toolchain (Ninja or Visual Studio Build Tools)
+- For coverage: OpenCppCoverage, or lcov/genhtml on supported platforms.
 
-### Linux
-- Bash
-- CMake
-- Make or Ninja
-- For coverage: lcov, gcov (from GCC)
-
-Run scripts from the project root directory. Make sure .sh scripts are executable: `chmod +x scripts/*.sh`
+Run scripts from the project root directory with `python scripts/<script>.py`.
