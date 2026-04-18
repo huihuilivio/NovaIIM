@@ -22,7 +22,7 @@ if(SERVER_SOURCES)
     )
     target_link_libraries(im_server_lib PUBLIC
         nova_protocol
-        hv
+        hv_static
         spdlog::spdlog
         ylt
         ormpp

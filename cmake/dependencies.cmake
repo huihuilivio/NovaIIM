@@ -84,6 +84,7 @@ macro(nova_fetch_libhv)
         set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
         set(WITH_OPENSSL OFF CACHE BOOL "" FORCE)
         set(WITH_EVPP ON CACHE BOOL "" FORCE)
+        set(ENABLE_HLOG_FILE OFF CACHE BOOL "" FORCE)
 
         FetchContent_MakeAvailable(libhv)
 
