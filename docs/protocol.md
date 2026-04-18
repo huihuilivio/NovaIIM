@@ -101,36 +101,36 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 | kSyncUnread | 0x0202 | C→S | 拉取未读 |
 | kSyncUnreadResp | 0x0203 | S→C | 未读响应 |
 | **群组** |
-| kCreateGroup | 0x0400 | C→S | 建群 |
-| kCreateGroupAck | 0x0401 | S→C | 建群响应 |
-| kDismissGroup | 0x0402 | C→S | 解散群（仅群主） |
-| kDismissGroupAck | 0x0403 | S→C | 解散群响应 |
-| kJoinGroup | 0x0404 | C→S | 申请入群 |
-| kJoinGroupAck | 0x0405 | S→C | 入群响应 |
-| kHandleJoinReq | 0x0406 | C→S | 处理入群申请（群主/管理员） |
-| kHandleJoinReqAck | 0x0407 | S→C | 处理入群申请响应 |
-| kLeaveGroup | 0x0408 | C→S | 退出群 |
-| kLeaveGroupAck | 0x0409 | S→C | 退群响应 |
-| kKickMember | 0x040A | C→S | 踢出成员 |
-| kKickMemberAck | 0x040B | S→C | 踢出响应 |
-| kGetGroupInfo | 0x040C | C→S | 获取群信息 |
-| kGetGroupInfoAck | 0x040D | S→C | 群信息响应 |
-| kUpdateGroup | 0x040E | C→S | 修改群信息（名称/头像/公告） |
-| kUpdateGroupAck | 0x040F | S→C | 修改群信息响应 |
-| kGetGroupMembers | 0x0410 | C→S | 获取群成员列表 |
-| kGetGroupMembersAck | 0x0411 | S→C | 群成员列表响应 |
-| kGetMyGroups | 0x0412 | C→S | 获取我加入的群列表 |
-| kGetMyGroupsAck | 0x0413 | S→C | 我的群列表响应 |
-| kSetMemberRole | 0x0414 | C→S | 设置群成员角色（管理员/普通） |
-| kSetMemberRoleAck | 0x0415 | S→C | 设置角色响应 |
-| kGroupNotify | 0x0416 | S→C | 群事件推送（成员变化/群信息变更/解散） |
+| kCreateGroup | 0x0500 | C→S | 建群 |
+| kCreateGroupAck | 0x0501 | S→C | 建群响应 |
+| kDismissGroup | 0x0502 | C→S | 解散群（仅群主） |
+| kDismissGroupAck | 0x0503 | S→C | 解散群响应 |
+| kJoinGroup | 0x0504 | C→S | 申请入群 |
+| kJoinGroupAck | 0x0505 | S→C | 入群响应 |
+| kHandleJoinReq | 0x0506 | C→S | 处理入群申请（群主/管理员） |
+| kHandleJoinReqAck | 0x0507 | S→C | 处理入群申请响应 |
+| kLeaveGroup | 0x0508 | C→S | 退出群 |
+| kLeaveGroupAck | 0x0509 | S→C | 退群响应 |
+| kKickMember | 0x050A | C→S | 踢出成员 |
+| kKickMemberAck | 0x050B | S→C | 踢出响应 |
+| kGetGroupInfo | 0x050C | C→S | 获取群信息 |
+| kGetGroupInfoAck | 0x050D | S→C | 群信息响应 |
+| kUpdateGroup | 0x050E | C→S | 修改群信息（名称/头像/公告） |
+| kUpdateGroupAck | 0x050F | S→C | 修改群信息响应 |
+| kGetGroupMembers | 0x0510 | C→S | 获取群成员列表 |
+| kGetGroupMembersAck | 0x0511 | S→C | 群成员列表响应 |
+| kGetMyGroups | 0x0512 | C→S | 获取我加入的群列表 |
+| kGetMyGroupsAck | 0x0513 | S→C | 我的群列表响应 |
+| kSetMemberRole | 0x0514 | C→S | 设置群成员角色（管理员/普通） |
+| kSetMemberRoleAck | 0x0515 | S→C | 设置角色响应 |
+| kGroupNotify | 0x0516 | S→C | 群事件推送（成员变化/群信息变更/解散） |
 | **文件** |
-| kUploadReq | 0x0500 | C→S | 文件上传请求（元数据） |
-| kUploadAck | 0x0501 | S→C | 上传凭证响应（upload_url / file_id） |
-| kUploadComplete | 0x0502 | C→S | 上传完成通知 |
-| kUploadCompleteAck | 0x0503 | S→C | 上传完成确认 |
-| kDownloadReq | 0x0504 | C→S | 文件下载请求 |
-| kDownloadAck | 0x0505 | S→C | 下载 URL 响应 |
+| kUploadReq | 0x0600 | C→S | 文件上传请求（元数据） |
+| kUploadAck | 0x0601 | S→C | 上传凭证响应（upload_url / file_id） |
+| kUploadComplete | 0x0602 | C→S | 上传完成通知 |
+| kUploadCompleteAck | 0x0603 | S→C | 上传完成确认 |
+| kDownloadReq | 0x0604 | C→S | 文件下载请求 |
+| kDownloadAck | 0x0605 | S→C | 下载 URL 响应 |
 
 ---
 
@@ -537,7 +537,7 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 | 10 | 系统通知 | UTF-8 系统消息文本（入群/退群/改名等） |
 | 100+ | 自定义 | 客户端自行解析 |
 
-> **大文件策略：** 图片/语音/视频/文件等富媒体消息需先通过文件上传接口（0x0500-0x0505）获取 `file_id`，再在消息 content 中引用。服务端不直接传输文件二进制数据，消息 body 始终 ≤ 1 MB。
+> **大文件策略：** 图片/语音/视频/文件等富媒体消息需先通过文件上传接口（0x0600-0x0605）获取 `file_id`，再在消息 content 中引用。服务端不直接传输文件二进制数据，消息 body 始终 ≤ 1 MB。
 
 #### 3.7.2 发送消息 (kSendMsg / kSendMsgAck)
 
@@ -802,15 +802,15 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 
 #### 3.9.1 建群 (kCreateGroup / kCreateGroupAck)
 
-**CreateGroupReq** (C→S, 0x0400):
+**CreateGroupReq** (C→S, 0x0500):
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| name | string | ✅ | 群名称，1–100 字符 |
-| avatar | string | | 群头像 URL |
-| member_ids | int64[] | ✅ | 初始成员 ID 列表（不含自己，最少 2 人） |
+| name | string | ✅ | 群名称，1–100 字符，禁止控制字符 |
+| avatar | string | | 群头像 URL，最长 512 字符 |
+| member_ids | int64[] | ✅ | 初始成员 ID 列表（不含自己，最少 2 人，总人数不超过 500） |
 
-**CreateGroupAck** (S→C, 0x0401):
+**CreateGroupAck** (S→C, 0x0501):
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
@@ -824,25 +824,27 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 2. 创建 `groups` 表记录
 3. 将创建者 + member_ids 写入 `conversation_members`（创建者 role=Owner）
 4. 对所有初始成员推送 `kGroupNotify`（type=创建）
+5. 封禁/删除用户自动跳过，不加入群
 
 **建群错误码：**
 
 | code | 含义 |
 |------|------|
-| 1 | 群名为空或超长 |
-| 2 | 初始成员不足 2 人 |
-| 3 | 部分成员不存在 |
-| 4 | 包含已拉黑你的用户 |
+| 7001 | 群名为空 |
+| 7002 | 群名超过 100 字符 |
+| 7004 | 初始成员不足 2 人 |
+| 1019 | 部分成员不存在 |
+| -100 | 数据库错误 |
 
 #### 3.9.2 解散群 (kDismissGroup / kDismissGroupAck)
 
-**DismissGroupReq** (C→S, 0x0402):
+**DismissGroupReq** (C→S, 0x0502):
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | conversation_id | int64 | ✅ | 群会话 ID |
 
-**DismissGroupAck** (S→C, 0x0403):
+**DismissGroupAck** (S→C, 0x0503):
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
@@ -851,48 +853,66 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 
 **规则：** 仅群主可解散。解散后会话标记删除，对所有成员推送 `kGroupNotify`（type=解散）。
 
+**解散错误码：**
+
+| code | 含义 |
+|------|------|
+| 7005 | 非群成员 |
+| 7006 | 仅群主可解散 |
+| 7012 | 群不存在 |
+
 #### 3.9.3 申请入群 / 审批 (kJoinGroup / kHandleJoinReq)
 
-**JoinGroupReq** (C→S, 0x0404):
+**JoinGroupReq** (C→S, 0x0504):
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | conversation_id | int64 | ✅ | 群会话 ID |
 | remark | string | | 申请备注 |
 
-**JoinGroupAck** (S→C, 0x0405):
+**JoinGroupAck** (S→C, 0x0505):
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | code | int32 | 0=已提交申请 |
 | msg | string | 错误描述 |
 
-**HandleJoinReqReq** (C→S, 0x0406):
+**HandleJoinReqReq** (C→S, 0x0506):
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| conversation_id | int64 | ✅ | 群会话 ID |
-| applicant_id | int64 | ✅ | 申请人用户 ID |
+| request_id | int64 | ✅ | 入群申请 ID（来自 GroupNotify 推送） |
 | action | int32 | ✅ | 1=同意，2=拒绝 |
 
-**HandleJoinReqAck** (S→C, 0x0407):
+**HandleJoinReqAck** (S→C, 0x0507):
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | code | int32 | 0=成功 |
 | msg | string | 错误描述 |
 
-**规则：** 仅群主/管理员可审批。同意后写入 `conversation_members`，推送 `kGroupNotify`。
+**规则：** 仅群主/管理员可审批。同意后写入 `conversation_members`，推送 `kGroupNotify`。封禁/删除用户不得加入，群员上限 500。
+
+**入群错误码：**
+
+| code | 含义 |
+|------|------|
+| 7005 | 非群成员（审批人） |
+| 7007 | 仅管理员或群主可审批 |
+| 7011 | 已是群成员 |
+| 7012 | 群不存在 |
+| 7013 | 已有待处理的入群申请 |
+| 7014 | 入群申请不存在 |
 
 #### 3.9.4 退群 (kLeaveGroup / kLeaveGroupAck)
 
-**LeaveGroupReq** (C→S, 0x0408):
+**LeaveGroupReq** (C→S, 0x0508):
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | conversation_id | int64 | ✅ | 群会话 ID |
 
-**LeaveGroupAck** (S→C, 0x0409):
+**LeaveGroupAck** (S→C, 0x0509):
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
@@ -901,16 +921,24 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 
 **规则：** 群主不能退群（须先转让群主或解散群）。退出后从 `conversation_members` 移除，推送 `kGroupNotify`。
 
+**退群错误码：**
+
+| code | 含义 |
+|------|------|
+| 7005 | 非群成员 |
+| 7010 | 群主不能退群，须先解散或转让 |
+| 7012 | 群不存在 |
+
 #### 3.9.5 踢出成员 (kKickMember / kKickMemberAck)
 
-**KickMemberReq** (C→S, 0x040A):
+**KickMemberReq** (C→S, 0x050A):
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | conversation_id | int64 | ✅ | 群会话 ID |
 | target_user_id | int64 | ✅ | 被踢用户 ID |
 
-**KickMemberAck** (S→C, 0x040B):
+**KickMemberAck** (S→C, 0x050B):
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
@@ -923,15 +951,25 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 - 普通成员无踢出权限
 - 不能踢自己（用退群）
 
+**踢出错误码：**
+
+| code | 含义 |
+|------|------|
+| 7005 | 非群成员 |
+| 7007 | 仅管理员或群主可踢人 |
+| 7008 | 不能踢自己 |
+| 7009 | 不能踢比自己角色高的成员 |
+| 7012 | 群不存在 |
+
 #### 3.9.6 获取群信息 (kGetGroupInfo / kGetGroupInfoAck)
 
-**GetGroupInfoReq** (C→S, 0x040C):
+**GetGroupInfoReq** (C→S, 0x050C):
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | conversation_id | int64 | ✅ | 群会话 ID |
 
-**GetGroupInfoAck** (S→C, 0x040D):
+**GetGroupInfoAck** (S→C, 0x050D):
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
@@ -947,16 +985,16 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 
 #### 3.9.7 修改群信息 (kUpdateGroup / kUpdateGroupAck)
 
-**UpdateGroupReq** (C→S, 0x040E):
+**UpdateGroupReq** (C→S, 0x050E):
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | conversation_id | int64 | ✅ | 群会话 ID |
-| name | string | | 新群名（为空不修改），1–100 字符 |
-| avatar | string | | 新头像（为空不修改） |
+| name | string | | 新群名（为空不修改），1–100 字符，禁止控制字符 |
+| avatar | string | | 新头像（为空不修改），最长 512 字符 |
 | notice | string | | 新公告（为空不修改），最长 1000 字符 |
 
-**UpdateGroupAck** (S→C, 0x040F):
+**UpdateGroupAck** (S→C, 0x050F):
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
@@ -965,15 +1003,27 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 
 **权限：** 仅群主/管理员可修改。修改后对所有成员推送 `kGroupNotify`（type=信息变更）。
 
+**修改群信息错误码：**
+
+| code | 含义 |
+|------|------|
+| 7002 | 群名超过 100 字符 |
+| 7003 | 公告超过 1000 字符 |
+| 7005 | 非群成员 |
+| 7007 | 仅管理员或群主可修改 |
+| 7012 | 群不存在 |
+| 7017 | 没有任何修改 |
+| 1022 | 头像路径超过 512 字符 |
+
 #### 3.9.8 获取群成员列表 (kGetGroupMembers / kGetGroupMembersAck)
 
-**GetGroupMembersReq** (C→S, 0x0410):
+**GetGroupMembersReq** (C→S, 0x0510):
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | conversation_id | int64 | ✅ | 群会话 ID |
 
-**GetGroupMembersAck** (S→C, 0x0411):
+**GetGroupMembersAck** (S→C, 0x0511):
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
@@ -986,6 +1036,7 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | user_id | int64 | 用户 ID |
+| uid | string | 用户 UID（Snowflake） |
 | nickname | string | 昵称 |
 | avatar | string | 头像 |
 | role | int32 | 0=普通成员，1=管理员，2=群主 |
@@ -993,13 +1044,13 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 
 #### 3.9.9 获取我的群列表 (kGetMyGroups / kGetMyGroupsAck)
 
-**GetMyGroupsReq** (C→S, 0x0412):
+**GetMyGroupsReq** (C→S, 0x0512):
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | （body 可为空） | | | 返回当前用户所有群 |
 
-**GetMyGroupsAck** (S→C, 0x0413):
+**GetMyGroupsAck** (S→C, 0x0513):
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
@@ -1019,7 +1070,7 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 
 #### 3.9.10 设置成员角色 (kSetMemberRole / kSetMemberRoleAck)
 
-**SetMemberRoleReq** (C→S, 0x0414):
+**SetMemberRoleReq** (C→S, 0x0514):
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
@@ -1027,7 +1078,7 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 | target_user_id | int64 | ✅ | 目标成员 ID |
 | role | int32 | ✅ | 0=普通成员，1=管理员 |
 
-**SetMemberRoleAck** (S→C, 0x0415):
+**SetMemberRoleAck** (S→C, 0x0515):
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
@@ -1036,9 +1087,19 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 
 **权限：** 仅群主可设置/撤销管理员。
 
+**设置角色错误码：**
+
+| code | 含义 |
+|------|------|
+| 7005 | 非群成员 |
+| 7006 | 仅群主可设置 |
+| 7012 | 群不存在 |
+| 7015 | 无效的角色值 |
+| 7016 | 不能通过此命令设置群主 |
+
 #### 3.9.11 群事件推送 (kGroupNotify)
 
-**GroupNotify** (S→C, 0x0416):
+**GroupNotify** (S→C, 0x0516):
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
@@ -1069,7 +1130,7 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 
 #### 3.10.1 请求上传 (kUploadReq / kUploadAck)
 
-**UploadReq** (C→S, 0x0500):
+**UploadReq** (C→S, 0x0600):
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
@@ -1079,15 +1140,25 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 | file_hash | string | | 文件 SHA-256（秒传去重） |
 | file_type | string | | 用途分类：`avatar`/`image`/`voice`/`video`/`file` |
 
-**UploadAck** (S→C, 0x0501):
+**UploadAck** (S→C, 0x0601):
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | code | int32 | 0=成功 |
 | msg | string | 错误描述 |
-| file_id | string | 文件唯一标识 |
+| file_id | int64 | 文件唯一标识 |
 | upload_url | string | HTTP PUT 上传地址（有时效性） |
 | already_exists | int32 | 1=秒传命中（file_hash 已存在），无需上传 |
+
+**上传错误码：**
+
+| code | 含义 |
+|------|------|
+| 3001 | file_name 为空 |
+| 3002 | file_size 无效（≤ 0） |
+| 3003 | 文件超过大小限制 (100 MB) |
+| 3004 | mime_type 为空 |
+| 3007 | 无效的 file_type |
 
 **文件大小限制：**
 
@@ -1105,13 +1176,13 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 
 客户端完成 HTTP PUT 后通知服务端确认。
 
-**UploadCompleteReq** (C→S, 0x0502):
+**UploadCompleteReq** (C→S, 0x0602):
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| file_id | string | ✅ | 文件 ID（来自 UploadAck） |
+| file_id | int64 | ✅ | 文件 ID（来自 UploadAck） |
 
-**UploadCompleteAck** (S→C, 0x0503):
+**UploadCompleteAck** (S→C, 0x0603):
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
@@ -1121,14 +1192,14 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 
 #### 3.10.3 请求下载 (kDownloadReq / kDownloadAck)
 
-**DownloadReq** (C→S, 0x0504):
+**DownloadReq** (C→S, 0x0604):
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| file_id | string | ✅ | 文件 ID |
+| file_id | int64 | ✅ | 文件 ID |
 | thumb | int32 | | 1=仅缩略图（图片/视频） |
 
-**DownloadAck** (S→C, 0x0505):
+**DownloadAck** (S→C, 0x0605):
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
@@ -1137,6 +1208,13 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 | download_url | string | HTTP GET 下载地址（有时效性） |
 | file_name | string | 文件名 |
 | file_size | int64 | 文件大小 |
+
+**下载错误码：**
+
+| code | 含义 |
+|------|------|
+| 3005 | 文件不存在 |
+| 2005 | 非会话成员（共享会话鉴权失败） |
 
 ---
 
@@ -1149,7 +1227,7 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | conversation_id | int64 | ✅ | 会话 ID |
-| last_seq | int64 | ✅ | 客户端已有的最大 seq（从该 seq 之后拉取） |
+| last_seq | int64 | ✅ | 客户端已有的最大 seq（从该 seq 之后拉取，必须 ≥ 0） |
 | limit | int32 | | 拉取条数，默认 20，最大 100 |
 
 **SyncMsgResp** (S→C, 0x0201):
@@ -1190,6 +1268,13 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 | conversation_id | int64 | 会话 ID |
 | count | int64 | 该会话未读数 |
 | latest_messages | SyncMsgItem[] | 最近几条消息摘要 |
+
+**同步错误码：**
+
+| code | 含义 | 适用命令 |
+|------|------|---------|
+| 4001 | 非会话成员 | SyncMsg |
+| -1 | 请求体格式无效 | SyncMsg / SyncUnread |
 
 ---
 
