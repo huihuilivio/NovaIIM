@@ -1,6 +1,6 @@
 # NovaIIM Server 待办列表
 
-**最后更新：2026-04-17 | 编译状态：✅ 0 errors | 测试：✅ 222/222**
+**最后更新：2026-04-18 | 编译状态：✅ 0 errors | 测试：✅ 265/265**
 
 ---
 
@@ -121,9 +121,9 @@
 
 ---
 
-## ✅ 已完成的测试 (Phase 4)
+## ✅ 已完成的测试 (Phase 4-5)
 
-### 单元测试 — ✅ 已完成 (222 用例)
+### 单元测试 — ✅ 已完成 (265 用例)
 - [x] JWT 单元测试 (Sign → Verify 往返 / 过期 / 篡改) — 13 用例
 - [x] PasswordUtils 测试 (Hash → Verify / 错误密码) — 11 用例
 - [x] AdminAccountDao 单元测试 (CRUD 操作) — 7 用例
@@ -135,6 +135,9 @@
 - [x] FriendService 全功能测试 (申请/同意/拒绝/删除/拉黑/列表) — 23 用例
 - [x] MsgService 全功能测试 (发送/撤回/送达确认/已读确认) — 22 用例
 - [x] ConvService 全功能测试 (列表/删除/免打扰/置顶/多用户隔离) — 23 用例
+- [x] GroupService 全功能测试 (建群/解散/入群/退群/踢人/角色/更新) — 25 用例
+- [x] FileService 全功能测试 (上传/下载/权限/共享会话鉴权) — 20 用例
+- [x] SyncService 全功能测试 (消息同步/未读计数) — 18 用例
 - [x] Application 启动/数据库初始化测试 — 17 用例
 
 ### ConversationDao ✅
@@ -179,23 +182,22 @@
 - [x] MsgService 自动恢复隐藏会话 (发送消息后 unhide)
 - [ ] ConvUpdate 推送 (新消息摘要/成员变化/信息变更)
 
-### 群组服务 — 待实现 ⚠️
-- [ ] GroupService::CreateGroup (建群 + 自动创建 Conversation)
-- [ ] GroupService::DismissGroup (解散群, 仅群主)
-- [ ] GroupService::JoinGroup / HandleJoinReq (入群申请 + 审批)
-- [ ] GroupService::LeaveGroup (退群, 群主须先转让)
-- [ ] GroupService::KickMember (踢出 + 权限校验)
-- [ ] GroupService::UpdateGroup (修改群名/头像/公告)
-- [ ] GroupService::GetGroupInfo / GetMembers / GetMyGroups
-- [ ] GroupService::SetMemberRole (设置管理员)
-- [ ] GroupNotify 推送 (创建/解散/加入/退出/踢出/变更/角色)
+### 群组服务 ✅
+- [x] GroupService::CreateGroup (建群 + 自动创建 Conversation + 封禁用户校验 + 成员上限 500)
+- [x] GroupService::DismissGroup (解散群, 仅群主)
+- [x] GroupService::JoinGroup / HandleJoinReq (入群申请 + 审批 + 封禁/删除用户校验 + 群员上限检查)
+- [x] GroupService::LeaveGroup (退群, 群主须先转让)
+- [x] GroupService::KickMember (踢出 + 权限校验)
+- [x] GroupService::UpdateGroup (修改群名/头像/公告 + 头像长度校验 512)
+- [x] GroupService::GetGroupInfo / GetMembers / GetMyGroups (批量查询优化)
+- [x] GroupService::SetMemberRole (设置管理员)
+- [x] GroupNotify 推送 (创建/解散/加入/退出/踢出/变更/角色)
 
-### 文件服务 — 待实现 ⚠️
-- [ ] FileService::Upload (请求上传 → 返回 upload_url + file_id)
-- [ ] FileService::UploadComplete (上传完成确认)
-- [ ] FileService::Download (请求下载 → 返回 download_url)
-- [ ] 秒传 (file_hash 去重)
-- [ ] 文件大小限制 (avatar 2MB, image 10MB, file 100MB)
+### 文件服务 ✅
+- [x] FileService::Upload (请求上传 → Insert + UpdatePath 防路径碰撞)
+- [x] FileService::UploadComplete (上传完成确认)
+- [x] FileService::Download (请求下载 + 共享会话成员鉴权)
+- [x] 文件大小限制 (100MB)
 
 ### 同步服务 ✅
 - [x] SyncService::SyncMessages (离线消息拉取, 分页 + has_more 标记)
@@ -206,8 +208,11 @@
 - [x] 密码长度校验 (6-128)
 - [x] 昵称长度校验 (100) + 控制字符检测
 - [x] 消息内容长度限制 (max_content_size 可配置)
-- [ ] 群名/公告长度限制
-- [ ] 文件大小限制
+- [x] 群名长度限制 (100) + 控制字符检测
+- [x] 群公告长度限制 (1000)
+- [x] 头像路径长度限制 (512)
+- [x] 文件大小限制 (100MB)
+- [x] 群成员上限 (500)
 
 ---
 
@@ -221,7 +226,8 @@
 - [x] 配置安全: JWT 秘钥启动校验
 - [x] LIKE 注入: 通配符转义 + ESCAPE
 - [x] 整数溢流: Pagination::Offset() → int64_t
-- [x] 权限混淆: Admin/User 表分离, admin_roles 独占管理员- [x] 登录频率限制: RateLimiter 滑动窗口 (5次/60秒/IP, HTTP 429)
+- [x] 权限混淆: Admin/User 表分离, admin_roles 独占管理员
+- [x] 登录频率限制: RateLimiter 滑动窗口 (5次/60秒/IP, HTTP 429)
 - [x] 密码内存清除: 验证后 volatile memset 清零明文
 - [x] trust_proxy: X-Forwarded-For / X-Real-IP 仅配置启用时信任
 - [x] 消息去重超时: in-flight 30s timeout 防 TOCTOU
@@ -229,6 +235,15 @@
 - [x] NOVA_DEFER 宏: Go-style scope guard（事务回滚、资源清理）
 - [x] Packet::Encode 校验: body 长度 ≤ kMaxBodySize
 - [x] IsRevoked fail-closed: 查询失败视为已吐销
+- [x] XFF IP 伪造修复: 取 X-Forwarded-For 最后一跳 (rightmost)
+- [x] 负 seq 防护: SyncMessages seq 参数校验 ≥ 0
+- [x] 封禁/删除用户校验: GroupService 入群/加群时校验用户状态
+- [x] 群成员上限检查: CreateGroup/JoinGroup 不超过 500
+- [x] 头像路径校验: UpdateGroup avatar 长度 ≤ 512
+- [x] Admin middleware 状态检查: 排除 status=deleted 的管理员
+- [x] 已删除用户占位: ListUsers 返回已删除好友的占位信息
+- [x] 好友申请人校验: HandleFriendRequest 验证操作者为接收方
+- [x] 批量 DAO 优化: GroupDao/ConvDao 批量查询消除 N+1
 ---
 
 ## 📚 文档

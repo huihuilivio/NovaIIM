@@ -1,7 +1,7 @@
 # NovaIIM 🚀
 
 > A High-Performance Next-Gen Instant Messaging System (C++ / CMake)  
-> **Current Status:** 222 Tests Passing • 0 Compilation Errors
+> **Current Status:** 265 Tests Passing • 0 Compilation Errors
 
 ---
 
@@ -13,7 +13,7 @@
 * ✅ **双后端数据库** — SQLite3（开发）+ MySQL 5.7+（生产）
 * ✅ **JWT + RBAC 认证** — 精细权限控制，黑名单管理
 * ✅ **IM 核心框架** — TCP 网关、多端同步、消息序列化
-* ✅ **IM 用户侧服务** — 注册登录/好友/消息/会话管理，222 测试用例全通过
+* ✅ **IM 用户侧服务** — 注册登录/好友/消息/会话/群组/文件/同步，265 测试用例全通过
 * ✅ **安全加固** — SQL 注入防护、权限隔离、审计日志
 
 本项目采用**纯 CMake 构建体系**，不依赖 Makefile，提供统一、跨平台的工程管理方案。
@@ -103,14 +103,14 @@ GET    /permissions             权限列表（всех）
   - JWT Claim 区分（admin_id vs user_id）
   - AuditLog 追踪（admin_id 字段记录操作者）
 
-### ⚠️ 进行中（Phase 5+）
-- ✅ 单元测试：222 个用例全部通过
-  - JWT 13 / Password 11 / DAO 24 / API 21 / Router 6 / MPMC 5 / ConnMgr 4 / UserService 53 / FriendService 23 / MsgService 22 / ConvService 23 / Application 17
+### ✅ 已交付（Phase 5 — IM 完整服务）
+- ✅ 单元测试：265 个用例全部通过
+  - JWT 13 / Password 11 / DAO 24 / API 21 / Router 6 / MPMC 5 / ConnMgr 4 / UserService 53 / FriendService 23 / MsgService 22 / ConvService 23 / GroupService 25 / FileService 20 / SyncService 18 / Application 17
+- ✅ **群组服务** (GroupService) — 建群/解散/入群审批/退群/踢人/群信息/成员角色/邀请
+- ✅ **文件服务** (FileService) — 上传/下载/共享会话鉴权
+- ✅ **同步服务** (SyncService) — 离线消息拉取/未读计数同步
 
 ### ⏳ 待补（Phase 6+）
-- **群组服务** (GroupService)
-- **文件服务** (FileService)
-- **同步服务** (SyncService)
 - **运维管理** (Ops Management)：7 个新 API 管理员账户
 - **角色管理** (Role Management)：7 个新 API 角色和权限
 - 部署指南（SQLite vs MySQL 选择）
@@ -241,6 +241,8 @@ NovaIIM/
 │   │   ├── rbac_dao.h             # 权限查询 (admin_roles)
     │   ├── conversation_dao.h     # 会话 DAO (已完成)
     │   ├── friend_dao.h           # 好友 DAO (已完成)
+    │   ├── group_dao.h            # 群组 DAO (已完成)
+    │   ├── file_dao.h             # 文件 DAO (已完成)
 │   │   ├── impl/                  # 模板实现
 │   │   │   ├── user_dao_impl.h/cpp
 │   │   │   ├── admin_account_dao_impl.h/cpp (NEW)
@@ -270,7 +272,9 @@ NovaIIM/
     │   ├── friend_service.h/cpp   # 好友申请/同意/删除/拉黑/列表
     │   ├── msg_service.h/cpp      # 发送/撤回/送达确认/已读确认
     │   ├── conv_service.h/cpp     # 会话列表/删除/免打扰/置顶
-│   │   └── sync_service.h/cpp     # 离线同步 (stub)
+│   │   ├── group_service.h/cpp    # 群组管理 (建群/解散/入群/踢人/角色)
+    │   ├── file_service.h/cpp     # 文件上传/下载
+│   │   └── sync_service.h/cpp     # 离线同步 (消息拉取/未读计数)
 │   └── test/                      # 单元测试
 │       ├── test_conn_manager.cpp
 │       ├── test_mpmc_queue.cpp
@@ -284,7 +288,9 @@ NovaIIM/
         ├── test_user_service.cpp
         ├── test_friend_service.cpp
         ├── test_msg_service.cpp
-        └── test_conv_service.cpp
+        ├── test_conv_service.cpp
+        ├── test_group_service.cpp
+        └── test_file_service.cpp
 │
 ├── client/                        # 客户端（预留）
 │   └── cpp/
@@ -351,7 +357,7 @@ ls -la build/output/bin/NovaIIM
 # [INFO] IM service listening on: 0.0.0.0:9999
 # [INFO] Server started. Press Ctrl+C to shutdown.
 
-# 运行单元测试 (120 个用例)
+# 运行单元测试 (265 个用例)
 ctest --output-on-failure
 ```
 

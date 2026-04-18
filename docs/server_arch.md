@@ -173,17 +173,44 @@ ConvService 职责：
 
 ---
 
-### 4.6 SyncService
+### 4.6 GroupService
 
 职责：
 
-* 离线拉取
-* 多端同步
-* 未读管理
+* 建群 (CreateGroup): 创建群 + Conversation + 添加成员 (封禁/删除用户校验, 上限500)
+* 解散群 (DismissGroup): 仅群主可操作 + 通知全员
+* 入群 (JoinGroup / HandleJoinReq): 申请 + 审批流程 + 封禁/删除/满员校验
+* 退群 (LeaveGroup): 群主须先转让
+* 踢人 (KickMember): owner 可踢任何人, admin 只能踢 member
+* 更新群 (UpdateGroup): 群名/公告/头像 + 长度校验
+* 查询 (GetGroupInfo / GetMembers / GetMyGroups): 批量 DAO 消除 N+1
+* 角色管理 (SetMemberRole): owner → admin ↔ member
+* 邀请 (InviteToGroup): 成员邀请 + 封禁/满员校验
+* GroupNotify 推送: 所有变更通知在线成员
 
 ---
 
-### 4.7 DAO 层 (ormpp)
+### 4.7 FileService
+
+职责：
+
+* Upload: 请求上传 → DB 插入 + 唯一路径生成 (防碰撞)
+* UploadComplete: 上传完成确认
+* Download: 请求下载 + 共享会话成员鉴权
+* 大小限制: 100MB
+
+---
+
+### 4.8 SyncService
+
+职责：
+
+* SyncMessages: 离线消息拉取 (分页 + has_more + seq 非负校验)
+* SyncUnread: 未读会话 + 未读数 + 最后消息预览 (批量查询优化)
+
+---
+
+### 4.9 DAO 层 (ormpp)
 
 | DAO | 说明 |
 |-----|------|
@@ -318,6 +345,13 @@ class MPMCQueue {
 | ApiError | 28 个 constexpr 错误常量，消除 hardcode 字符串 |
 | NOVA_DEFER | Go-style scope guard 宏 (事务回滚/资源清理) |
 | 消息去重 | in-flight 30s timeout 防 TOCTOU, LRU dedup cache |
+| XFF IP 防伪 | 取 X-Forwarded-For 最后一跳 (rightmost) |
+| 封禁/删除校验 | 入群/加群时校验用户 status |
+| 群成员上限 | CreateGroup/JoinGroup 不超过 500 |
+| 头像路径校验 | UpdateGroup avatar 长度 ≤ 512 |
+| Admin 状态检查 | middleware 排除 status=deleted 管理员 |
+| 好友申请人校验 | HandleFriendRequest 验证操作者为接收方 |
+| 批量 DAO | GroupDao/ConvDao 批量查询消除 N+1 |
 
 ---
 

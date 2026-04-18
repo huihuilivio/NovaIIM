@@ -1,16 +1,15 @@
 # NovaIIM IM服务器文档索引
 
 > **注意：** 本目录为设计规划文档。
-> 已实现服务：UserService、FriendService、MsgService、ConvService（222 测试用例全通过）。
-> 待实现：GroupService、FileService、SyncService。
+> 已实现服务：UserService、FriendService、MsgService、ConvService、GroupService、FileService、SyncService（265 测试用例全通过）。
 > 已实现部分见 [todo.md](../todo.md)。
 
 ## 文档结构
 
 | 文档 | 用途 | 状态 |
 |------|------|------|
-| [design.md](design.md) | 系统架构设计（Gateway / Service / DAO） | 已实现 (UserSvc/FriendSvc/MsgSvc/ConvSvc) |
-| [api.md](api.md) | TCP 客户端集成指南 | 已实现 (GroupSvc/FileSvc/SyncSvc 待实现) |
+| [design.md](design.md) | 系统架构设计（Gateway / Service / DAO） | 已实现 (UserSvc/FriendSvc/MsgSvc/ConvSvc/GroupSvc/FileSvc/SyncSvc) |
+| [api.md](api.md) | TCP 客户端集成指南 | 已实现 |
 | [db_design.md](db_design.md) | IM 数据库表设计 | 已实现 |
 
 **权威协议文档：** [protocol.md](../protocol.md)（命令字、消息体、错误码）
@@ -22,12 +21,10 @@
 - FriendService::AddFriend / HandleRequest / DeleteFriend / Block / Unblock / GetFriendList / GetRequests
 - MsgService::SendMsg / RecallMsg / DeliverAck / ReadAck
 - ConvService::GetConvList / DeleteConv / MuteConv / PinConv / BroadcastConvUpdate
+- GroupService::CreateGroup / DismissGroup / JoinGroup / HandleJoinReq / LeaveGroup / KickMember / UpdateGroup / GetGroupInfo / GetMembers / GetMyGroups / SetMemberRole / InviteToGroup
+- FileService::Upload / UploadComplete / Download
+- SyncService::SyncMessages / SyncUnread
 - 心跳保活、设备管理
-
-## 待实现
-
-- GroupService / FileService / SyncService
-- 详见 [todo.md](../todo.md)
 
 ---
 

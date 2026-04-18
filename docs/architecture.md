@@ -90,5 +90,12 @@ server/
 - in-flight 消息去重超时 (30s timeout 防 TOCTOU)
 - 邮箱格式校验 + 密码长度校验 (6-128) + TOCTOU Insert 回退
 - PBKDF2 iterations 上限 (10M) 防 CPU DoS
+- XFF IP 取最后一跳 (rightmost) 防伪造
+- 封禁/删除用户入群校验
+- 群成员上限检查 (500)
+- 头像路径长度校验 (512)
+- Admin middleware 排除 status=deleted 管理员
+- 好友申请操作者身份校验
+- 批量 DAO 查询消除 N+1 问题
 
 详细架构设计见 [server_arch.md](server_arch.md)，Admin 模块设计见 [admin_server/](admin_server/) 目录。

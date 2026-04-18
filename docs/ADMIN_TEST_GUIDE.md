@@ -2,7 +2,7 @@
 
 ## 概述
 
-已完成 **全部测试目标**，共 222 个测试用例：
+已完成 **全部测试目标**，共 265 个测试用例：
 
 | 测试目标 | 用例数 | 状态 | 覆盖范围 |
 |--------|-------|------|----------|
@@ -18,6 +18,8 @@
 | `test_friend_service` | 23 | ✅ 通过 | 好友申请/同意/拒绝/删除/拉黑/列表 |
 | `test_msg_service` | 22 | ✅ 通过 | 发送/撤回/送达确认/已读确认/幂等去重 |
 | `test_conv_service` | 23 | ✅ 通过 | 会话列表/删除/免打扰/置顶/多用户隔离 |
+| `test_group_service` | 25 | ✅ 通过 | 建群/解散/入群/退群/踢人/角色/邀请/封禁校验 |
+| `test_file_service` | 20 | ✅ 通过 | 上传/下载/权限/共享会话鉴权 |
 
 ## 测试执行脚本
 
@@ -34,7 +36,7 @@ cmake --build . --target test_jwt_utils test_password_utils test_admin_dao test_
 ```bash
 cd d:\livio\NovaIIM\build
 ctest --output-on-failure
-# 期望输出: 100% tests passed, 0 tests failed out of 120
+# 期望输出: 100% tests passed, 0 tests failed out of 265
 ```
 
 ### 运行特定测试
