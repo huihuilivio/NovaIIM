@@ -164,7 +164,7 @@ inline constexpr Error kFileSizeTooLarge         {3003, "file too large"};
 inline constexpr Error kMimeTypeRequired         {3004, "mime_type is required"};
 inline constexpr Error kFileNotFound             {3005, "file not found"};
 inline constexpr Error kUploadFailed             {3006, "upload failed"};
-inline constexpr Error kInvalidFileType           {3007, "invalid file_type"};
+inline constexpr Error kInvalidFileType          {3007, "invalid file_type"};
 // clang-format on
 
 }  // namespace file
