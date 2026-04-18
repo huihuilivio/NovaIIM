@@ -26,7 +26,7 @@ set(NOVA_ORMPP_VERSION        "0.2.1")
 set(NOVA_L8W8JWT_VERSION      "2.5.0")
 
 # 镜像源切换：无法访问 GitHub 时设置 -DNOVA_USE_GITEE=ON
-option(NOVA_USE_GITEE "Use Gitee mirrors instead of GitHub" OFF)
+option(NOVA_USE_GITEE "Use Gitee mirrors instead of GitHub" ON)
 if(NOVA_USE_GITEE)
     set(NOVA_GIT_LIBHV          "https://gitee.com/libhv/libhv.git")
     set(NOVA_GIT_YALANTINGLIBS  "https://gitee.com/alibaba/yalantinglibs.git")
