@@ -4,13 +4,13 @@
 Write-Host "Building NovaIIM project for production (Release configuration)..."
 
 # Configure if needed
-if (!(Test-Path "build")) {
+if (!(Test-Path "../build")) {
     Write-Host "Configuring CMake..."
-    cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+    & cmake -S .. -B ../build -DCMAKE_BUILD_TYPE=Release
 }
 
 # Build
-Push-Location build
+Push-Location "../build"
 cmake --build . --config Release
 
 if ($LASTEXITCODE -eq 0) {

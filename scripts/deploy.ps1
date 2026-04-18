@@ -9,7 +9,7 @@ param(
 Write-Host "Deploying NovaIIM project to $DeployPath..."
 
 # Check if build exists
-if (!(Test-Path "build")) {
+if (!(Test-Path "../build")) {
     Write-Host "Build directory not found. Please build first."
     exit 1
 }
@@ -20,13 +20,13 @@ if (!(Test-Path $DeployPath)) {
 }
 
 # Copy binaries
-$binSource = Join-Path "build" "output\bin"
+$binSource = Join-Path "../build" "output\bin"
 if (Test-Path $binSource) {
     Copy-Item "$binSource\*" $DeployPath -Recurse -Force
 }
 
 # Copy libraries
-$libSource = Join-Path "build" "output\lib"
+$libSource = Join-Path "../build" "output\lib"
 if (Test-Path $libSource) {
     Copy-Item "$libSource\*" $DeployPath -Recurse -Force
 }

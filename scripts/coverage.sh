@@ -12,12 +12,12 @@ if ! command -v lcov &> /dev/null; then
 fi
 
 # Navigate to build directory
-if [ ! -d "build" ]; then
+if [ ! -d "../build" ]; then
     echo "Build directory not found. Please build with coverage enabled first."
     exit 1
 fi
 
-cd build
+cd ../build
 
 # Capture initial coverage
 lcov --capture --initial --directory . --output-file coverage_base.info

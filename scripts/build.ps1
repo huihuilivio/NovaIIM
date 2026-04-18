@@ -8,12 +8,12 @@ param(
 Write-Host "Building NovaIIM project in $Config configuration..."
 
 # Navigate to build directory
-if (!(Test-Path "build")) {
+if (!(Test-Path "../build")) {
     Write-Host "Build directory not found. Please run configure first."
     exit 1
 }
 
-Push-Location build
+Push-Location "../build"
 
 # Build using cmake
 cmake --build . --config $Config

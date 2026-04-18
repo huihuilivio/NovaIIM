@@ -9,7 +9,7 @@ CONFIG=${2:-"Release"}
 echo "Deploying NovaIIM project to $DEPLOY_PATH..."
 
 # Check if build exists
-if [ ! -d "build" ]; then
+if [ ! -d "../build" ]; then
     echo "Build directory not found. Please build first."
     exit 1
 fi
@@ -18,13 +18,13 @@ fi
 mkdir -p "$DEPLOY_PATH"
 
 # Copy binaries
-if [ -d "build/output/bin" ]; then
-    cp -r build/output/bin/* "$DEPLOY_PATH/"
+if [ -d "../build/output/bin" ]; then
+    cp -r ../build/output/bin/* "$DEPLOY_PATH/"
 fi
 
 # Copy libraries
-if [ -d "build/output/lib" ]; then
-    cp -r build/output/lib/* "$DEPLOY_PATH/"
+if [ -d "../build/output/lib" ]; then
+    cp -r ../build/output/lib/* "$DEPLOY_PATH/"
 fi
 
 # Copy config files

@@ -6,12 +6,12 @@
 echo "Running tests for NovaIIM project..."
 
 # Navigate to build directory
-if [ ! -d "build" ]; then
+if [ ! -d "../build" ]; then
     echo "Build directory not found. Please build first."
     exit 1
 fi
 
-cd build
+cd ../build
 
 # Run tests using ctest
 ctest --output-on-failure

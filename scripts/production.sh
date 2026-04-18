@@ -6,13 +6,13 @@
 echo "Building NovaIIM project for production (Release configuration)..."
 
 # Configure if needed
-if [ ! -d "build" ]; then
+if [ ! -d "../build" ]; then
     echo "Configuring CMake..."
-    ./scripts/configure.sh Release OFF
+    ./configure.sh Release OFF
 fi
 
 # Build
-cd build
+cd ../build
 cmake --build . --config Release
 
 if [ $? -eq 0 ]; then

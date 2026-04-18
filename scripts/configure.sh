@@ -8,7 +8,7 @@ ENABLE_COVERAGE=${2:-OFF}
 
 echo "Configuring NovaIIM project..."
 
-cmake -S . -B build \
+cmake -S .. -B ../build \
     -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
     -DENABLE_COVERAGE=$ENABLE_COVERAGE
 

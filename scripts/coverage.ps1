@@ -10,12 +10,12 @@ if (!(Get-Command lcov -ErrorAction SilentlyContinue)) {
 }
 
 # Navigate to build directory
-if (!(Test-Path "build")) {
+if (!(Test-Path "../build")) {
     Write-Host "Build directory not found. Please build with coverage enabled first."
     exit 1
 }
 
-Push-Location build
+Push-Location "../build"
 
 # Capture initial coverage
 lcov --capture --initial --directory . --output-file coverage_base.info

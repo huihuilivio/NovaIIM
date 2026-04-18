@@ -19,7 +19,7 @@ if ($EnableCoverage) {
 }
 
 # Run cmake configure
-& cmake $cmakeArgs
+& cmake -S .. -B ../build $cmakeArgs
 
 if ($LASTEXITCODE -eq 0) {
     Write-Host "Configuration completed successfully."
