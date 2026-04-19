@@ -262,121 +262,194 @@
 
 ---
 
-## 🚀 Phase 6 — Admin 管理前端 (Vue)
+## � 开发计划总览
 
-### 技术栈
-- **框架**: Vue 3 + TypeScript
-- **UI 库**: Element Plus
-- **构建**: Vite
-- **路由**: Vue Router
-- **状态**: Pinia
-- **HTTP**: Axios
+> **原则**: 框架搭建优先，具体业务实现跟进。先跑通最小闭环，再逐步补全功能。
 
-### 功能模块
+### 里程碑路线图
 
-#### 登录 / 鉴权
+| 阶段 | 目标 | 交付物 | 优先级 |
+|------|------|--------|--------|
+| **M1** | Admin 前端脚手架 | Vue 项目可运行，能登录 | 🔴 P0 |
+| **M2** | IM 客户端 C++ 框架 | 共享库编译通过，能连接服务器 | 🔴 P0 |
+| **M3** | PC 端 Qt 框架 | Qt 项目可运行，绑定 C++ VM | 🔴 P0 |
+| **M4** | Admin 前端功能完善 | 全部管理页面可用 | 🟡 P1 |
+| **M5** | IM 客户端业务实现 | 登录/聊天/联系人可用 | 🟡 P1 |
+| **M6** | PC 端 UI 完善 | 完整桌面 IM 体验 | 🟡 P1 |
+| **M7** | 移动端 Bridge | iOS/Android 可编译运行 | 🟢 P2 |
+
+---
+
+## 🔴 M1 — Admin 前端脚手架 (框架搭建)
+
+### 1.1 项目初始化
+- [ ] Vite + Vue 3 + TypeScript 项目创建 (`admin-web/`)
+- [ ] ESLint + Prettier 配置
+- [ ] Element Plus 集成 (按需导入)
+- [ ] 目录结构搭建 (`api/` `views/` `components/` `router/` `stores/` `utils/`)
+
+### 1.2 基础框架
+- [ ] Axios 实例封装 (baseURL, 超时, 错误拦截)
+- [ ] Token 管理工具 (localStorage 存取, 过期检测)
+- [ ] Axios 请求拦截器 (自动注入 Authorization Bearer)
+- [ ] Axios 响应拦截器 (401 → 清 token → 跳登录)
+- [ ] Pinia auth store (token / adminInfo / permissions)
+- [ ] Vue Router 配置 (路由表 + 导航守卫)
+- [ ] 主布局组件 (侧边栏 + 顶栏 + 内容区 + 面包屑)
+
+### 1.3 登录闭环验证
 - [ ] 登录页面 (POST /auth/login)
-- [ ] JWT Token 管理 (localStorage + Axios 拦截器)
-- [ ] 路由守卫 (未登录重定向)
-- [ ] 登出 (POST /auth/logout)
+- [ ] 登录成功 → 存 token → 跳 dashboard
+- [ ] 路由守卫拦截未登录 → /login
+- [ ] 登出 (POST /auth/logout + 清 token)
+- [ ] 开发代理配置 (Vite proxy → :9091)
 
-#### 仪表盘
+---
+
+## 🔴 M2 — IM 客户端 C++ 共享层框架
+
+### 2.1 CMake 工程搭建
+- [ ] `client/cpp/CMakeLists.txt` 重构 (编译为 shared library `nova_client`)
+- [ ] 依赖管理 (复用 protocol/, libhv, SQLite3, spdlog)
+- [ ] 导出头文件组织 (`client/cpp/include/nova/`)
+- [ ] 跨平台编译验证 (Windows MSVC + Linux GCC + macOS Clang)
+
+### 2.2 Core 基础设施
+- [ ] 客户端日志 (spdlog 封装, 文件 + 控制台)
+- [ ] 客户端配置 (server_host, server_port, 本地路径)
+- [ ] EventBus (发布-订阅, 线程安全, 类型化事件)
+- [ ] UIDispatcher 接口 (回调投递到 UI 线程, 各平台实现)
+
+### 2.3 Network 层
+- [ ] TcpClient 封装 (libhv TcpClient, connect/disconnect/send)
+- [ ] Codec (复用 protocol/Packet 编解码)
+- [ ] ReconnectManager (指数退避: 1s→2s→4s→...→30s, 网络恢复自动重连)
+- [ ] RequestManager (seq_id 请求-响应匹配, 超时回调 10s)
+- [ ] ConnectionState 状态机 (Disconnected→Connecting→Connected→Reconnecting)
+
+### 2.4 本地存储框架
+- [ ] 客户端 DbManager (SQLite3, 初始化本地表)
+- [ ] 本地 Schema 定义 (local_messages / local_conversations / local_contacts / local_config)
+- [ ] 基础 CRUD 封装
+
+### 2.5 ViewModel 基础
+- [ ] ViewModelBase 基类 (状态通知接口, 生命周期)
+- [ ] Observable<T> 属性包装 (变更通知, UI 绑定)
+- [ ] ClientContext (全局依赖注入: network, db, eventbus)
+
+### 2.6 最小闭环验证
+- [ ] LoginViewModel 骨架 (连接 → 发送 Login Packet → 收到响应)
+- [ ] 编写集成测试: 连接服务器 → 登录 → 心跳 → 断开
+
+---
+
+## 🔴 M3 — PC 端 Qt/QML 框架
+
+### 3.1 Qt 项目搭建
+- [ ] `client/desktop/CMakeLists.txt` (Qt6 + QML + nova_client 链接)
+- [ ] main.cpp (QGuiApplication + QML Engine + 注册 C++ 类型)
+- [ ] UIDispatcher Qt 实现 (QMetaObject::invokeMethod → UI 线程)
+- [ ] QML 入口 (main.qml + ApplicationWindow)
+
+### 3.2 QML 基础框架
+- [ ] 页面路由机制 (StackView 或 SwipeView)
+- [ ] 主题系统 (颜色/字体/间距 QML 单例)
+- [ ] 全局消息提示组件 (Toast / Notification)
+
+### 3.3 登录闭环
+- [ ] LoginViewModel ↔ QML 绑定
+- [ ] 登录页 QML (邮箱 + 密码 + 登录按钮 + 错误提示)
+- [ ] 登录成功 → 切换到主页面骨架
+- [ ] 主界面三栏布局骨架 (侧边栏 + 列表 + 内容区)
+
+---
+
+## 🟡 M4 — Admin 前端功能完善
+
+### 4.1 仪表盘
 - [ ] 数据概览卡片 (在线人数 / 总用户 / 消息数 / uptime)
 - [ ] 统计图表 (可选 ECharts)
 
-#### 用户管理
-- [ ] 用户列表 (分页 + keyword/status 筛选)
-- [ ] 创建用户表单
+### 4.2 用户管理
+- [ ] 用户列表 (分页表格 + keyword/status 筛选)
+- [ ] 创建用户对话框
 - [ ] 用户详情抽屉 (在线状态 + 设备列表)
 - [ ] 操作按钮 (重置密码 / 封禁 / 解禁 / 踢出 / 删除)
 
-#### 消息管理
+### 4.3 消息管理
 - [ ] 消息列表 (按对话 / 时间范围筛选)
-- [ ] 消息撤回 (含 reason)
+- [ ] 消息撤回对话框 (含 reason 输入)
 
-#### 审计日志
+### 4.4 审计日志
 - [ ] 日志列表 (按操作者 / 动作 / 时间筛选)
 
-#### 运维管理 (Phase 5 后端就绪后)
+### 4.5 运维管理 (需后端 Phase 5 就绪)
 - [ ] 管理员列表 / 创建 / 编辑 / 删除
 - [ ] 角色列表 / 创建 / 编辑 / 删除 / 权限分配
 
 ---
 
-## 🖥️ Phase 7 — IM 客户端 (跨平台 MVVM)
+## 🟡 M5 — IM 客户端业务实现
 
-### 架构设计
+### 5.1 Model 层实现
+- [ ] UserModel (用户信息本地缓存 + 服务端同步)
+- [ ] MessageModel (消息本地存储 + 分页加载 + 插入排序)
+- [ ] ConversationModel (会话列表 + 未读计数 + 排序)
+- [ ] ContactModel (好友 + 好友申请 + 拉黑列表)
+- [ ] GroupModel (群组信息 + 成员列表缓存)
+- [ ] FileModel (文件上传/下载进度 + 断点续传)
 
-采用 **MVVM** 架构，C++ 实现 ViewModel + Model 层，各平台共用同一套业务逻辑：
+### 5.2 ViewModel 层实现
+- [ ] LoginViewModel 完善 (注册 + 错误处理 + 自动登录)
+- [ ] ChatViewModel (消息收发 + 撤回 + 已读回执 + 历史加载)
+- [ ] ConversationListViewModel (排序: 置顶→时间, 未读气泡, 免打扰标记)
+- [ ] ContactViewModel (好友列表 + 申请处理 + 搜索用户)
+- [ ] GroupViewModel (建群 + 解散 + 入群 + 踢人 + 角色管理)
+- [ ] ProfileViewModel (个人资料查看/编辑)
+- [ ] SyncViewModel (离线消息同步 + 未读计数同步)
 
-```
-┌──────────────────────────────────────────────────────┐
-│                    View (平台原生 UI)                  │
-│  ┌────────────┐  ┌────────────┐  ┌────────────────┐  │
-│  │  PC (Qt)   │  │ iOS (Swift │  │ Android (Kotlin│  │
-│  │  QML/      │  │  UIKit/    │  │  Jetpack       │  │
-│  │  Widgets)  │  │  SwiftUI)  │  │  Compose)      │  │
-│  └─────┬──────┘  └─────┬──────┘  └──────┬─────────┘  │
-│        │               │                │             │
-│  ══════╪═══════════════╪════════════════╪═══════════  │
-│        │         C++ Shared Layer       │             │
-│  ┌─────┴────────────────┴───────────────┴─────────┐  │
-│  │              ViewModel (C++)                    │  │
-│  │  LoginVM · ChatVM · ContactVM · ConvListVM     │  │
-│  │  GroupVM · ProfileVM · FileVM · SyncVM         │  │
-│  ├─────────────────────────────────────────────────┤  │
-│  │              Model (C++)                        │  │
-│  │  UserModel · MsgModel · ConvModel · GroupModel  │  │
-│  ├─────────────────────────────────────────────────┤  │
-│  │              Network (C++)                      │  │
-│  │  TcpClient (libhv) · Codec · ReconnectMgr      │  │
-│  ├─────────────────────────────────────────────────┤  │
-│  │              Local Storage (C++)                │  │
-│  │  SQLite (消息缓存 / 用户数据 / 配置)             │  │
-│  └─────────────────────────────────────────────────┘  │
-└──────────────────────────────────────────────────────┘
-```
+### 5.3 推送处理
+- [ ] 消息推送接收 + 本地存储 + UI 通知
+- [ ] 好友申请/同意/拒绝 推送处理
+- [ ] 群通知推送处理 (入群/退群/踢出/解散)
+- [ ] 会话更新推送 (新消息摘要 + 未读数)
 
-### C++ Shared Layer (client/cpp/)
+---
 
-#### Network 层
-- [ ] TcpClient 封装 (libhv, 自动重连)
-- [ ] Codec (Packet 编解码, 复用 protocol/)
-- [ ] ReconnectManager (指数退避, 网络状态监听)
-- [ ] RequestManager (请求-响应匹配, 超时回调)
+## 🟡 M6 — PC 端 UI 完善
 
-#### Model 层
-- [ ] UserModel (用户信息本地缓存)
-- [ ] MessageModel (消息本地存储 + 分页加载)
-- [ ] ConversationModel (会话列表 + 未读数)
-- [ ] GroupModel (群组信息缓存)
-- [ ] ContactModel (好友 + 好友申请)
-- [ ] FileModel (文件上传/下载进度)
-
-#### ViewModel 层
-- [ ] LoginViewModel (登录/注册状态机, token 管理)
-- [ ] ChatViewModel (消息收发, 输入状态, 消息列表)
-- [ ] ConversationListViewModel (会话列表排序, 未读气泡)
-- [ ] ContactViewModel (好友列表, 申请处理, 搜索)
-- [ ] GroupViewModel (群管理, 成员列表, 角色)
-- [ ] ProfileViewModel (个人资料编辑)
-- [ ] SyncViewModel (离线消息同步, 进度)
-
-#### Local Storage
-- [ ] 本地 SQLite 数据库 (消息/联系人/会话缓存)
-- [ ] 配置持久化 (服务器地址, 主题, 通知设置)
-
-### PC 端 View 层 (Qt/QML)
-- [ ] 登录/注册页面
-- [ ] 主界面布局 (三栏: 侧边栏 + 会话列表 + 聊天区)
+### 6.1 会话模块
 - [ ] 会话列表组件 (头像 + 昵称 + 最后消息 + 未读数 + 时间)
-- [ ] 聊天界面 (消息气泡 + 输入框 + 工具栏)
-- [ ] 联系人面板 (好友列表 + 群列表 + 好友申请)
-- [ ] 用户资料弹窗
-- [ ] 群管理面板
-- [ ] 设置页面 (账号/通知/外观)
-- [ ] 系统托盘 + 消息通知
+- [ ] 会话右键菜单 (置顶 / 免打扰 / 删除)
 
-### 移动端 View 层 (后续)
-- [ ] iOS: SwiftUI / UIKit + C++ bridge (Objective-C++)
-- [ ] Android: Jetpack Compose + C++ bridge (JNI)
+### 6.2 聊天模块
+- [ ] 聊天界面 (消息气泡 + 时间分割线 + 加载更多)
+- [ ] 输入框 (文本 + Emoji + 文件发送)
+- [ ] 消息状态指示 (发送中 / 已发送 / 已读)
+- [ ] 消息撤回 UI
+
+### 6.3 联系人模块
+- [ ] 好友列表 (分组 / 在线状态)
+- [ ] 群列表
+- [ ] 好友申请面板
+- [ ] 添加好友 / 搜索用户
+
+### 6.4 其他
+- [ ] 用户资料弹窗
+- [ ] 群管理面板 (成员 + 角色 + 设置)
+- [ ] 设置页面 (账号 / 通知 / 外观)
+- [ ] 系统托盘 + 消息通知 (Windows/macOS/Linux)
+
+---
+
+## 🟢 M7 — 移动端 Bridge (后续)
+
+### 7.1 iOS
+- [ ] Xcode 项目 + CMake 交叉编译 (arm64)
+- [ ] Objective-C++ Bridge 层 (.mm 文件)
+- [ ] SwiftUI View 骨架 (登录 + 主页)
+
+### 7.2 Android
+- [ ] Gradle + CMake 交叉编译 (arm64-v8a, armeabi-v7a)
+- [ ] JNI Bridge 层
+- [ ] Jetpack Compose View 骨架 (登录 + 主页)
