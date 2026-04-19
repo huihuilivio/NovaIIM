@@ -37,6 +37,18 @@ bool LoadConfig(AppConfig& cfg, const std::string& path) {
         std::fprintf(stderr, "server.port must be in range 1-65535, got %d\n", cfg.server.port);
         return false;
     }
+    if (cfg.server.ws_port < 0 || cfg.server.ws_port > 65535) {
+        std::fprintf(stderr, "server.ws_port must be in range 0-65535, got %d\n", cfg.server.ws_port);
+        return false;
+    }
+    if (cfg.server.ws_port > 0 && cfg.server.ws_port == cfg.server.port) {
+        std::fprintf(stderr, "server.ws_port must differ from server.port\n");
+        return false;
+    }
+    if (cfg.server.ws_port > 0 && cfg.admin.enabled && cfg.server.ws_port == cfg.admin.port) {
+        std::fprintf(stderr, "server.ws_port must differ from admin.port\n");
+        return false;
+    }
     if (cfg.admin.enabled) {
         if (cfg.admin.port <= 0 || cfg.admin.port > 65535) {
             std::fprintf(stderr, "admin.port must be in range 1-65535, got %d\n", cfg.admin.port);

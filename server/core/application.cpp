@@ -5,6 +5,7 @@
 #include "thread_pool.h"
 #include "formatters.h"
 #include "../net/gateway.h"
+#include "../net/ws_gateway.h"
 #include "../service/router.h"
 #include "../service/user_service.h"
 #include "../service/msg_service.h"
@@ -198,7 +199,20 @@ int Application::Run(const AppConfig& cfg) {
     }
     NOVA_NLOG_INFO(kLogTag, "NovaIIM Server listening on port {}", cfg.server.port);
 
-    // 8. Admin HTTP 面板
+    // 8. WebSocket Gateway（可选，与 TCP Gateway 并行）
+    std::unique_ptr<WsGateway> ws_gateway;
+    if (cfg.server.ws_port > 0) {
+        ws_gateway = std::make_unique<WsGateway>(ctx);
+        ws_gateway->SetPacketHandler(detail::MakePacketHandler(router, worker_pool, ctx));
+        if (ws_gateway->Start(cfg.server.ws_port) != 0) {
+            NOVA_NLOG_WARN(kLogTag, "WebSocket gateway failed to start on port {}, continuing without it", cfg.server.ws_port);
+            ws_gateway.reset();
+        } else {
+            NOVA_NLOG_INFO(kLogTag, "WebSocket gateway listening on port {}", cfg.server.ws_port);
+        }
+    }
+
+    // 9. Admin HTTP 面板
     std::unique_ptr<AdminServer> admin;
     if (cfg.admin.enabled) {
         admin = std::make_unique<AdminServer>(ctx);
@@ -212,14 +226,15 @@ int Application::Run(const AppConfig& cfg) {
         }
     }
 
-    // 9. 等待退出信号
+    // 10. 等待退出信号
     while (g_running.load(std::memory_order_relaxed)) {
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
     }
 
-    // 10. 有序关闭：Admin → Gateway → ThreadPool
+    // 11. 有序关闭：Admin → WsGateway → Gateway → ThreadPool
     NOVA_NLOG_INFO(kLogTag, "Received signal {}, shutting down...", g_signal.load());
     if (admin) admin->Stop();
+    if (ws_gateway) ws_gateway->Stop();
     gateway.Stop();
     worker_pool.Stop();
     NOVA_NLOG_INFO(kLogTag, "NovaIIM Server stopped");

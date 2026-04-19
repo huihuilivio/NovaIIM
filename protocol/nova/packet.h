@@ -4,6 +4,10 @@
 #include <cstring>
 #include <string>
 #include <type_traits>
+#include <vector>
+
+#include <hv/json.hpp>
+#include <hv/base64.h>
 
 namespace nova::proto {
 
@@ -103,6 +107,45 @@ struct Packet {
         if (len < kHeaderSize + body_len)
             return false;
         pkt.body.assign(p, body_len);
+        return true;
+    }
+
+    // 编码为 JSON 文本（WebSocket Text 模式）
+    // 格式: {"cmd":1,"seq":1,"uid":0,"body":"<base64>"}
+    // body 使用 Base64 编码（struct_pack 二进制数据不能直接放入 JSON）
+    std::string EncodeJson() const {
+        nlohmann::json j;
+        j["cmd"] = cmd;
+        j["seq"] = seq;
+        j["uid"] = uid;
+        if (!body.empty()) {
+            j["body"] = hv::Base64Encode(
+                reinterpret_cast<const unsigned char*>(body.data()),
+                static_cast<unsigned int>(body.size()));
+        }
+        return j.dump();
+    }
+
+    // 从 JSON 文本解码
+    static bool DecodeJson(const std::string& json_str, Packet& pkt) {
+        auto j = nlohmann::json::parse(json_str, nullptr, false);
+        if (j.is_discarded() || !j.is_object())
+            return false;
+        if (!j.contains("cmd") || !j.contains("seq"))
+            return false;
+        pkt.cmd = j["cmd"].get<uint16_t>();
+        pkt.seq = j["seq"].get<uint32_t>();
+        pkt.uid = j.value("uid", uint64_t{0});
+        if (j.contains("body") && j["body"].is_string()) {
+            auto b64 = j["body"].get<std::string>();
+            auto decoded = hv::Base64Decode(b64.c_str(),
+                static_cast<unsigned int>(b64.size()));
+            pkt.body = std::move(decoded);
+        } else {
+            pkt.body.clear();
+        }
+        if (pkt.body.size() > kMaxBodySize)
+            return false;
         return true;
     }
 };

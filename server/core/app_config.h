@@ -26,6 +26,7 @@ struct ServerConfig {
     int login_max_attempts = 5;     // IM 登录频率限制：最大失败次数
     int login_window_secs  = 60;    // IM 登录频率限制：窗口时间（秒）
     int node_id            = 0;     // Snowflake 节点 ID（0–1023），多实例部署时各节点需不同
+    int ws_port            = 0;     // WebSocket 端口（0 = 不启用）
 };
 
 struct LogConfig {

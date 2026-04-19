@@ -99,3 +99,10 @@ nova_add_test(
     SOURCES test_file_service.cpp
     LIBS    im_server_lib
 )
+
+# WsGateway WebSocket 网关: 二进制收发, 无效包断开, JSON 编解码
+nova_add_test(
+    NAME    test_ws_gateway
+    SOURCES test_ws_gateway.cpp
+    LIBS    im_server_lib
+)
