@@ -1,0 +1,44 @@
+/* ── 全局变量 ── */
+:root {
+  --nova-sidebar-width: 220px;
+  --nova-header-height: 56px;
+  --nova-bg: #f5f7fa;
+  --nova-sidebar-bg: #1d1e1f;
+  --nova-sidebar-text: #bfcbd9;
+  --nova-sidebar-active: #409eff;
+  --nova-border: #e4e7ed;
+}
+
+/* ── Reset ── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  background: var(--nova-bg);
+}
+
+/* ── 滚动条美化 ── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-thumb {
+  background: #c0c4cc;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
