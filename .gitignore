@@ -51,7 +51,8 @@ configs/*.secret.*
 # ==== Qt ====
 *.pro.user
 moc_*
-ui_*
+ui_*.h
+!ui_dispatcher*
 qrc_*
 *.qmlc
 *.jsc

@@ -31,6 +31,8 @@ endif()
 
 if(NOVA_BUILD_CLIENT)
     add_subdirectory(client/cpp)
+    add_subdirectory(client/desktop)
+    add_subdirectory(client/mobile)
 endif()
 
 # ---- 测试 ----
@@ -38,6 +40,9 @@ if(NOVA_BUILD_TESTS)
     enable_testing()
     include(testing)
     add_subdirectory(server/test)
+    if(NOVA_BUILD_CLIENT)
+        add_subdirectory(client/test)
+    endif()
 endif()
 
 # ---- 构建信息 ----

@@ -271,12 +271,12 @@
 | 阶段 | 目标 | 交付物 | 状态 |
 |------|------|--------|------|
 | **M1** | Admin 前端脚手架 | Vue 项目可运行，能登录 | ✅ 完成 |
-| **M2** | IM 客户端 C++ 框架 | 共享库编译通过，能连接服务器 | 🔴 P0 |
-| **M3** | PC 端 Qt 框架 | Qt 项目可运行，绑定 C++ VM | 🔴 P0 |
+| **M2** | IM 客户端 C++ 框架 | 共享库编译通过，能连接服务器 | ✅ 完成 |
+| **M3** | PC 端 WebView2 | Win32+WebView2 可编译运行 | 🟡 部分 |
 | **M4** | Admin 前端功能完善 | 全部管理页面可用 | ✅ 完成 |
 | **M5** | IM 客户端业务实现 | 登录/聊天/联系人可用 | 🟡 P1 |
 | **M6** | PC 端 UI 完善 | 完整桌面 IM 体验 | 🟡 P1 |
-| **M7** | 移动端 Bridge | iOS/Android 可编译运行 | 🟢 P2 |
+| **M7** | 移动端 Bridge | iOS/Android 可编译运行 | � 框架 |
 
 ---
 
@@ -314,26 +314,26 @@
 
 ---
 
-## 🔴 M2 — IM 客户端 C++ 共享层框架
+## ✅ M2 — IM 客户端 C++ 共享层框架 ✅
 
 ### 2.1 CMake 工程搭建
-- [ ] `client/cpp/CMakeLists.txt` 重构 (编译为 shared library `nova_client`)
-- [ ] 依赖管理 (复用 protocol/, libhv, SQLite3, spdlog)
-- [ ] 导出头文件组织 (`client/cpp/include/nova/`)
-- [ ] 跨平台编译验证 (Windows MSVC + Linux GCC + macOS Clang)
+- [x] `client/cpp/CMakeLists.txt` 重构 (编译为 shared library `nova_client`)
+- [x] 依赖管理 (复用 protocol/, libhv, spdlog)
+- [x] 导出头文件组织 (NOVA_CLIENT_API 宏, dllexport/dllimport)
+- [ ] 跨平台编译验证 (Windows MSVC ✅ / Linux GCC / macOS Clang)
 
 ### 2.2 Core 基础设施
-- [ ] 客户端日志 (spdlog 封装, 文件 + 控制台)
-- [ ] 客户端配置 (server_host, server_port, 本地路径)
-- [ ] EventBus (发布-订阅, 线程安全, 类型化事件)
-- [ ] UIDispatcher 接口 (回调投递到 UI 线程, 各平台实现)
+- [x] 客户端日志 (spdlog 封装, 文件 + 控制台, 轮转)
+- [x] 客户端配置 (server_host, server_port, 心跳, 重连, 超时)
+- [x] EventBus (发布-订阅, 线程安全, 类型化事件)
+- [x] UIDispatcher 接口 (回调投递到 UI 线程, 各平台实现)
 
 ### 2.3 Network 层
-- [ ] TcpClient 封装 (libhv TcpClient, connect/disconnect/send)
-- [ ] Codec (复用 protocol/Packet 编解码)
-- [ ] ReconnectManager (指数退避: 1s→2s→4s→...→30s, 网络恢复自动重连)
-- [ ] RequestManager (seq_id 请求-响应匹配, 超时回调 10s)
-- [ ] ConnectionState 状态机 (Disconnected→Connecting→Connected→Reconnecting)
+- [x] TcpClient 封装 (libhv TcpClient, connect/disconnect/send)
+- [x] Codec (复用 protocol/Packet 编解码 + UNPACK_BY_LENGTH_FIELD)
+- [x] ReconnectManager (指数退避: 1s→2s→4s→...→30s, 自动重连)
+- [x] RequestManager (seq_id 请求-响应匹配, 超时回调)
+- [x] ConnectionState 状态机 (Disconnected→Connecting→Connected→Authenticated→Reconnecting)
 
 ### 2.4 本地存储框架
 - [ ] 客户端 DbManager (SQLite3, 初始化本地表)
@@ -343,32 +343,47 @@
 ### 2.5 ViewModel 基础
 - [ ] ViewModelBase 基类 (状态通知接口, 生命周期)
 - [ ] Observable<T> 属性包装 (变更通知, UI 绑定)
-- [ ] ClientContext (全局依赖注入: network, db, eventbus)
+- [x] ClientContext (全局依赖注入: network, requests, reconnect, eventbus)
 
 ### 2.6 最小闭环验证
 - [ ] LoginViewModel 骨架 (连接 → 发送 Login Packet → 收到响应)
 - [ ] 编写集成测试: 连接服务器 → 登录 → 心跳 → 断开
 
+### 2.7 单元测试 (14 用例)
+- [x] EventBus 测试 (6 用例: 订阅/发布/多订阅/类型隔离/取消/清除)
+- [x] RequestManager 测试 (6 用例: 匹配/未匹配/超时/取消/批量取消/多请求)
+- [x] ConnectionState 测试 (2 用例: 枚举值/字符串转换)
+
 ---
 
-## 🔴 M3 — PC 端 Qt/QML 框架
+## ✅ M3 — PC 端 WebView2 桌面客户端 (部分完成)
 
-### 3.1 Qt 项目搭建
-- [ ] `client/desktop/CMakeLists.txt` (Qt6 + QML + nova_client 链接)
-- [ ] main.cpp (QGuiApplication + QML Engine + 注册 C++ 类型)
-- [ ] UIDispatcher Qt 实现 (QMetaObject::invokeMethod → UI 线程)
-- [ ] QML 入口 (main.qml + ApplicationWindow)
+### 3.1 WebView2 项目搭建
+- [x] `client/desktop/CMakeLists.txt` (WebView2 SDK 自动下载 + nova_client 链接, Windows-only)
+- [x] main.cpp (Win32 wWinMain + COM 初始化 + ClientContext)
+- [x] WebView2App (Win32 窗口类 + WebView2 异步初始化 + 虚拟主机映射)
+- [x] Win32UIDispatcher (PostMessage WM_APP → UI 线程回调)
 
-### 3.2 QML 基础框架
-- [ ] 页面路由机制 (StackView 或 SwipeView)
-- [ ] 主题系统 (颜色/字体/间距 QML 单例)
+### 3.2 Web 前端框架
+- [x] HTML/CSS/JS SPA 骨架 (index.html + style.css + JS 模块)
+- [x] 主题系统 (CSS Variables — 颜色/字体/间距/圆角)
+- [x] 页面路由 (NovaApp.navigate — login/main)
 - [ ] 全局消息提示组件 (Toast / Notification)
 
-### 3.3 登录闭环
-- [ ] LoginViewModel ↔ QML 绑定
-- [ ] 登录页 QML (邮箱 + 密码 + 登录按钮 + 错误提示)
-- [ ] 登录成功 → 切换到主页面骨架
-- [ ] 主界面三栏布局骨架 (侧边栏 + 列表 + 内容区)
+### 3.3 C++ ↔ JS 通信桥
+- [x] JsBridge (WebView2 WebMessage 双向通信)
+- [x] NovaBridge.js (JS 端 send/on/off API)
+- [x] 登录请求 → LoginReq → LoginAck → JS 回调
+- [x] 发送消息 → SendMsgReq → SendMsgAck → JS 回调
+- [x] EventBus 订阅 (PushMsg/RecallNotify → JS 事件)
+
+### 3.4 登录闭环
+- [x] 登录页 (邮箱 + 密码 + 登录按钮 + 错误提示)
+- [x] 登录成功 → 切换到主页面骨架
+- [x] 主界面三栏布局骨架 (侧边栏 64px + 会话列表 280px + 聊天区)
+- [x] 聊天区消息气泡 + 输入框 + 发送按钮
+- [x] 连接状态条 (底部状态点 + 文字)
+- [ ] LoginViewModel 完整实现
 
 ---
 
@@ -451,14 +466,18 @@
 
 ---
 
-## 🟢 M7 — 移动端 Bridge (后续)
+## � M7 — 移动端 Bridge (框架已搭建)
 
 ### 7.1 iOS
+- [x] CMake 构建脚本 (条件编译 — NOVA_BUILD_IOS)
+- [x] Objective-C++ Bridge 层 (NovaClient.h/.mm — 完整公开接口)
+- [x] 代理协议 (NovaClientDelegate — 状态变化/登录结果/消息推送)
 - [ ] Xcode 项目 + CMake 交叉编译 (arm64)
-- [ ] Objective-C++ Bridge 层 (.mm 文件)
 - [ ] SwiftUI View 骨架 (登录 + 主页)
 
 ### 7.2 Android
+- [x] CMake 构建脚本 (条件编译 — NOVA_BUILD_ANDROID)
+- [x] JNI Bridge 层 (nova_jni.cpp — 完整 native 接口)
+- [x] Kotlin 封装层 (NovaClient.kt — 单例 + Callback 接口)
 - [ ] Gradle + CMake 交叉编译 (arm64-v8a, armeabi-v7a)
-- [ ] JNI Bridge 层
 - [ ] Jetpack Compose View 骨架 (登录 + 主页)

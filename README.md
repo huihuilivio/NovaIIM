@@ -104,7 +104,7 @@ GET    /permissions             权限列表（всех）
   - AuditLog 追踪（admin_id 字段记录操作者）
 
 ### ✅ 已交付（Phase 5 — IM 完整服务）
-- ✅ 单元测试：278 个 C++ 用例 + 8 个前端用例全部通过
+- ✅ 单元测试：278 个 C++ 服务端用例 + 14 个客户端用例 + 8 个前端用例全部通过
   - JWT 13 / Password 11 / DAO 24 / API 21 / Router 6 / MPMC 5 / ConnMgr 4 / UserService 53 / FriendService 23 / MsgService 22 / ConvService 23 / GroupService 25 / FileService 20 / SyncService 18 / Application 17
 - ✅ **群组服务** (GroupService) — 建群/解散/入群审批/退群/踢人/群信息/成员角色/邀请
 - ✅ **文件服务** (FileService) — 上传/下载/共享会话鉴权
@@ -121,6 +121,22 @@ GET    /permissions             权限列表（всех）
 - ✅ 6 个管理页面：仪表盘 / 用户管理 / 管理员管理 / 角色权限 / 消息管理 / 审计日志
 - ✅ 8 个前端单元测试（Vitest + happy-dom）
 - ✅ 开发代理自动转发至后端 :9091
+
+### ✅ 已交付（客户端 C++ 共享库 — M2）
+- ✅ **nova_client 动态库** (.dll/.so) — 核心网络 + 事件总线 + 自动重连
+- ✅ TcpClient（libhv 封装 + 帧编解码 + 心跳）
+- ✅ RequestManager（seq 请求-响应匹配 + 超时）
+- ✅ ReconnectManager（指数退避 1s→30s）
+- ✅ EventBus（类型安全发布-订阅）
+- ✅ ClientContext（依赖注入 + 服务端推送分发）
+- ✅ 14 个客户端单元测试（GTest）
+
+### 🟡 已搭建（WebView2 桌面端 — M3 + 移动端 Bridge — M7）
+- ✅ WebView2 桌面端（Win32 窗口 + WebView2 SDK 自动下载）
+- ✅ 登录页 + 主界面三栏布局 (HTML/CSS/JS)
+- ✅ C++ ↔ JS 双向通信桥 (JsBridge + NovaBridge)
+- ✅ iOS Objective-C++ Bridge（NovaClient.h/.mm）
+- ✅ Android JNI Bridge（nova_jni.cpp + NovaClient.kt）
 
 ---
 
@@ -299,8 +315,20 @@ NovaIIM/
         ├── test_group_service.cpp
         └── test_file_service.cpp
 │
-├── client/                        # 客户端（预留）
-│   └── cpp/
+├── client/                        # 客户端
+│   ├── cpp/                       # C++ 共享库 (nova_client.dll/.so)
+│   │   ├── core/                  # Logger, Config, EventBus, UIDispatcher, ClientContext
+│   │   └── net/                   # TcpClient, ReconnectManager, RequestManager
+│   ├── desktop/                   # WebView2 桌面客户端 (Windows)
+│   │   ├── main.cpp               # Win32 + WebView2 入口
+│   │   ├── webview2_app.*         # Win32 窗口 + WebView2 生命周期
+│   │   ├── win32_ui_dispatcher.*  # Win32 PostMessage UIDispatcher
+│   │   ├── js_bridge.*            # C++ ↔ JS 双向通信桥
+│   │   └── web/                   # HTML/CSS/JS 前端 (登录 + 三栏聊天)
+│   ├── mobile/                    # 移动端 Bridge
+│   │   ├── ios/                   # Objective-C++ (NovaClient.h/.mm)
+│   │   └── android/               # JNI (nova_jni.cpp + NovaClient.kt)
+│   └── test/                      # 客户端单元测试 (14 用例)
 │
 ├── admin-web/                     # Admin 管理后台 (Vue 3 + TS)
 │   ├── src/
