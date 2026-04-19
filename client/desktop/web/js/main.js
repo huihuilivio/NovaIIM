@@ -61,6 +61,7 @@ window.MainPage = {
 
         // 监听新消息
         NovaBridge.on('newMessage', function (data) {
+            if (!data) return;
             // 更新会话最后消息
             var conv = self.state.conversations.find(function (c) {
                 return c.id === data.conversationId;
@@ -192,7 +193,8 @@ window.MainPage = {
         if (!dot || !text) return;
 
         var s = this.state.connectionState;
-        dot.className = 'status-dot ' + s;
+        var lower = (s || '').toLowerCase();
+        dot.className = 'status-dot ' + lower;
 
         var labels = {
             'Disconnected': '未连接',

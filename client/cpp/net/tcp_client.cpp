@@ -52,6 +52,7 @@ void TcpClient::Connect() {
     };
 
     client_->onMessage = [this](const hv::SocketChannelPtr&, hv::Buffer* buf) {
+        if (!buf || buf->size() == 0) return;
         nova::proto::Packet pkt;
         if (nova::proto::Packet::Decode(
                 reinterpret_cast<const char*>(buf->data()),
@@ -70,9 +71,12 @@ void TcpClient::Connect() {
 
 void TcpClient::Disconnect() {
     StopHeartbeat();
-    if (client_) {
-        client_->stop();
-        client_.reset();
+    {
+        std::lock_guard lock(send_mutex_);
+        if (client_) {
+            client_->stop();
+            client_.reset();
+        }
     }
     SetState(ConnectionState::kDisconnected);
 }
@@ -84,13 +88,13 @@ bool TcpClient::Send(const nova::proto::Packet& pkt) {
 }
 
 bool TcpClient::SendRaw(const std::string& data) {
+    std::lock_guard lock(send_mutex_);
     if (!client_) return false;
     auto state = state_.load();
     if (state != ConnectionState::kConnected &&
         state != ConnectionState::kAuthenticated) {
         return false;
     }
-    std::lock_guard lock(send_mutex_);
     return client_->send(data) == static_cast<int>(data.size());
 }
 
@@ -114,6 +118,7 @@ void TcpClient::StartHeartbeat() {
 
     heartbeat_timer_ = htimer_add(raw_loop, [](htimer_t* timer) {
         auto* self = static_cast<TcpClient*>(hevent_userdata(timer));
+        if (!self) return;
         if (self->state_ == ConnectionState::kAuthenticated) {
             nova::proto::Packet hb;
             hb.cmd = static_cast<uint16_t>(nova::proto::Cmd::kHeartbeat);

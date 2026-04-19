@@ -15,6 +15,7 @@
 #include <android/log.h>
 
 #include <memory>
+#include <mutex>
 #include <string>
 
 #define LOG_TAG "NovaJNI"
@@ -23,11 +24,13 @@
 
 namespace {
 
+std::mutex g_mutex;
 std::unique_ptr<nova::client::ClientContext> g_context;
 nova::client::ClientConfig g_config;
 
 JavaVM* g_jvm = nullptr;
 jobject g_callback_ref = nullptr;
+std::atomic<bool> g_shutdown{false};
 
 std::string JStringToString(JNIEnv* env, jstring jstr) {
     if (!jstr) return "";
@@ -74,6 +77,7 @@ Java_com_nova_client_NovaClient_nativeConfigure(
 JNIEXPORT void JNICALL
 Java_com_nova_client_NovaClient_nativeSetCallback(
         JNIEnv* env, jobject /*thiz*/, jobject callback) {
+    std::lock_guard lock(g_mutex);
     if (g_callback_ref) {
         env->DeleteGlobalRef(g_callback_ref);
     }
@@ -83,15 +87,21 @@ Java_com_nova_client_NovaClient_nativeSetCallback(
 // void connect()
 JNIEXPORT void JNICALL
 Java_com_nova_client_NovaClient_nativeConnect(JNIEnv* /*env*/, jobject /*thiz*/) {
+    std::lock_guard lock(g_mutex);
     if (g_context) return;
 
+    g_shutdown = false;
     g_context = std::make_unique<nova::client::ClientContext>(g_config);
     g_context->Init();
 
     // 连接状态回调
     g_context->Network().OnStateChanged([](nova::client::ConnectionState state) {
+        if (g_shutdown) return;
         auto* env = GetJNIEnv();
-        if (!env || !g_callback_ref) return;
+        if (!env) return;
+
+        std::lock_guard cb_lock(g_mutex);
+        if (!g_callback_ref) return;
 
         jclass cls = env->GetObjectClass(g_callback_ref);
         jmethodID mid = env->GetMethodID(cls, "onConnectionStateChanged", "(I)V");
@@ -102,8 +112,12 @@ Java_com_nova_client_NovaClient_nativeConnect(JNIEnv* /*env*/, jobject /*thiz*/)
 
     // 推送消息回调
     g_context->Events().Subscribe<nova::proto::PushMsg>([](const nova::proto::PushMsg& msg) {
+        if (g_shutdown) return;
         auto* env = GetJNIEnv();
-        if (!env || !g_callback_ref) return;
+        if (!env) return;
+
+        std::lock_guard cb_lock(g_mutex);
+        if (!g_callback_ref) return;
 
         jclass cls = env->GetObjectClass(g_callback_ref);
         jmethodID mid = env->GetMethodID(cls, "onMessageReceived",
@@ -129,6 +143,8 @@ Java_com_nova_client_NovaClient_nativeConnect(JNIEnv* /*env*/, jobject /*thiz*/)
 // void disconnect()
 JNIEXPORT void JNICALL
 Java_com_nova_client_NovaClient_nativeDisconnect(JNIEnv* /*env*/, jobject /*thiz*/) {
+    g_shutdown = true;
+    std::lock_guard lock(g_mutex);
     if (g_context) {
         g_context->Shutdown();
         g_context.reset();
@@ -141,6 +157,7 @@ JNIEXPORT void JNICALL
 Java_com_nova_client_NovaClient_nativeLogin(
         JNIEnv* env, jobject /*thiz*/,
         jstring email, jstring password) {
+    std::lock_guard lock(g_mutex);
     if (!g_context) return;
 
     nova::proto::LoginReq req;
@@ -156,9 +173,13 @@ Java_com_nova_client_NovaClient_nativeLogin(
 
     g_context->Requests().AddPending(pkt.seq,
         [](const nova::proto::Packet& resp) {
+            if (g_shutdown) return;
             auto ack = nova::proto::Deserialize<nova::proto::LoginAck>(resp.body);
             auto* env = GetJNIEnv();
-            if (!env || !g_callback_ref) return;
+            if (!env) return;
+
+            std::lock_guard cb_lock(g_mutex);
+            if (!g_callback_ref || !g_context) return;
 
             jclass cls = env->GetObjectClass(g_callback_ref);
             jmethodID mid = env->GetMethodID(cls, "onLoginResult",
@@ -179,8 +200,12 @@ Java_com_nova_client_NovaClient_nativeLogin(
             }
         },
         [](uint32_t /*seq*/) {
+            if (g_shutdown) return;
             auto* env = GetJNIEnv();
-            if (!env || !g_callback_ref) return;
+            if (!env) return;
+
+            std::lock_guard cb_lock(g_mutex);
+            if (!g_callback_ref) return;
 
             jclass cls = env->GetObjectClass(g_callback_ref);
             jmethodID mid = env->GetMethodID(cls, "onLoginResult",

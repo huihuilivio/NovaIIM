@@ -10,6 +10,17 @@
 #include <Windows.h>
 #include <objbase.h>
 
+static std::string GenerateDeviceId() {
+    // 使用 Windows 机器名 + 用户名作为稳定设备标识
+    char computer[MAX_COMPUTERNAME_LENGTH + 1] = {};
+    DWORD size = sizeof(computer);
+    GetComputerNameA(computer, &size);
+    char user[256] = {};
+    DWORD usize = sizeof(user);
+    GetUserNameA(user, &usize);
+    return std::string("pc-") + computer + "-" + user;
+}
+
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*prev*/, LPWSTR /*cmdLine*/, int nCmdShow) {
     CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
 
@@ -18,6 +29,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*prev*/, LPWSTR /*cmdLine*/,
     config.server_host = "127.0.0.1";
     config.server_port = 9090;
     config.device_type = "pc";
+    config.device_id   = GenerateDeviceId();
     config.log_level   = "debug";
 
     // 初始化客户端上下文

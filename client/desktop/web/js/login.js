@@ -41,26 +41,34 @@ window.LoginPage = {
             btnEl.disabled = true;
             btnEl.textContent = '登录中...';
 
+            // 超时恢复按钮状态
+            var loginTimeout = setTimeout(function () {
+                errorEl.textContent = '连接超时，请重试';
+                btnEl.disabled = false;
+                btnEl.textContent = '登 录';
+            }, 15000);
+
             NovaBridge.send('connect');
             NovaBridge.send('login', {
                 email: emailEl.value.trim(),
                 password: passwordEl.value
             });
-        });
 
-        // 监听登录结果
-        NovaBridge.on('loginResult', function (data) {
-            if (data.success) {
-                NovaApp.currentUser = {
-                    uid: data.uid,
-                    nickname: data.nickname || data.uid
-                };
-                NovaApp.navigate('main');
-            } else {
-                errorEl.textContent = data.msg || '登录失败';
-                btnEl.disabled = false;
-                btnEl.textContent = '登 录';
-            }
+            // 监听登录结果
+            NovaBridge.on('loginResult', function (data) {
+                clearTimeout(loginTimeout);
+                if (data.success) {
+                    NovaApp.currentUser = {
+                        uid: data.uid,
+                        nickname: data.nickname || data.uid
+                    };
+                    NovaApp.navigate('main');
+                } else {
+                    errorEl.textContent = data.msg || '登录失败';
+                    btnEl.disabled = false;
+                    btnEl.textContent = '登 录';
+                }
+            });
         });
     }
 };

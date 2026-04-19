@@ -8,7 +8,8 @@ namespace nova::client {
 
 ReconnectManager::ReconnectManager(const ClientConfig& config)
     : config_(config),
-      current_delay_ms_(config.reconnect_initial_ms) {}
+      current_delay_ms_(config.reconnect_initial_ms),
+      attempt_count_(0) {}
 
 ReconnectManager::~ReconnectManager() {
     Stop();
@@ -30,25 +31,29 @@ void ReconnectManager::OnStateChanged(ConnectionState state) {
 }
 
 void ReconnectManager::Reset() {
-    current_delay_ms_ = config_.reconnect_initial_ms;
-    attempt_count_ = 0;
+    current_delay_ms_.store(config_.reconnect_initial_ms);
+    attempt_count_.store(0);
 }
 
 void ReconnectManager::Stop() {
     stopped_ = true;
     enabled_ = false;
+    std::lock_guard lock(thread_mutex_);
     if (timer_thread_.joinable()) {
         timer_thread_.join();
     }
 }
 
 void ReconnectManager::ScheduleReconnect() {
-    if (running_ || stopped_) return;
-    running_ = true;
+    // 原子 CAS 防止并发进入
+    bool expected = false;
+    if (!running_.compare_exchange_strong(expected, true)) return;
+    if (stopped_) { running_ = false; return; }
 
     uint32_t delay = NextDelay();
-    NOVA_LOG_INFO("Reconnecting in {}ms (attempt #{})", delay, attempt_count_);
+    NOVA_LOG_INFO("Reconnecting in {}ms (attempt #{})", delay, attempt_count_.load());
 
+    std::lock_guard lock(thread_mutex_);
     // 等前一个 timer 线程结束
     if (timer_thread_.joinable()) {
         timer_thread_.join();
@@ -64,11 +69,11 @@ void ReconnectManager::ScheduleReconnect() {
 }
 
 uint32_t ReconnectManager::NextDelay() {
-    auto delay = current_delay_ms_;
-    ++attempt_count_;
-    current_delay_ms_ = std::min(
-        static_cast<uint32_t>(current_delay_ms_ * config_.reconnect_multiplier),
-        config_.reconnect_max_ms);
+    auto delay = current_delay_ms_.load();
+    attempt_count_.fetch_add(1);
+    current_delay_ms_.store(std::min(
+        static_cast<uint32_t>(delay * config_.reconnect_multiplier),
+        config_.reconnect_max_ms));
     return delay;
 }
 

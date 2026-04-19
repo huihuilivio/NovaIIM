@@ -68,18 +68,23 @@
     _context->Init();
 
     // 监听连接状态
-    _context->Network().OnStateChanged([self](nova::client::ConnectionState state) {
+    __weak NovaClient *weakSelf = self;
+    _context->Network().OnStateChanged([weakSelf](nova::client::ConnectionState state) {
         dispatch_async(dispatch_get_main_queue(), ^{
-            _connectionState = static_cast<NovaConnectionState>(state);
-            if ([self.delegate respondsToSelector:@selector(novaClient:didChangeState:)]) {
-                [self.delegate novaClient:self didChangeState:self.connectionState];
+            NovaClient *strongSelf = weakSelf;
+            if (!strongSelf) return;
+            strongSelf->_connectionState = static_cast<NovaConnectionState>(state);
+            if ([strongSelf.delegate respondsToSelector:@selector(novaClient:didChangeState:)]) {
+                [strongSelf.delegate novaClient:strongSelf didChangeState:strongSelf.connectionState];
             }
         });
     });
 
     // 监听推送消息
-    _context->Events().Subscribe<nova::proto::PushMsg>([self](const nova::proto::PushMsg& msg) {
+    _context->Events().Subscribe<nova::proto::PushMsg>([weakSelf](const nova::proto::PushMsg& msg) {
         dispatch_async(dispatch_get_main_queue(), ^{
+            NovaClient *strongSelf = weakSelf;
+            if (!strongSelf) return;
             NovaPushMessage *pushMsg = [[NovaPushMessage alloc] init];
             pushMsg.conversationId = msg.conversation_id;
             pushMsg.senderUid = [NSString stringWithUTF8String:msg.sender_uid.c_str()];
@@ -88,8 +93,8 @@
             pushMsg.serverTime = msg.server_time;
             pushMsg.msgType = static_cast<int32_t>(msg.msg_type);
 
-            if ([self.delegate respondsToSelector:@selector(novaClient:didReceiveMessage:)]) {
-                [self.delegate novaClient:self didReceiveMessage:pushMsg];
+            if ([strongSelf.delegate respondsToSelector:@selector(novaClient:didReceiveMessage:)]) {
+                [strongSelf.delegate novaClient:strongSelf didReceiveMessage:pushMsg];
             }
         });
     });
@@ -118,10 +123,13 @@
     pkt.seq = _context->Network().NextSeq();
     pkt.body = nova::proto::Serialize(req);
 
+    __weak NovaClient *weakSelf = self;
     _context->Requests().AddPending(pkt.seq,
-        [self](const nova::proto::Packet& resp) {
+        [weakSelf](const nova::proto::Packet& resp) {
             auto ack = nova::proto::Deserialize<nova::proto::LoginAck>(resp.body);
             dispatch_async(dispatch_get_main_queue(), ^{
+                NovaClient *strongSelf = weakSelf;
+                if (!strongSelf) return;
                 NovaLoginResult *result = [[NovaLoginResult alloc] init];
                 if (ack) {
                     result.code = ack->code;
@@ -130,26 +138,28 @@
                     result.nickname = [NSString stringWithUTF8String:ack->nickname.c_str()];
                     result.avatar = [NSString stringWithUTF8String:ack->avatar.c_str()];
 
-                    if (ack->code == 0) {
-                        _context->SetUid(ack->uid);
+                    if (ack->code == 0 && strongSelf->_context) {
+                        strongSelf->_context->SetUid(ack->uid);
                     }
                 } else {
                     result.code = -1;
                     result.msg = @"Failed to decode login response";
                 }
 
-                if ([self.delegate respondsToSelector:@selector(novaClient:didLoginWithResult:)]) {
-                    [self.delegate novaClient:self didLoginWithResult:result];
+                if ([strongSelf.delegate respondsToSelector:@selector(novaClient:didLoginWithResult:)]) {
+                    [strongSelf.delegate novaClient:strongSelf didLoginWithResult:result];
                 }
             });
         },
-        [self](uint32_t seq) {
+        [weakSelf](uint32_t seq) {
             dispatch_async(dispatch_get_main_queue(), ^{
+                NovaClient *strongSelf = weakSelf;
+                if (!strongSelf) return;
                 NovaLoginResult *result = [[NovaLoginResult alloc] init];
                 result.code = -1;
                 result.msg = @"Login request timed out";
-                if ([self.delegate respondsToSelector:@selector(novaClient:didLoginWithResult:)]) {
-                    [self.delegate novaClient:self didLoginWithResult:result];
+                if ([strongSelf.delegate respondsToSelector:@selector(novaClient:didLoginWithResult:)]) {
+                    [strongSelf.delegate novaClient:strongSelf didLoginWithResult:result];
                 }
             });
         }

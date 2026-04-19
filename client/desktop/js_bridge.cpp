@@ -21,17 +21,21 @@ namespace nova::desktop {
 // ---- UTF-8 ↔ UTF-16 工具 ----
 static std::wstring Utf8ToWide(const std::string& s) {
     if (s.empty()) return {};
-    int len = MultiByteToWideChar(CP_UTF8, 0, s.data(), (int)s.size(), nullptr, 0);
+    int size = static_cast<int>(s.size());
+    int len = MultiByteToWideChar(CP_UTF8, 0, s.data(), size, nullptr, 0);
+    if (len <= 0) return {};
     std::wstring ws(len, 0);
-    MultiByteToWideChar(CP_UTF8, 0, s.data(), (int)s.size(), ws.data(), len);
+    MultiByteToWideChar(CP_UTF8, 0, s.data(), size, ws.data(), len);
     return ws;
 }
 
 static std::string WideToUtf8(const std::wstring& ws) {
     if (ws.empty()) return {};
-    int len = WideCharToMultiByte(CP_UTF8, 0, ws.data(), (int)ws.size(), nullptr, 0, nullptr, nullptr);
+    int size = static_cast<int>(ws.size());
+    int len = WideCharToMultiByte(CP_UTF8, 0, ws.data(), size, nullptr, 0, nullptr, nullptr);
+    if (len <= 0) return {};
     std::string s(len, 0);
-    WideCharToMultiByte(CP_UTF8, 0, ws.data(), (int)ws.size(), s.data(), len, nullptr, nullptr);
+    WideCharToMultiByte(CP_UTF8, 0, ws.data(), size, s.data(), len, nullptr, nullptr);
     return s;
 }
 
@@ -136,6 +140,14 @@ void JsBridge::HandleLogin(const std::string& email, const std::string& password
     pkt.cmd = static_cast<uint16_t>(nova::proto::Cmd::kLogin);
     pkt.seq = ctx_->Network().NextSeq();
     pkt.body = nova::proto::Serialize(req);
+    if (pkt.body.empty()) {
+        NOVA_LOG_ERROR("JsBridge: failed to serialize LoginReq");
+        nlohmann::json data;
+        data["success"] = false;
+        data["msg"]     = "serialize error";
+        PostEvent("loginResult", data.dump());
+        return;
+    }
 
     ctx_->Requests().AddPending(pkt.seq,
         [this](const nova::proto::Packet& resp) {
@@ -173,7 +185,12 @@ void JsBridge::HandleDisconnect() {
 
 void JsBridge::HandleSendMessage(const std::string& to_uid, const std::string& content) {
     nova::proto::SendMsgReq req;
-    req.conversation_id = std::stoll(to_uid);
+    try {
+        req.conversation_id = std::stoll(to_uid);
+    } catch (const std::exception&) {
+        NOVA_LOG_WARN("JsBridge: invalid conversation id: {}", to_uid);
+        return;
+    }
     req.content         = content;
     req.msg_type        = nova::proto::MsgType::kText;
 

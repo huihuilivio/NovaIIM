@@ -13,7 +13,9 @@ void Win32UIDispatcher::Install() {
         if (hwnd_) {
             // 通过堆分配传递回调，WM_APP 处理时 delete
             auto* p = new std::function<void()>(std::move(fn));
-            PostMessage(hwnd_, WM_APP, 0, reinterpret_cast<LPARAM>(p));
+            if (!PostMessage(hwnd_, WM_APP, 0, reinterpret_cast<LPARAM>(p))) {
+                delete p;  // PostMessage 失败时防止内存泄漏
+            }
         }
     });
 }

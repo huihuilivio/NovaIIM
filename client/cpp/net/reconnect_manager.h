@@ -11,6 +11,7 @@
 #include <atomic>
 #include <cstdint>
 #include <functional>
+#include <mutex>
 #include <thread>
 
 namespace nova::client {
@@ -53,10 +54,11 @@ private:
     std::atomic<bool> enabled_{true};
     std::atomic<bool> running_{false};
     std::atomic<bool> stopped_{false};
-    uint32_t current_delay_ms_ = 0;
-    uint32_t attempt_count_    = 0;
+    std::atomic<uint32_t> current_delay_ms_{0};
+    std::atomic<uint32_t> attempt_count_{0};
 
     std::thread timer_thread_;
+    std::mutex thread_mutex_;
 };
 
 }  // namespace nova::client
