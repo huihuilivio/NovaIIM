@@ -474,5 +474,36 @@ TEST_F(FriendServiceTest, FriendsShareConversation) {
     EXPECT_EQ(bob_list->friends[0].conversation_id, conv_id);
 }
 
+// ================================================================
+//  Unauthenticated access
+// ================================================================
+
+TEST_F(FriendServiceTest, AddFriendNotAuth) {
+    auto conn = std::make_shared<MockConnection>();
+    auto pkt  = MakePacket(Cmd::kAddFriend, proto::AddFriendReq{"some_uid", ""});
+    friend_svc_->HandleAddFriend(conn, pkt);
+    auto ack = proto::Deserialize<proto::AddFriendAck>(conn->last_pkt.body);
+    ASSERT_TRUE(ack.has_value());
+    EXPECT_NE(ack->code, 0);
+}
+
+TEST_F(FriendServiceTest, GetFriendListNotAuth) {
+    auto conn = std::make_shared<MockConnection>();
+    auto pkt  = MakePacket(Cmd::kGetFriendList, proto::GetFriendListReq{});
+    friend_svc_->HandleGetFriendList(conn, pkt);
+    auto ack = proto::Deserialize<proto::GetFriendListAck>(conn->last_pkt.body);
+    ASSERT_TRUE(ack.has_value());
+    EXPECT_NE(ack->code, 0);
+}
+
+TEST_F(FriendServiceTest, DeleteFriendNotAuth) {
+    auto conn = std::make_shared<MockConnection>();
+    auto pkt  = MakePacket(Cmd::kDeleteFriend, proto::DeleteFriendReq{"some_uid"});
+    friend_svc_->HandleDeleteFriend(conn, pkt);
+    auto ack = proto::Deserialize<proto::DeleteFriendAck>(conn->last_pkt.body);
+    ASSERT_TRUE(ack.has_value());
+    EXPECT_NE(ack->code, 0);
+}
+
 }  // namespace
 }  // namespace nova

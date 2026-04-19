@@ -498,10 +498,13 @@ TEST_F(GroupServiceTest, JoinGroupFlow) {
     auto join_ack = proto::Deserialize<proto::JoinGroupAck>(dave.conn->last_pkt.body);
     EXPECT_EQ(join_ack->code, 0);
 
+    // 从数据库查找待处理的加群申请（避免硬编码 request_id）
+    auto pending = ctx_->dao().Group().FindPendingJoinRequest(result.conversation_id, dave.user_id);
+    ASSERT_TRUE(pending.has_value());
+
     // alice 审批
-    // 先取到 join_request_id (它是 1, 因为是第一个请求)
     auto handle_pkt = MakePacket(Cmd::kHandleJoinReq,
-                                 proto::HandleJoinReqReq{1, 1});  // accept
+                                 proto::HandleJoinReqReq{pending->id, 1});  // accept
     group_svc_->HandleJoinReq(alice.conn, handle_pkt);
     auto handle_ack = proto::Deserialize<proto::HandleJoinReqAck>(alice.conn->last_pkt.body);
     EXPECT_EQ(handle_ack->code, 0);
@@ -544,6 +547,39 @@ TEST_F(GroupServiceTest, JoinGroupDuplicateRequest) {
     group_svc_->HandleJoinGroup(dave.conn, pkt);
     auto ack = proto::Deserialize<proto::JoinGroupAck>(dave.conn->last_pkt.body);
     EXPECT_EQ(ack->code, errc::group::kRequestPending.code);
+}
+
+TEST_F(GroupServiceTest, RejectJoinRequest) {
+    auto alice = CreateAndLogin("alice@test.com", "Alice");
+    auto bob   = CreateAndLogin("bob@test.com", "Bob");
+    auto carol = CreateAndLogin("carol@test.com", "Carol");
+    auto dave  = CreateAndLogin("dave@test.com", "Dave");
+
+    auto result = CreateGroup(alice, "Grp", {bob.user_id, carol.user_id});
+
+    // dave 申请入群
+    auto join_pkt = MakePacket(Cmd::kJoinGroup,
+                               proto::JoinGroupReq{result.conversation_id, ""});
+    group_svc_->HandleJoinGroup(dave.conn, join_pkt);
+    auto join_ack = proto::Deserialize<proto::JoinGroupAck>(dave.conn->last_pkt.body);
+    EXPECT_EQ(join_ack->code, 0);
+
+    auto pending = ctx_->dao().Group().FindPendingJoinRequest(result.conversation_id, dave.user_id);
+    ASSERT_TRUE(pending.has_value());
+
+    // alice 拒绝
+    auto handle_pkt = MakePacket(Cmd::kHandleJoinReq,
+                                 proto::HandleJoinReqReq{pending->id, 2});  // reject
+    group_svc_->HandleJoinReq(alice.conn, handle_pkt);
+    auto handle_ack = proto::Deserialize<proto::HandleJoinReqAck>(alice.conn->last_pkt.body);
+    EXPECT_EQ(handle_ack->code, 0);
+
+    // 成员数不变（仍为 3）
+    auto info_pkt = MakePacket(Cmd::kGetGroupInfo,
+                               proto::GetGroupInfoReq{result.conversation_id});
+    group_svc_->HandleGetGroupInfo(alice.conn, info_pkt);
+    auto info = proto::Deserialize<proto::GetGroupInfoAck>(alice.conn->last_pkt.body);
+    EXPECT_EQ(info->member_count, 3);
 }
 
 // ================================================================

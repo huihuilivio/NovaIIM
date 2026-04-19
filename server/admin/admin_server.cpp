@@ -200,8 +200,6 @@ int AdminServer::AuthMiddleware(HttpRequest* req, HttpResponse* resp) {
         return 401;
     }
 
-    auto session = ctx_.dao().Session();
-
     // 查 admin_sessions 黑名单
     std::string token_hash = Sha256Hex(token_sv);
     if (ctx_.dao().AdminSession().IsRevoked(token_hash)) {
