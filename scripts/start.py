@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import argparse
 import os
-import signal
 import subprocess
 import sys
 from pathlib import Path
@@ -17,16 +16,6 @@ def is_running(pid: int) -> bool:
     except OSError:
         return False
     return True
-
-
-def stop_process(pid: int) -> None:
-    try:
-        if os.name == "nt":
-            subprocess.run(["taskkill", "/PID", str(pid), "/F"], check=True)
-        else:
-            os.kill(pid, signal.SIGTERM)
-    except Exception:
-        pass
 
 
 def main() -> int:
@@ -61,13 +50,22 @@ def main() -> int:
         print(f"Config file not found: {config_file}")
         return 1
 
+    popen_kwargs = dict(
+        stderr=subprocess.STDOUT,
+        cwd=str(root),
+    )
+    if os.name == "nt":
+        popen_kwargs["creationflags"] = (
+            subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+        )
+    else:
+        popen_kwargs["start_new_session"] = True
+
     with open(log_path, "ab") as log_file:
         process = subprocess.Popen(
             [str(server_exe), "--config", str(config_file)],
             stdout=log_file,
-            stderr=subprocess.STDOUT,
-            cwd=str(root),
-            start_new_session=True,
+            **popen_kwargs,
         )
 
     pid_path.write_text(str(process.pid), encoding="utf-8")

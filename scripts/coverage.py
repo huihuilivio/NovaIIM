@@ -38,7 +38,7 @@ def run_open_cpp_coverage(build_type: str, verbose: bool) -> None:
         "--sources", str(root / "client"),
         "--excluded_sources", str(root / "thirdparty"),
         "--excluded_sources", str(root / "build"),
-        "--excluded_sources", str(root / "_deps"),
+        "--excluded_sources", str(build_dir / "_deps"),
         "--export_type", f"html:{report_dir}",
         "--export_type", f"cobertura:{data_dir / 'coverage.xml'}",
         "--",
