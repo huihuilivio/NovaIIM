@@ -1,6 +1,6 @@
 # NovaIIM 软件设计文档
 
-> **版本**: 1.0 | **最后更新**: 2026-04-18 | **状态**: 全部服务已实现（265 测试用例通过）
+> **版本**: 2.0 | **最后更新**: 2026-04-19 | **状态**: 服务端完成 (265 测试), 客户端架构设计中
 
 ---
 
@@ -19,6 +19,8 @@
 11. [AdminServer — 管理面板](#11-adminserver--管理面板)
 12. [数据访问层](#12-数据访问层)
 13. [安全架构](#13-安全架构)
+14. [Admin 前端设计](#14-admin-前端设计)
+15. [IM 客户端设计 (跨平台 MVVM)](#15-im-客户端设计-跨平台-mvvm)
 
 ---
 
@@ -1299,10 +1301,10 @@ flowchart TD
 
 | 组件 | 技术 | 版本 | 用途 |
 |------|------|------|------|
-| 语言 | C++20 | MSVC 2022 | 全栈 |
+| 语言 | C++20 | MSVC 2022 / GCC / Clang | 全栈 |
 | 网络 | libhv | v1.3.3 | TCP + HTTP |
 | ORM | ormpp | header-only | 数据库操作 |
-| 数据库 | SQLite3 | amalgamation | 开发环境 |
+| 数据库 | SQLite3 | amalgamation | 开发 + 客户端本地存储 |
 | 数据库 | MySQL | MariaDB Connector | 生产环境 |
 | 日志 | spdlog | v1.15.0 | 结构化日志 |
 | 配置 | ylt struct_yaml | — | YAML 配置 |
@@ -1312,3 +1314,218 @@ flowchart TD
 | 构建 | CMake + Ninja | 3.31+ | 构建系统 |
 | 测试 | Google Test | — | 单元测试 |
 | 序列化 | ylt struct_json | — | 二进制协议 |
+| Admin 前端 | Vue 3 + TypeScript | Vite + Element Plus | 管理面板 UI |
+| PC 客户端 | Qt 6 / QML | — | 桌面端 UI |
+| iOS 客户端 | SwiftUI | — | 移动端 UI (后续) |
+| Android 客户端 | Jetpack Compose | — | 移动端 UI (后续) |
+
+---
+
+## 14. Admin 前端设计
+
+### 14.1 技术选型
+
+| 类别 | 选型 | 说明 |
+|------|------|------|
+| 框架 | Vue 3 | Composition API + TypeScript |
+| 构建 | Vite | 快速 HMR 开发体验 |
+| UI 库 | Element Plus | 企业级组件库 |
+| 路由 | Vue Router | 路由守卫 + 权限控制 |
+| 状态 | Pinia | 类型安全的状态管理 |
+| HTTP | Axios | 拦截器 + Token 自动注入 |
+
+### 14.2 页面结构
+
+```mermaid
+graph TB
+    subgraph Pages["Admin 前端页面"]
+        Login["登录页"]
+        subgraph Layout["主布局 (侧边栏 + 内容区)"]
+            Dashboard["仪表盘"]
+            UserList["用户列表"]
+            UserDetail["用户详情"]
+            MsgList["消息列表"]
+            AuditLogs["审计日志"]
+            AdminMgmt["管理员管理 (Phase 5)"]
+            RoleMgmt["角色管理 (Phase 5)"]
+        end
+    end
+
+    Login -->|JWT Token| Layout
+    Dashboard --> UserList
+    UserList --> UserDetail
+```
+
+### 14.3 鉴权流程
+
+```mermaid
+sequenceDiagram
+    participant B as 浏览器
+    participant R as Vue Router
+    participant S as Pinia Store
+    participant A as Axios
+    participant API as AdminServer :9091
+
+    B->>R: 访问 /dashboard
+    R->>S: 检查 token
+    alt 无 token
+        R-->>B: 重定向 /login
+        B->>API: POST /auth/login
+        API-->>B: {token}
+        B->>S: 存储 token
+    end
+    S->>A: 注入 Authorization: Bearer xxx
+    A->>API: GET /dashboard/stats
+    API-->>B: {data}
+
+    Note over A,API: Token 过期时<br/>Axios 拦截 401 → 清除 token → 跳转 /login
+```
+
+---
+
+## 15. IM 客户端设计 (跨平台 MVVM)
+
+### 15.1 MVVM 架构总览
+
+```mermaid
+graph TB
+    subgraph View["View 层 (平台原生)"]
+        direction LR
+        PC["PC: Qt / QML"]
+        iOS["iOS: SwiftUI"]
+        Android["Android: Jetpack Compose"]
+    end
+
+    subgraph VM["ViewModel 层 (C++ 共享)"]
+        LoginVM["LoginVM"]
+        ChatVM["ChatVM"]
+        ConvListVM["ConvListVM"]
+        ContactVM["ContactVM"]
+        GroupVM["GroupVM"]
+        ProfileVM["ProfileVM"]
+        SyncVM["SyncVM"]
+    end
+
+    subgraph Model["Model 层 (C++ 共享)"]
+        UserModel["UserModel"]
+        MsgModel["MsgModel"]
+        ConvModel["ConvModel"]
+        GroupModel["GroupModel"]
+        ContactModel["ContactModel"]
+    end
+
+    subgraph Infra["基础设施 (C++ 共享)"]
+        Net["TcpClient + Codec"]
+        DB["SQLite 本地存储"]
+        EventBus["事件总线"]
+    end
+
+    View --> VM
+    VM --> Model
+    Model --> Infra
+
+    style View fill:#e3f2fd
+    style VM fill:#fff3e0
+    style Model fill:#e8f5e9
+    style Infra fill:#fce4ec
+```
+
+### 15.2 ViewModel 职责
+
+| ViewModel | 职责 | 状态管理 |
+|-----------|------|----------|
+| LoginVM | 登录/注册状态机, token 管理 | 登录状态, 错误信息 |
+| ChatVM | 消息收发, 列表管理, 撤回 | 当前会话消息列表, 输入状态 |
+| ConvListVM | 会话列表排序, 未读气泡 | 会话列表, 排序规则 |
+| ContactVM | 好友列表, 申请处理, 搜索 | 联系人列表, 申请列表 |
+| GroupVM | 群管理, 成员列表, 角色 | 群信息, 成员列表 |
+| ProfileVM | 个人资料编辑 | 当前用户资料 |
+| SyncVM | 离线消息同步, 进度 | 同步状态, 进度百分比 |
+
+### 15.3 网络层设计
+
+```mermaid
+sequenceDiagram
+    participant VM as ViewModel
+    participant RM as RequestManager
+    participant TC as TcpClient
+    participant S as Server
+
+    VM->>RM: SendRequest(cmd, body, callback)
+    RM->>RM: 分配 seq_id, 注册回调
+    RM->>TC: Send(Packet)
+    TC->>S: TCP 二进制帧
+    S-->>TC: Response Packet (seq_id)
+    TC->>RM: OnPacket(packet)
+    RM->>RM: 匹配 seq_id, 触发回调
+    RM-->>VM: callback(response)
+
+    Note over RM: 超时管理: 未匹配的请求超时后回调 error
+
+    S-->>TC: Push Packet (服务端主动推送)
+    TC->>VM: OnPush(cmd, body)
+    VM->>VM: 更新状态, 通知 View
+```
+
+### 15.4 本地存储设计
+
+```mermaid
+erDiagram
+    local_messages {
+        int64 id PK
+        string conversation_id
+        int64 seq
+        string sender_uid
+        string content
+        int status
+        int64 created_at
+    }
+    local_conversations {
+        string conversation_id PK
+        int type
+        string name
+        int64 last_ack_seq
+        int64 last_read_seq
+        int64 max_seq
+        int muted
+        int pinned
+        int hidden
+    }
+    local_contacts {
+        string uid PK
+        string nickname
+        string avatar
+        string email
+        int status
+    }
+    local_config {
+        string key PK
+        string value
+    }
+```
+
+### 15.5 平台 Bridge 方式
+
+| 平台 | Bridge 方式 | 说明 |
+|------|-------------|------|
+| PC (Qt) | 直接调用 | C++ ViewModel 直接绑定 QML |
+| iOS | Objective-C++ | .mm 文件桥接 Swift ↔ C++ |
+| Android | JNI | C++ 编译为 .so，Java/Kotlin 通过 JNI 调用 |
+
+### 15.6 客户端目录结构
+
+```
+client/
+├── cpp/                      ← C++ 跨平台共享层
+│   ├── CMakeLists.txt
+│   ├── core/                 ← 日志, 配置, 事件总线, 线程调度
+│   ├── net/                  ← TcpClient, Codec, ReconnectMgr, RequestMgr
+│   ├── model/                ← 数据模型 + 本地 SQLite DAO
+│   └── viewmodel/            ← ViewModel 层
+├── desktop/                  ← PC 端 (Qt/QML)
+│   ├── CMakeLists.txt
+│   ├── qml/                  ← QML 页面
+│   └── main.cpp
+├── ios/                      ← iOS 端 (后续)
+└── android/                  ← Android 端 (后续)
+```

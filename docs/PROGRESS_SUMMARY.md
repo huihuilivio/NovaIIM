@@ -1,6 +1,6 @@
 # NovaIIM 项目进度汇总
 
-**截止日期：2026-04-18 | 项目成熟度：Beta**
+**截止日期：2026-04-19 | 项目成熟度：Beta**
 
 ---
 
@@ -220,20 +220,31 @@ user_devices       ← 用户设备指纹
 120 tests across 8 test suites, 100% pass rate
 ```
 
-### Phase 4B — IM 用户侧实现 (估计 30h)
+### Phase 4B — IM 用户侧实现 ✅ 已完成
 ```
-Week 2 (2026-04-22 ~ 2026-04-28)
-  UserService: Login/Logout/Heartbeat
-  MsgService:  SendMsg/RecallMsg/Ack
-  SyncService: SyncMessages/Roster
+265 tests across 15 test suites, 100% pass rate
 ```
 
 ### Phase 5 — 性能优化 + 文档 (估计 15h)
 ```
 Week 3 (2026-04-29 ~ 2026-05-05)
   性能基准测试 (吞吐/延迟)
-  管理面板前端原型
   部署指南编写
+```
+
+### Phase 6 — Admin 管理前端 (Vue 3)
+```
+技术栈: Vue 3 + TypeScript + Vite + Element Plus + Pinia + Axios
+对接: AdminServer HTTP REST API (:9091)
+功能: 登录/仪表盘/用户管理/消息管理/审计日志
+```
+
+### Phase 7 — IM 客户端 (跨平台 MVVM)
+```
+架构: C++ ViewModel + Model (共享层) + 平台原生 View
+PC 端: Qt / QML
+iOS:   SwiftUI + Objective-C++ bridge
+Android: Jetpack Compose + JNI bridge
 ```
 
 ---
@@ -243,7 +254,7 @@ Week 3 (2026-04-29 ~ 2026-05-05)
 | 指标 | 目标 | 现状 | 拟定 |
 |------|------|------|------|
 | 编译错误 | 0 | ✅ 0 | 保持 |
-| 测试通过 | 100% | ✅ 120/120 | 保持 |
+| 测试通过 | 100% | ✅ 265/265 | 保持 |
 | 代码覆盖 | 80% | ⚠️ 60% | Phase 5 目标 80% |
 | API 文档 | 100% | ⚠️ 80% | Phase 5 完成 |
 | 安全审计 | PASSED | ✅ PASSED | 半年一次 |
@@ -291,6 +302,6 @@ C++20 (latest C++ standard)
 
 ---
 
-**更新时间：2026-04-15 13:30 UTC**  
+**更新时间：2026-04-19**  
 **维护者：@DevTeam**  
 **性质：内部项目进度追踪**
