@@ -33,6 +33,20 @@ This directory contains Python scripts for managing the NovaIIM project cross-pl
 - `stop.py`: Stops the NovaIIM server.
   - Usage: `python scripts/stop.py`
 
+- `admin_web.py`: Admin Web 前端开发脚本（install / dev / build / test / typecheck / preview）。
+  - Usage:
+    ```bash
+    python scripts/admin_web.py install     # 安装 npm 依赖
+    python scripts/admin_web.py dev         # 启动开发服务器 (port 3000)
+    python scripts/admin_web.py build       # 类型检查 + 生产构建
+    python scripts/admin_web.py test        # 运行 Vitest 单元测试
+    python scripts/admin_web.py test --watch      # 监听模式
+    python scripts/admin_web.py test --coverage   # 带覆盖率
+    python scripts/admin_web.py typecheck   # 仅 vue-tsc 类型检查
+    python scripts/admin_web.py preview     # 预览生产构建产物
+    ```
+  - 需要 Node.js ≥ 18 和 npm ≥ 9。
+
 ## Prerequisites
 
 - Python 3.8+

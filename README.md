@@ -104,7 +104,7 @@ GET    /permissions             权限列表（всех）
   - AuditLog 追踪（admin_id 字段记录操作者）
 
 ### ✅ 已交付（Phase 5 — IM 完整服务）
-- ✅ 单元测试：265 个用例全部通过
+- ✅ 单元测试：278 个 C++ 用例 + 8 个前端用例全部通过
   - JWT 13 / Password 11 / DAO 24 / API 21 / Router 6 / MPMC 5 / ConnMgr 4 / UserService 53 / FriendService 23 / MsgService 22 / ConvService 23 / GroupService 25 / FileService 20 / SyncService 18 / Application 17
 - ✅ **群组服务** (GroupService) — 建群/解散/入群审批/退群/踢人/群信息/成员角色/邀请
 - ✅ **文件服务** (FileService) — 上传/下载/共享会话鉴权
@@ -114,6 +114,13 @@ GET    /permissions             权限列表（всех）
 - **运维管理** (Ops Management)：7 个新 API 管理员账户
 - **角色管理** (Role Management)：7 个新 API 角色和权限
 - 部署指南（SQLite vs MySQL 选择）
+
+### ✅ 已交付（Admin Web 前端 — M1 + M4）
+- ✅ **Vue 3 + TypeScript + Element Plus** 管理后台
+- ✅ 登录/登出/JWT 认证闭环
+- ✅ 6 个管理页面：仪表盘 / 用户管理 / 管理员管理 / 角色权限 / 消息管理 / 审计日志
+- ✅ 8 个前端单元测试（Vitest + happy-dom）
+- ✅ 开发代理自动转发至后端 :9091
 
 ---
 
@@ -295,6 +302,17 @@ NovaIIM/
 ├── client/                        # 客户端（预留）
 │   └── cpp/
 │
+├── admin-web/                     # Admin 管理后台 (Vue 3 + TS)
+│   ├── src/
+│   │   ├── api/                   # REST 接口层
+│   │   ├── layout/                # 主布局（侧边栏 + 顶栏）
+│   │   ├── router/                # 路由 + 守卫
+│   │   ├── stores/                # Pinia 状态管理
+│   │   ├── utils/                 # Axios 封装 + Token
+│   │   └── views/                 # 7 个页面视图
+│   ├── vite.config.ts             # Vite 配置（proxy → :9091）
+│   └── vitest.config.ts           # 测试配置
+│
 ├── build/                         # 构建输出
 │   ├── output/
 │   │   ├── bin/                   # 可执行文件
@@ -357,8 +375,11 @@ ls -la build/output/bin/NovaIIM
 # [INFO] IM service listening on: 0.0.0.0:9999
 # [INFO] Server started. Press Ctrl+C to shutdown.
 
-# 运行单元测试 (265 个用例)
+# 运行 C++ 单元测试 (278 个用例)
 ctest --output-on-failure
+
+# 运行前端单元测试 (8 个用例)
+cd admin-web && npm run test
 ```
 
 ### 配置文件 (configs/server.yaml)

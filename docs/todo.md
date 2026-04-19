@@ -268,41 +268,49 @@
 
 ### 里程碑路线图
 
-| 阶段 | 目标 | 交付物 | 优先级 |
-|------|------|--------|--------|
-| **M1** | Admin 前端脚手架 | Vue 项目可运行，能登录 | 🔴 P0 |
+| 阶段 | 目标 | 交付物 | 状态 |
+|------|------|--------|------|
+| **M1** | Admin 前端脚手架 | Vue 项目可运行，能登录 | ✅ 完成 |
 | **M2** | IM 客户端 C++ 框架 | 共享库编译通过，能连接服务器 | 🔴 P0 |
 | **M3** | PC 端 Qt 框架 | Qt 项目可运行，绑定 C++ VM | 🔴 P0 |
-| **M4** | Admin 前端功能完善 | 全部管理页面可用 | 🟡 P1 |
+| **M4** | Admin 前端功能完善 | 全部管理页面可用 | ✅ 完成 |
 | **M5** | IM 客户端业务实现 | 登录/聊天/联系人可用 | 🟡 P1 |
 | **M6** | PC 端 UI 完善 | 完整桌面 IM 体验 | 🟡 P1 |
 | **M7** | 移动端 Bridge | iOS/Android 可编译运行 | 🟢 P2 |
 
 ---
 
-## 🔴 M1 — Admin 前端脚手架 (框架搭建)
+## ✅ M1 — Admin 前端脚手架 (框架搭建) ✅
 
 ### 1.1 项目初始化
-- [ ] Vite + Vue 3 + TypeScript 项目创建 (`admin-web/`)
+- [x] Vite + Vue 3 + TypeScript 项目创建 (`admin-web/`)
 - [ ] ESLint + Prettier 配置
-- [ ] Element Plus 集成 (按需导入)
-- [ ] 目录结构搭建 (`api/` `views/` `components/` `router/` `stores/` `utils/`)
+- [x] Element Plus 集成 (按需导入 + unplugin-auto-import)
+- [x] 目录结构搭建 (`api/` `views/` `layout/` `router/` `stores/` `utils/`)
 
 ### 1.2 基础框架
-- [ ] Axios 实例封装 (baseURL, 超时, 错误拦截)
-- [ ] Token 管理工具 (localStorage 存取, 过期检测)
-- [ ] Axios 请求拦截器 (自动注入 Authorization Bearer)
-- [ ] Axios 响应拦截器 (401 → 清 token → 跳登录)
-- [ ] Pinia auth store (token / adminInfo / permissions)
-- [ ] Vue Router 配置 (路由表 + 导航守卫)
-- [ ] 主布局组件 (侧边栏 + 顶栏 + 内容区 + 面包屑)
+- [x] Axios 实例封装 (baseURL, 超时, 错误拦截)
+- [x] Token 管理工具 (localStorage 存取)
+- [x] Axios 请求拦截器 (自动注入 Authorization Bearer)
+- [x] Axios 响应拦截器 (401 → 清 token → 跳登录, 403/429 处理)
+- [x] Pinia auth store (token / adminInfo / permissions / hasPermission)
+- [x] Vue Router 配置 (路由表 + 导航守卫 + 已登录跳转)
+- [x] 主布局组件 (侧边栏 + 顶栏 + 内容区 + 面包屑 + 折叠)
 
 ### 1.3 登录闭环验证
-- [ ] 登录页面 (POST /auth/login)
-- [ ] 登录成功 → 存 token → 跳 dashboard
-- [ ] 路由守卫拦截未登录 → /login
-- [ ] 登出 (POST /auth/logout + 清 token)
-- [ ] 开发代理配置 (Vite proxy → :9091)
+- [x] 登录页面 (POST /auth/login)
+- [x] 登录成功 → 存 token → fetchMe → 跳 dashboard
+- [x] 路由守卫拦截未登录 → /login
+- [x] 登出 (POST /auth/logout + 清 token)
+- [x] 开发代理配置 (Vite proxy → :9091)
+
+### 1.4 测试基础设施
+- [x] Vitest + happy-dom 配置
+- [x] Token 工具测试 (3 用例)
+- [x] Auth Store 测试 (2 用例)
+- [x] Router 配置测试 (2 用例)
+- [x] Login 组件渲染测试 (1 用例)
+- [x] 8/8 测试通过, vue-tsc 类型检查 0 errors
 
 ---
 
@@ -364,28 +372,29 @@
 
 ---
 
-## 🟡 M4 — Admin 前端功能完善
+## ✅ M4 — Admin 前端功能完善 ✅
 
 ### 4.1 仪表盘
-- [ ] 数据概览卡片 (在线人数 / 总用户 / 消息数 / uptime)
+- [x] 数据概览卡片 (连接数 / 在线用户 / 今日消息 / 运行时长)
+- [x] 系统资源面板 (CPU / 内存 / 异常包数)
 - [ ] 统计图表 (可选 ECharts)
 
 ### 4.2 用户管理
-- [ ] 用户列表 (分页表格 + keyword/status 筛选)
-- [ ] 创建用户对话框
-- [ ] 用户详情抽屉 (在线状态 + 设备列表)
-- [ ] 操作按钮 (重置密码 / 封禁 / 解禁 / 踢出 / 删除)
+- [x] 用户列表 (分页表格 + keyword/status 筛选)
+- [x] 创建用户对话框 (邮箱 + 密码 + 昵称, 表单校验)
+- [x] 用户详情抽屉 (在线状态 + 设备列表)
+- [x] 操作按钮 (重置密码 / 封禁 / 解禁 / 踢出 / 删除, 带确认)
 
 ### 4.3 消息管理
-- [ ] 消息列表 (按对话 / 时间范围筛选)
-- [ ] 消息撤回对话框 (含 reason 输入)
+- [x] 消息列表 (按会话 ID / 时间范围筛选, 分页)
+- [x] 消息撤回对话框 (含 reason 输入)
 
 ### 4.4 审计日志
-- [ ] 日志列表 (按操作者 / 动作 / 时间筛选)
+- [x] 日志列表 (按操作者 / 动作 / 时间筛选, 分页)
 
-### 4.5 运维管理 (需后端 Phase 5 就绪)
-- [ ] 管理员列表 / 创建 / 编辑 / 删除
-- [ ] 角色列表 / 创建 / 编辑 / 删除 / 权限分配
+### 4.5 运维管理
+- [x] 管理员列表 / 创建 / 删除 (AdminList.vue)
+- [x] 角色列表 / 创建 / 编辑 / 删除 / 权限分配 (RoleList.vue)
 
 ---
 
