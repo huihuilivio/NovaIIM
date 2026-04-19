@@ -1,6 +1,9 @@
 #pragma once
 // NovaIIM TCP 协议消息体定义
-// 使用 ylt struct_pack 零拷贝序列化（C++20 聚合体自动反射，无需宏）
+// 支持三种序列化格式：
+//   1. struct_pack — 零拷贝二进制（TCP 帧默认，高性能）
+//   2. struct_json — JSON 文本（REST API / 调试 / 客户端本地存储）
+//   3. struct_yaml — YAML 文本（配置 / 人类可读日志）
 //
 // 帧结构不变（18 字节头）:
 //   cmd:2 | seq:4 | uid:8 | body_len:4 | body(struct_pack binary)
@@ -11,9 +14,14 @@
 
 #include <cstdint>
 #include <string>
+#include <system_error>
 #include <vector>
 
 #include <ylt/struct_pack.hpp>
+#include <ylt/struct_json/json_reader.h>
+#include <ylt/struct_json/json_writer.h>
+#include <ylt/struct_yaml/yaml_reader.h>
+#include <ylt/struct_yaml/yaml_writer.h>
 
 namespace nova::proto {
 
@@ -618,6 +626,8 @@ struct DownloadAckMsg {
 //  序列化 / 反序列化便捷函数
 // ============================================================
 
+// --- struct_pack (二进制, TCP 帧默认) ---
+
 // 序列化为 std::string（可直接赋给 Packet::body）
 template <typename T>
 inline std::string Serialize(const T& obj) {
@@ -632,6 +642,44 @@ inline std::optional<T> Deserialize(const std::string& data) {
     if (!result)
         return std::nullopt;
     return std::move(*result);
+}
+
+// --- JSON ---
+
+template <typename T>
+inline std::string ToJson(const T& obj) {
+    std::string s;
+    struct_json::to_json(obj, s);
+    return s;
+}
+
+template <typename T>
+inline std::optional<T> FromJson(const std::string& json) {
+    T obj{};
+    std::error_code ec;
+    struct_json::from_json(obj, json, ec);
+    if (ec)
+        return std::nullopt;
+    return obj;
+}
+
+// --- YAML ---
+
+template <typename T>
+inline std::string ToYaml(const T& obj) {
+    std::string s;
+    struct_yaml::to_yaml(obj, s);
+    return s;
+}
+
+template <typename T>
+inline std::optional<T> FromYaml(const std::string& yaml) {
+    T obj{};
+    std::error_code ec;
+    struct_yaml::from_yaml(obj, yaml, ec);
+    if (ec)
+        return std::nullopt;
+    return obj;
 }
 
 }  // namespace nova::proto
