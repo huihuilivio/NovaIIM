@@ -40,7 +40,8 @@ def main() -> int:
     log_path = root / args.log_file
     log_path.parent.mkdir(parents=True, exist_ok=True)
 
-    server_exe = root / "build" / "output" / "bin" / "im_server.exe"
+    exe_name = "im_server.exe" if os.name == "nt" else "im_server"
+    server_exe = root / "build" / "output" / "bin" / exe_name
     if not server_exe.exists():
         print(f"Server executable not found at {server_exe}")
         return 1
