@@ -41,6 +41,7 @@ add_executable(nova_desktop WIN32
     win32_ui_dispatcher.cpp
     js_bridge.h
     js_bridge.cpp
+    app.rc
 )
 
 target_link_libraries(nova_desktop PRIVATE

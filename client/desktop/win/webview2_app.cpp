@@ -34,6 +34,8 @@ bool WebView2App::Init(int nCmdShow) {
     wc.lpfnWndProc   = WndProc;
     wc.hInstance      = hinstance_;
     wc.hCursor       = LoadCursor(nullptr, IDC_ARROW);
+    wc.hIcon         = LoadIconW(hinstance_, L"IDI_APP_ICON");
+    wc.hIconSm       = LoadIconW(hinstance_, L"IDI_APP_ICON");
     wc.hbrBackground = CreateSolidBrush(RGB(0x1D, 0x1E, 0x1F));   // 深色背景避免白闪
     wc.lpszClassName = L"NovaIIMDesktop";
     RegisterClassExW(&wc);
