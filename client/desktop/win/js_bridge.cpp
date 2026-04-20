@@ -1,6 +1,7 @@
 #include "js_bridge.h"
 
 #include <viewmodel/nova_client.h>
+#include <viewmodel/ui_dispatcher.h>
 #include <infra/logger.h>
 
 #include <hv/json.hpp>
@@ -40,6 +41,12 @@ JsBridge::JsBridge(ICoreWebView2* webview, nova::client::NovaClient* client)
     : webview_(webview), client_(client) {}
 
 JsBridge::~JsBridge() {
+    // 标记已销毁，防止异步 lambda 访问悬挂 this
+    alive_->store(false);
+
+    // 清除 Observable 观察者（防止后续回调触发）
+    if (app_vm_)  app_vm_->State().ClearObservers();
+
     if (webview_ && msg_token_.value != 0) {
         webview_->remove_WebMessageReceived(msg_token_);
     }
@@ -88,8 +95,15 @@ void JsBridge::PostEvent(const std::string& event, const std::string& json_data)
 
     auto js = "window.__novaBridge&&window.__novaBridge.onEvent("
               + j.dump() + ")";
-    auto wjs = Utf8ToWide(js);
-    webview_->ExecuteScript(wjs.c_str(), nullptr);
+
+    // 回调可能在网络线程触发，WebView2 要求 UI 线程调用
+    std::weak_ptr<std::atomic<bool>> weak_alive = alive_;
+    nova::client::UIDispatcher::Post([this, weak_alive, js = std::move(js)]() {
+        auto alive = weak_alive.lock();
+        if (!alive || !alive->load()) return;
+        auto wjs = Utf8ToWide(js);
+        webview_->ExecuteScript(wjs.c_str(), nullptr);
+    });
 }
 
 // ---- JS → C++ ----

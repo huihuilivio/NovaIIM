@@ -9,6 +9,7 @@
 #include <wrl.h>
 #include <WebView2.h>
 
+#include <atomic>
 #include <memory>
 #include <string>
 
@@ -47,6 +48,9 @@ private:
     ICoreWebView2* webview_ = nullptr;
     nova::client::NovaClient* client_ = nullptr;
     EventRegistrationToken msg_token_ = {};
+
+    // PostEvent / Observer lambda 的生命周期守卫
+    std::shared_ptr<std::atomic<bool>> alive_ = std::make_shared<std::atomic<bool>>(true);
 
     // 缓存 VM 引用，避免悬挂
     std::shared_ptr<nova::client::AppVM>   app_vm_;

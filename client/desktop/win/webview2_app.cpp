@@ -20,7 +20,7 @@ WebView2App::WebView2App(HINSTANCE hInstance, nova::client::NovaClient* client)
 }
 
 WebView2App::~WebView2App() {
-    bridge_.reset();
+    if (bridge_) bridge_.reset();  // 可能已在 WM_DESTROY 中释放
     g_app = nullptr;
 }
 
@@ -84,6 +84,9 @@ LRESULT WebView2App::HandleMessage(UINT msg, WPARAM wp, LPARAM lp) {
         return 0;
 
     case WM_DESTROY:
+        // 销毁 bridge 先于 client.Shutdown()，防止悬挂回调
+        bridge_.reset();
+        Win32UIDispatcher::SetHwnd(nullptr);
         PostQuitMessage(0);
         return 0;
 

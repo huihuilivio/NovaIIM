@@ -27,13 +27,13 @@ void ClientContext::Init() {
 
     // 设置协议拆包规则
     // 包头: cmd(2) + seq(4) + uid(8) + body_len(4) = 18 bytes
-    // length_field 在 offset=14 处，存的是 body_len，需要加 header 还原总长
+    // length_field 在 offset=14 处，存的是 body_len
     tcp_client_->SetLengthFieldUnpack(
         nova::proto::kHeaderSize + nova::proto::kMaxBodySize,  // package_max_length
-        0,                          // body_offset
+        nova::proto::kHeaderSize,   // body_offset (= head_len)
         14,                         // length_field_offset: cmd(2)+seq(4)+uid(8)
         4,                          // length_field_bytes
-        nova::proto::kHeaderSize,   // length_adjustment
+        0,                          // length_adjustment
         true                        // little_endian
     );
 
