@@ -9,9 +9,15 @@
 #include <wrl.h>
 #include <WebView2.h>
 
+#include <memory>
 #include <string>
 
-namespace nova::client { class NovaClient; }
+namespace nova::client {
+class NovaClient;
+class AppVM;
+class LoginVM;
+class ChatVM;
+}
 
 namespace nova::desktop {
 
@@ -41,6 +47,11 @@ private:
     ICoreWebView2* webview_ = nullptr;
     nova::client::NovaClient* client_ = nullptr;
     EventRegistrationToken msg_token_ = {};
+
+    // 缓存 VM 引用，避免悬挂
+    std::shared_ptr<nova::client::AppVM>   app_vm_;
+    std::shared_ptr<nova::client::LoginVM> login_vm_;
+    std::shared_ptr<nova::client::ChatVM>  chat_vm_;
 };
 
 }  // namespace nova::desktop

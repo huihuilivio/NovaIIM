@@ -47,8 +47,8 @@ class NovaClient private constructor() {
 
     // ---- 公开接口 ----
 
-    fun configure(host: String, port: Int, deviceId: String) {
-        nativeConfigure(host, port, deviceId)
+    fun configure(configPath: String) {
+        nativeConfigure(configPath)
     }
 
     fun setCallback(callback: Callback) {
@@ -63,7 +63,7 @@ class NovaClient private constructor() {
     val isLoggedIn: Boolean get() = nativeIsLoggedIn()
 
     // ---- Native 方法 ----
-    private external fun nativeConfigure(host: String, port: Int, deviceId: String)
+    private external fun nativeConfigure(configPath: String)
     private external fun nativeSetCallback(callback: Callback)
     private external fun nativeConnect()
     private external fun nativeDisconnect()

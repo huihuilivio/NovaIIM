@@ -1,4 +1,5 @@
 #include "client_config.h"
+#include <infra/device_info.h>
 #include <infra/logger.h>
 
 #include <fstream>
@@ -6,6 +7,16 @@
 #include <ylt/struct_yaml/yaml_reader.h>
 
 namespace nova::client {
+
+/// 配置文件加载后自动填充未指定的设备信息
+static void AutoFillDeviceInfo(ClientConfig& cfg) {
+    if (cfg.device_type.empty()) {
+        cfg.device_type = DetectDeviceType();
+    }
+    if (cfg.device_id.empty()) {
+        cfg.device_id = GenerateDeviceId();
+    }
+}
 
 bool LoadClientConfig(ClientConfig& cfg, const std::string& path) {
     std::ifstream ifs(path);
@@ -23,6 +34,8 @@ bool LoadClientConfig(ClientConfig& cfg, const std::string& path) {
         NOVA_LOG_ERROR("Failed to parse config: {}", ec.message());
         return false;
     }
+
+    AutoFillDeviceInfo(cfg);
     return true;
 }
 

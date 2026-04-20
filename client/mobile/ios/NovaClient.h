@@ -51,10 +51,8 @@ typedef NS_ENUM(NSInteger, NovaConnectionState) {
 /// 单例
 + (instancetype)shared;
 
-/// 配置服务器
-- (void)configureWithHost:(NSString *)host
-                     port:(uint16_t)port
-                 deviceId:(NSString *)deviceId;
+/// 配置（传入 YAML 配置文件路径）
+- (void)configureWithPath:(NSString *)path;
 
 /// 连接服务器
 - (void)connect;

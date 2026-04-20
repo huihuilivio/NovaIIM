@@ -13,6 +13,7 @@
 #include <export.h>
 
 #include <functional>
+#include <mutex>
 
 namespace nova::client {
 
@@ -31,6 +32,7 @@ public:
 
 private:
     static DispatchFunc dispatcher_;
+    static std::mutex mutex_;
 };
 
 }  // namespace nova::client

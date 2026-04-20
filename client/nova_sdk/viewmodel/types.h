@@ -77,7 +77,7 @@ struct SyncMessage {
     std::string sender_uid;
     std::string content;
     int msg_type = 0;
-    std::string server_time;
+    std::string server_time;  // 数据库时间字符串
     int status = 0;    // 0=normal, 1=recalled, 2=deleted
 };
 

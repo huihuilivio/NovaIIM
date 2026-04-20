@@ -1,14 +1,12 @@
 #pragma once
 // 客户端配置
 
-#include <export.h>
-
 #include <cstdint>
 #include <string>
 
 namespace nova::client {
 
-struct NOVA_SDK_API ClientConfig {
+struct ClientConfig {
     // 服务器连接
     std::string server_host = "127.0.0.1";
     uint16_t server_port    = 9090;
@@ -37,6 +35,6 @@ struct NOVA_SDK_API ClientConfig {
 };
 
 /// 从 YAML 文件加载配置（可选，失败返回 false）
-NOVA_SDK_API bool LoadClientConfig(ClientConfig& cfg, const std::string& path);
+bool LoadClientConfig(ClientConfig& cfg, const std::string& path);
 
 }  // namespace nova::client

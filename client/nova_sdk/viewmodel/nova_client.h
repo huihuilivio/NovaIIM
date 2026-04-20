@@ -5,14 +5,13 @@
 // Service 层内部不可见，ViewModel 层对应 UI 界面
 //
 // 用法:
-//   nova::client::NovaClient client(config);
+//   nova::client::NovaClient client("config.yaml");
 //   client.Init();
 //   client.Connect();
 //   client.Login()->Login("user@email.com", "password", callback);
 //   client.Chat()->SendTextMessage(conv_id, "hello", callback);
 
 #include <export.h>
-#include <core/client_config.h>
 
 #include <viewmodel/app_vm.h>
 #include <viewmodel/login_vm.h>
@@ -22,6 +21,7 @@
 #include <viewmodel/group_vm.h>
 
 #include <memory>
+#include <string>
 
 namespace nova::client {
 
@@ -31,7 +31,7 @@ public:
     //  构造 / 生命周期
     // ================================================================
 
-    explicit NovaClient(const ClientConfig& config);
+    explicit NovaClient(const std::string& config_path);
     ~NovaClient();
 
     NovaClient(const NovaClient&) = delete;
@@ -48,13 +48,7 @@ public:
     void Disconnect();
 
     // ================================================================
-    //  配置
-    // ================================================================
-
-    const ClientConfig& Config() const;
-
-    // ================================================================
-    //  ViewModel 工厂方法（每次调用创建新实例）
+    //  ViewModel 访问（单例，生命周期与 NovaClient 一致）
     // ================================================================
 
     std::shared_ptr<AppVM>          App();

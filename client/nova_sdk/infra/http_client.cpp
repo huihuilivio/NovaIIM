@@ -9,7 +9,7 @@ namespace nova::client {
 struct HttpClient::Impl {
     hv::AsyncHttpClient client;
     std::map<std::string, std::string> default_headers;
-    int timeout_ms = 10000;
+    int timeout_s = 10;
     std::string base_url;
 };
 
@@ -25,7 +25,8 @@ void HttpClient::RemoveHeader(const std::string& key) {
 }
 
 void HttpClient::SetTimeout(int timeout_ms) {
-    impl_->timeout_ms = timeout_ms;
+    impl_->timeout_s = (timeout_ms + 999) / 1000;  // 向上取整，至少 1s
+    if (impl_->timeout_s < 1) impl_->timeout_s = 1;
 }
 
 void HttpClient::SetBaseUrl(const std::string& base_url) {
@@ -61,7 +62,7 @@ void HttpClient::Get(const std::string& url, ResponseCallback cb) {
     auto req = std::make_shared<HttpRequest>();
     req->method = HTTP_GET;
     req->url = ResolveUrl(impl_->base_url, url);
-    req->timeout = impl_->timeout_ms / 1000;
+    req->timeout = impl_->timeout_s;
     for (auto& [k, v] : impl_->default_headers) {
         req->SetHeader(k.c_str(), v);
     }
@@ -75,7 +76,7 @@ void HttpClient::Post(const std::string& url, const std::string& body, ResponseC
     auto req = std::make_shared<HttpRequest>();
     req->method = HTTP_POST;
     req->url = ResolveUrl(impl_->base_url, url);
-    req->timeout = impl_->timeout_ms / 1000;
+    req->timeout = impl_->timeout_s;
     req->SetHeader("Content-Type", "application/json");
     for (auto& [k, v] : impl_->default_headers) {
         req->SetHeader(k.c_str(), v);
@@ -91,7 +92,7 @@ void HttpClient::Put(const std::string& url, const std::string& body, ResponseCa
     auto req = std::make_shared<HttpRequest>();
     req->method = HTTP_PUT;
     req->url = ResolveUrl(impl_->base_url, url);
-    req->timeout = impl_->timeout_ms / 1000;
+    req->timeout = impl_->timeout_s;
     req->SetHeader("Content-Type", "application/json");
     for (auto& [k, v] : impl_->default_headers) {
         req->SetHeader(k.c_str(), v);
@@ -107,7 +108,7 @@ void HttpClient::Delete(const std::string& url, ResponseCallback cb) {
     auto req = std::make_shared<HttpRequest>();
     req->method = HTTP_DELETE;
     req->url = ResolveUrl(impl_->base_url, url);
-    req->timeout = impl_->timeout_ms / 1000;
+    req->timeout = impl_->timeout_s;
     for (auto& [k, v] : impl_->default_headers) {
         req->SetHeader(k.c_str(), v);
     }

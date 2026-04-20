@@ -94,7 +94,12 @@ void ClientContext::SetState(ClientState s) {
     auto old = state_.exchange(s);
     if (old != s) {
         NOVA_LOG_INFO("ClientState: {} → {}", ClientStateStr(old), ClientStateStr(s));
-        if (on_state_) on_state_(s);
+        std::vector<StateCallback> snapshot;
+        {
+            std::lock_guard lock(state_cb_mutex_);
+            snapshot = state_callbacks_;
+        }
+        for (auto& cb : snapshot) cb(s);
     }
 }
 

@@ -22,7 +22,7 @@ namespace {
 
 std::mutex g_mutex;
 std::unique_ptr<nova::client::NovaClient> g_client;
-nova::client::ClientConfig g_config;
+std::string g_config_path;
 
 JavaVM* g_jvm = nullptr;
 jobject g_callback_ref = nullptr;
@@ -59,13 +59,9 @@ JNIEXPORT jint JNI_OnLoad(JavaVM* vm, void* /*reserved*/) {
 JNIEXPORT void JNICALL
 Java_com_nova_client_NovaClient_nativeConfigure(
         JNIEnv* env, jobject /*thiz*/,
-        jstring host, jint port, jstring deviceId) {
-    g_config.server_host = JStringToString(env, host);
-    g_config.server_port = static_cast<uint16_t>(port);
-    g_config.device_id   = JStringToString(env, deviceId);
-    g_config.device_type = "mobile";
-    g_config.log_level   = "info";
-    LOGI("Configured: %s:%d", g_config.server_host.c_str(), g_config.server_port);
+        jstring configPath) {
+    g_config_path = JStringToString(env, configPath);
+    LOGI("Configured with path: %s", g_config_path.c_str());
 }
 
 JNIEXPORT void JNICALL
@@ -84,7 +80,7 @@ Java_com_nova_client_NovaClient_nativeConnect(JNIEnv* /*env*/, jobject /*thiz*/)
     if (g_client) return;
 
     g_shutdown = false;
-    g_client = std::make_unique<nova::client::NovaClient>(g_config);
+    g_client = std::make_unique<nova::client::NovaClient>(g_config_path);
     g_client->Init();
 
     g_client->App()->State().Observe([](nova::client::ClientState state) {

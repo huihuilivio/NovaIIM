@@ -41,6 +41,7 @@ set(CLIENT_INFRA_SOURCES
     infra/http_client.cpp
     infra/ws_client.cpp
     infra/timer.cpp
+    infra/device_info.cpp
 )
 
 # ---- 动态库 ----

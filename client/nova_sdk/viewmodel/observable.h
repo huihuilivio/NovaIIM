@@ -26,17 +26,22 @@ public:
     explicit Observable(T value) : value_(std::move(value)) {}
 
     /// 获取当前值
-    const T& Get() const { return value_; }
+    T Get() const {
+        std::lock_guard lock(mutex_);
+        return value_;
+    }
 
     /// 设置新值并通知所有观察者
     void Set(T value) {
         std::vector<Observer> snapshot;
+        T local;
         {
             std::lock_guard lock(mutex_);
             value_ = std::move(value);
+            local = value_;
             snapshot = observers_;
         }
-        for (auto& cb : snapshot) cb(value_);
+        for (auto& cb : snapshot) cb(local);
     }
 
     /// 订阅变更通知（立即以当前值触发一次回调）

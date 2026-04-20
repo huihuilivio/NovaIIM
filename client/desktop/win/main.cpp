@@ -8,29 +8,23 @@
 #include <Windows.h>
 #include <objbase.h>
 
-static std::string GenerateDeviceId() {
-    // 使用 Windows 机器名 + 用户名作为稳定设备标识
-    char computer[MAX_COMPUTERNAME_LENGTH + 1] = {};
-    DWORD size = sizeof(computer);
-    GetComputerNameA(computer, &size);
-    char user[256] = {};
-    DWORD usize = sizeof(user);
-    GetUserNameA(user, &usize);
-    return std::string("pc-") + computer + "-" + user;
+#include <string>
+
+static std::string GetExeDir() {
+    char path[MAX_PATH];
+    GetModuleFileNameA(nullptr, path, MAX_PATH);
+    std::string dir(path);
+    auto pos = dir.find_last_of('\\');
+    if (pos != std::string::npos) dir = dir.substr(0, pos);
+    return dir;
 }
 
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*prev*/, LPWSTR /*cmdLine*/, int nCmdShow) {
     CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
 
-    // 客户端配置
-    nova::client::ClientConfig config;
-    config.server_host = "127.0.0.1";
-    config.server_port = 9090;
-    config.device_type = "pc";
-    config.device_id   = GenerateDeviceId();
-    config.log_level   = "debug";
+    auto config_path = GetExeDir() + "\\config.yaml";
 
-    nova::client::NovaClient client(config);
+    nova::client::NovaClient client(config_path);
     client.Init();
 
     nova::desktop::WebView2App app(hInstance, &client);

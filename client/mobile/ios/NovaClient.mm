@@ -17,7 +17,7 @@
 
 @interface NovaClient () {
     std::unique_ptr<nova::client::NovaClient> _client;
-    nova::client::ClientConfig _config;
+    std::string _configPath;
 }
 @end
 
@@ -41,24 +41,19 @@
             });
         });
 
-        _config.device_type = "mobile";
-        _config.log_level = "info";
+        _configPath = {};
     }
     return self;
 }
 
-- (void)configureWithHost:(NSString *)host
-                     port:(uint16_t)port
-                 deviceId:(NSString *)deviceId {
-    _config.server_host = [host UTF8String];
-    _config.server_port = port;
-    _config.device_id = [deviceId UTF8String];
+- (void)configureWithPath:(NSString *)path {
+    _configPath = [path UTF8String];
 }
 
 - (void)connect {
     if (_client) return;
 
-    _client = std::make_unique<nova::client::NovaClient>(_config);
+    _client = std::make_unique<nova::client::NovaClient>(_configPath);
     _client->Init();
 
     __weak NovaClient *weakSelf = self;

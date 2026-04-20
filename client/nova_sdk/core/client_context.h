@@ -15,8 +15,11 @@
 
 #include <atomic>
 #include <cstdint>
+#include <functional>
 #include <memory>
+#include <mutex>
 #include <string>
+#include <vector>
 
 namespace nova::proto { struct Packet; }
 
@@ -55,7 +58,10 @@ public:
     // ---- 业务状态 ----
     ClientState GetState() const { return state_.load(); }
     using StateCallback = std::function<void(ClientState)>;
-    void OnStateChanged(StateCallback cb) { on_state_ = std::move(cb); }
+    void OnStateChanged(StateCallback cb) {
+        std::lock_guard lock(state_cb_mutex_);
+        state_callbacks_.push_back(std::move(cb));
+    }
 
     // ---- 登录状态 ----
     void SetAuthenticated(const std::string& uid);
@@ -72,7 +78,8 @@ private:
 
     ClientConfig config_;
     std::atomic<ClientState> state_{ClientState::kDisconnected};
-    StateCallback on_state_;
+    std::mutex state_cb_mutex_;
+    std::vector<StateCallback> state_callbacks_;
     std::unique_ptr<TcpClient> tcp_client_;
     std::unique_ptr<RequestManager> request_mgr_;
     std::unique_ptr<ReconnectManager> reconnect_mgr_;

@@ -1,5 +1,6 @@
 #include "nova_client.h"
 
+#include <core/client_config.h>
 #include <core/client_context.h>
 #include <service/auth_service.h>
 #include <service/message_service.h>
@@ -29,24 +30,44 @@ struct NovaClient::Impl {
     std::unique_ptr<GroupService>        group;
     std::unique_ptr<FileService>         file;
 
-    explicit Impl(const ClientConfig& config)
-        : ctx(std::make_unique<ClientContext>(config)),
-          auth(std::make_unique<AuthService>(*ctx)),
-          msg(std::make_unique<MessageService>(*ctx)),
-          sync(std::make_unique<SyncService>(*ctx)),
-          profile(std::make_unique<ProfileService>(*ctx)),
-          friend_svc(std::make_unique<FriendService>(*ctx)),
-          conv(std::make_unique<ConversationService>(*ctx)),
-          group(std::make_unique<GroupService>(*ctx)),
-          file(std::make_unique<FileService>(*ctx)) {}
+    // ViewModels（缓存单例）
+    std::shared_ptr<AppVM>          app_vm;
+    std::shared_ptr<LoginVM>        login_vm;
+    std::shared_ptr<ChatVM>         chat_vm;
+    std::shared_ptr<ContactVM>      contact_vm;
+    std::shared_ptr<ConversationVM> conv_vm;
+    std::shared_ptr<GroupVM>        group_vm;
+
+    explicit Impl(const std::string& config_path) {
+        ClientConfig config;
+        LoadClientConfig(config, config_path);
+        ctx = std::make_unique<ClientContext>(config);
+        auth = std::make_unique<AuthService>(*ctx);
+        msg = std::make_unique<MessageService>(*ctx);
+        sync = std::make_unique<SyncService>(*ctx);
+        profile = std::make_unique<ProfileService>(*ctx);
+        friend_svc = std::make_unique<FriendService>(*ctx);
+        conv = std::make_unique<ConversationService>(*ctx);
+        group = std::make_unique<GroupService>(*ctx);
+        file = std::make_unique<FileService>(*ctx);
+    }
+
+    void CreateVMs() {
+        app_vm     = std::make_shared<AppVM>(*ctx);
+        login_vm   = std::make_shared<LoginVM>(*auth);
+        chat_vm    = std::make_shared<ChatVM>(*msg, *sync, *file);
+        contact_vm = std::make_shared<ContactVM>(*friend_svc, *profile);
+        conv_vm    = std::make_shared<ConversationVM>(*conv);
+        group_vm   = std::make_shared<GroupVM>(*group);
+    }
 };
 
 // ================================================================
 //  构造 / 生命周期
 // ================================================================
 
-NovaClient::NovaClient(const ClientConfig& config)
-    : impl_(std::make_unique<Impl>(config)) {}
+NovaClient::NovaClient(const std::string& config_path)
+    : impl_(std::make_unique<Impl>(config_path)) {}
 
 NovaClient::~NovaClient() {
     Shutdown();
@@ -54,6 +75,7 @@ NovaClient::~NovaClient() {
 
 void NovaClient::Init() {
     impl_->ctx->Init();
+    impl_->CreateVMs();
 }
 
 void NovaClient::Shutdown() {
@@ -72,36 +94,32 @@ void NovaClient::Disconnect() {
     impl_->ctx->Network().Disconnect();
 }
 
-const ClientConfig& NovaClient::Config() const {
-    return impl_->ctx->Config();
-}
-
 // ================================================================
-//  ViewModel 工厂方法
+//  ViewModel 访问
 // ================================================================
 
 std::shared_ptr<AppVM> NovaClient::App() {
-    return std::make_shared<AppVM>(*impl_->ctx);
+    return impl_->app_vm;
 }
 
 std::shared_ptr<LoginVM> NovaClient::Login() {
-    return std::make_shared<LoginVM>(*impl_->auth);
+    return impl_->login_vm;
 }
 
 std::shared_ptr<ChatVM> NovaClient::Chat() {
-    return std::make_shared<ChatVM>(*impl_->msg, *impl_->sync, *impl_->file);
+    return impl_->chat_vm;
 }
 
 std::shared_ptr<ContactVM> NovaClient::Contacts() {
-    return std::make_shared<ContactVM>(*impl_->friend_svc, *impl_->profile);
+    return impl_->contact_vm;
 }
 
 std::shared_ptr<ConversationVM> NovaClient::Conversations() {
-    return std::make_shared<ConversationVM>(*impl_->conv);
+    return impl_->conv_vm;
 }
 
 std::shared_ptr<GroupVM> NovaClient::Groups() {
-    return std::make_shared<GroupVM>(*impl_->group);
+    return impl_->group_vm;
 }
 
 }  // namespace nova::client

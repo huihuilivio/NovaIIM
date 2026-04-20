@@ -21,11 +21,17 @@ struct TcpClient::Impl {
     StateCallback on_state;
 
     std::mutex send_mutex;
+    std::mutex cb_mutex;
 
     void SetState(ConnectionState s) {
         auto old = state.exchange(s);
-        if (old != s && on_state) {
-            on_state(s);
+        if (old != s) {
+            StateCallback cb;
+            {
+                std::lock_guard lock(cb_mutex);
+                cb = on_state;
+            }
+            if (cb) cb(s);
         }
     }
 };
@@ -84,8 +90,13 @@ void TcpClient::Connect(const std::string& host, uint16_t port) {
 
     impl_->client->onMessage = [this](const hv::SocketChannelPtr&, hv::Buffer* buf) {
         if (!buf || buf->size() == 0) return;
-        if (impl_->on_data) {
-            impl_->on_data(buf->data(), buf->size());
+        DataCallback cb;
+        {
+            std::lock_guard lock(impl_->cb_mutex);
+            cb = impl_->on_data;
+        }
+        if (cb) {
+            cb(buf->data(), buf->size());
         }
     };
 
@@ -123,10 +134,12 @@ ConnectionState TcpClient::GetState() const {
 }
 
 void TcpClient::OnData(DataCallback cb) {
+    std::lock_guard lock(impl_->cb_mutex);
     impl_->on_data = std::move(cb);
 }
 
 void TcpClient::OnStateChanged(StateCallback cb) {
+    std::lock_guard lock(impl_->cb_mutex);
     impl_->on_state = std::move(cb);
 }
 

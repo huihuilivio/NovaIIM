@@ -48,6 +48,11 @@ JsBridge::~JsBridge() {
 // ---- 初始化 ----
 
 void JsBridge::Init() {
+    // 缓存 VM 引用
+    app_vm_   = client_->App();
+    login_vm_ = client_->Login();
+    chat_vm_  = client_->Chat();
+
     // 监听 JS → C++ 消息
     webview_->add_WebMessageReceived(
         Callback<ICoreWebView2WebMessageReceivedEventHandler>(
@@ -125,7 +130,7 @@ void JsBridge::OnWebMessage(const std::wstring& raw) {
 void JsBridge::HandleLogin(const std::string& email, const std::string& password) {
     NOVA_LOG_INFO("JsBridge: login request for {}", email);
 
-    client_->Login()->Login(email, password,
+    login_vm_->Login(email, password,
         [this](const nova::client::LoginResult& result) {
             nlohmann::json data;
             data["success"]  = result.success;
@@ -156,7 +161,7 @@ void JsBridge::HandleSendMessage(const std::string& to_uid, const std::string& c
         return;
     }
 
-    client_->Chat()->SendTextMessage(conversation_id, content,
+    chat_vm_->SendTextMessage(conversation_id, content,
         [this](const nova::client::SendMsgResult& result) {
             nlohmann::json data;
             data["success"]    = result.success;
@@ -170,13 +175,13 @@ void JsBridge::HandleSendMessage(const std::string& to_uid, const std::string& c
 // ---- 事件订阅 ----
 
 void JsBridge::SubscribeEvents() {
-    client_->App()->State().Observe([this](nova::client::ClientState state) {
+    app_vm_->State().Observe([this](nova::client::ClientState state) {
         nlohmann::json data;
         data["state"] = nova::client::ClientStateStr(state);
         PostEvent("connectionState", data.dump());
     });
 
-    client_->Chat()->OnMessageReceived([this](const nova::client::ReceivedMessage& msg) {
+    chat_vm_->OnMessageReceived([this](const nova::client::ReceivedMessage& msg) {
         nlohmann::json data;
         data["conversationId"] = msg.conversation_id;
         data["senderUid"]      = msg.sender_uid;
@@ -187,7 +192,7 @@ void JsBridge::SubscribeEvents() {
         PostEvent("newMessage", data.dump());
     });
 
-    client_->Chat()->OnMessageRecalled([this](const nova::client::RecallNotification& n) {
+    chat_vm_->OnMessageRecalled([this](const nova::client::RecallNotification& n) {
         nlohmann::json data;
         data["conversationId"] = n.conversation_id;
         data["serverSeq"]      = n.server_seq;
