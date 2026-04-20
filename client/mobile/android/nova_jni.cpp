@@ -5,9 +5,9 @@
 
 #include <jni.h>
 
-#include <core/client_config.h>
-#include <core/client_context.h>
-#include <core/ui_dispatcher.h>
+#include <model/client_config.h>
+#include <viewmodel/nova_client.h>
+#include <viewmodel/ui_dispatcher.h>
 
 #include <nova/protocol.h>
 

@@ -5,8 +5,8 @@
 // 连接成功后重置计数器
 
 #include <export.h>
-#include <core/client_config.h>
-#include <core/client_state.h>
+#include <model/client_config.h>
+#include <model/client_state.h>
 
 #include <atomic>
 #include <cstdint>

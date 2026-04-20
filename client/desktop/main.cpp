@@ -3,8 +3,8 @@
 #include "webview2_app.h"
 #include "win32_ui_dispatcher.h"
 
-#include <core/client_config.h>
-#include <core/client_context.h>
+#include <model/client_config.h>
+#include <viewmodel/nova_client.h>
 #include <infra/logger.h>
 
 #include <Windows.h>

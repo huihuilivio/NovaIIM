@@ -5,10 +5,10 @@
 // 协议编解码、心跳、拆包等业务逻辑在此层处理
 
 #include <export.h>
-#include <core/client_config.h>
-#include <core/client_state.h>
-#include <core/reconnect_manager.h>
-#include <core/request_manager.h>
+#include <model/client_config.h>
+#include <model/client_state.h>
+#include <model/reconnect_manager.h>
+#include <model/request_manager.h>
 #include <infra/tcp_client.h>
 #include <infra/timer.h>
 

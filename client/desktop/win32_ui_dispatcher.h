@@ -1,7 +1,7 @@
 #pragma once
 // Win32UIDispatcher — 通过 PostMessage(WM_APP) 投递回调到 Win32 消息循环
 
-#include <core/ui_dispatcher.h>
+#include <viewmodel/ui_dispatcher.h>
 
 #include <Windows.h>
 

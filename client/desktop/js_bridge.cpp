@@ -1,6 +1,6 @@
 #include "js_bridge.h"
 
-#include <core/client_context.h>
+#include <viewmodel/nova_client.h>
 #include <infra/logger.h>
 #include <infra/connection_state.h>
 

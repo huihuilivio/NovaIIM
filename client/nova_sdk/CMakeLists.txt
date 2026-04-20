@@ -6,12 +6,16 @@
 cmake_minimum_required(VERSION 3.28)
 
 # ---- 源文件收集 ----
-set(CLIENT_CORE_SOURCES
-    core/client_config.cpp
-    core/ui_dispatcher.cpp
-    core/client_context.cpp
-    core/reconnect_manager.cpp
-    core/request_manager.cpp
+set(CLIENT_MODEL_SOURCES
+    model/client_config.cpp
+    model/client_context.cpp
+    model/reconnect_manager.cpp
+    model/request_manager.cpp
+)
+
+set(CLIENT_VIEWMODEL_SOURCES
+    viewmodel/ui_dispatcher.cpp
+    viewmodel/nova_client.cpp
 )
 
 set(CLIENT_INFRA_SOURCES
@@ -24,12 +28,13 @@ set(CLIENT_INFRA_SOURCES
 
 # ---- 动态库 ----
 add_library(nova_sdk SHARED
-    ${CLIENT_CORE_SOURCES}
+    ${CLIENT_MODEL_SOURCES}
+    ${CLIENT_VIEWMODEL_SOURCES}
     ${CLIENT_INFRA_SOURCES}
 )
 
 target_include_directories(nova_sdk PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}          # client/nova_sdk/ → #include <core/xxx.h>
+    ${CMAKE_CURRENT_SOURCE_DIR}          # client/nova_sdk/ → #include <model/xxx.h>
 )
 
 target_link_libraries(nova_sdk PUBLIC
@@ -52,6 +57,7 @@ nova_set_output_dirs(nova_sdk)
 
 # ---- 安装导出头文件 ----
 install(FILES export.h DESTINATION include/nova/client)
-install(DIRECTORY core/  DESTINATION include/nova/client/core  FILES_MATCHING PATTERN "*.h")
-install(DIRECTORY infra/ DESTINATION include/nova/client/infra FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY model/     DESTINATION include/nova/client/model     FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY viewmodel/ DESTINATION include/nova/client/viewmodel FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY infra/     DESTINATION include/nova/client/infra     FILES_MATCHING PATTERN "*.h")
 install(TARGETS nova_sdk DESTINATION lib)
