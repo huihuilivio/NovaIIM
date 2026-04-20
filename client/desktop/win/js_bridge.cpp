@@ -125,6 +125,12 @@ void JsBridge::OnWebMessage(const std::wstring& raw) {
             j.value("email", ""),
             j.value("password", "")
         );
+    } else if (action == "register") {
+        HandleRegister(
+            j.value("email", ""),
+            j.value("nickname", ""),
+            j.value("password", "")
+        );
     } else if (action == "connect") {
         HandleConnect();
     } else if (action == "disconnect") {
@@ -155,6 +161,23 @@ void JsBridge::HandleLogin(const std::string& email, const std::string& password
                 data["msg"] = result.msg;
             }
             PostEvent("loginResult", data.dump());
+        });
+}
+
+void JsBridge::HandleRegister(const std::string& email, const std::string& nickname,
+                              const std::string& password) {
+    NOVA_LOG_INFO("JsBridge: register request for {}", email);
+
+    login_vm_->Register(email, nickname, password,
+        [this](const nova::client::RegisterResult& result) {
+            nlohmann::json data;
+            data["success"] = result.success;
+            if (result.success) {
+                data["uid"] = result.uid;
+            } else {
+                data["msg"] = result.msg;
+            }
+            PostEvent("registerResult", data.dump());
         });
 }
 

@@ -38,6 +38,8 @@ private:
 
     // 操作分发
     void HandleLogin(const std::string& email, const std::string& password);
+    void HandleRegister(const std::string& email, const std::string& nickname,
+                        const std::string& password);
     void HandleConnect();
     void HandleDisconnect();
     void HandleSendMessage(const std::string& to_uid, const std::string& content);
