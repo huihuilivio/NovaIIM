@@ -352,6 +352,22 @@ macro(nova_fetch_l8w8jwt)
 endmacro()
 
 # ============================================================
+# MsgBus - 高性能无锁消息总线 (header-only, C++20)
+# https://github.com/huihuilivio/MsgBus
+# 源码已 vendor 到 thirdparty/msgbus（仅头文件）
+# ============================================================
+macro(nova_fetch_msgbus)
+    if(NOT TARGET msgbus)
+        set(_MSGBUS_DIR "${CMAKE_SOURCE_DIR}/thirdparty/msgbus")
+        if(NOT EXISTS "${_MSGBUS_DIR}/CMakeLists.txt")
+            message(FATAL_ERROR "[NovaIIM] thirdparty/msgbus not found.")
+        endif()
+        message(STATUS "[NovaIIM] Using local MsgBus from thirdparty/")
+        add_subdirectory(${_MSGBUS_DIR} ${CMAKE_BINARY_DIR}/_msgbus EXCLUDE_FROM_ALL SYSTEM)
+    endif()
+endmacro()
+
+# ============================================================
 # 一键拉取所有依赖
 # ============================================================
 macro(nova_fetch_all_dependencies)
@@ -367,6 +383,7 @@ macro(nova_fetch_all_dependencies)
     nova_fetch_ormpp()
     nova_fetch_cli11()
     nova_fetch_l8w8jwt()
+    nova_fetch_msgbus()
 
     if(NOVA_BUILD_TESTS)
         nova_fetch_gtest()
