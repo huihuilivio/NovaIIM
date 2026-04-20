@@ -317,9 +317,9 @@
 ## ✅ M2 — IM 客户端 C++ 共享层框架 ✅
 
 ### 2.1 CMake 工程搭建
-- [x] `client/cpp/CMakeLists.txt` 重构 (编译为 shared library `nova_client`)
+- [x] `client/nova_sdk/CMakeLists.txt` 重构 (编译为 shared library `nova_sdk`)
 - [x] 依赖管理 (复用 protocol/, libhv, spdlog)
-- [x] 导出头文件组织 (NOVA_CLIENT_API 宏, dllexport/dllimport)
+- [x] 导出头文件组织 (NOVA_SDK_API 宏, dllexport/dllimport)
 - [ ] 跨平台编译验证 (Windows MSVC ✅ / Linux GCC / macOS Clang)
 
 ### 2.2 Core 基础设施
@@ -359,7 +359,7 @@
 ## ✅ M3 — PC 端 WebView2 桌面客户端 (部分完成)
 
 ### 3.1 WebView2 项目搭建
-- [x] `client/desktop/CMakeLists.txt` (WebView2 SDK 自动下载 + nova_client 链接, Windows-only)
+- [x] `client/desktop/CMakeLists.txt` (WebView2 SDK 自动下载 + nova_sdk 链接, Windows-only)
 - [x] main.cpp (Win32 wWinMain + COM 初始化 + ClientContext)
 - [x] WebView2App (Win32 窗口类 + WebView2 异步初始化 + 虚拟主机映射)
 - [x] Win32UIDispatcher (PostMessage WM_APP → UI 线程回调)

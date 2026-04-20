@@ -4,7 +4,7 @@
 // 每个请求分配唯一 seq_id，注册超时回调
 // 收到应答后按 seq 匹配并调用回调
 
-#include <core/export.h>
+#include <export.h>
 
 #include <nova/packet.h>
 
@@ -15,7 +15,7 @@
 
 namespace nova::client {
 
-class NOVA_CLIENT_API RequestManager {
+class NOVA_SDK_API RequestManager {
 public:
     using ResponseCallback = std::function<void(const nova::proto::Packet& resp)>;
     using TimeoutCallback  = std::function<void(uint32_t seq)>;

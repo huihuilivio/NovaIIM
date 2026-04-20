@@ -1,5 +1,5 @@
 // nova_jni.cpp — Android JNI 封装
-// 桥接 nova_client C++ 共享库到 Kotlin/Java
+// 桥接 nova_sdk C++ 共享库到 Kotlin/Java
 //
 // Java 类: com.nova.client.NovaClient (native methods)
 
@@ -7,7 +7,6 @@
 
 #include <core/client_config.h>
 #include <core/client_context.h>
-#include <core/event_bus.h>
 #include <core/ui_dispatcher.h>
 
 #include <nova/protocol.h>
@@ -111,7 +110,7 @@ Java_com_nova_client_NovaClient_nativeConnect(JNIEnv* /*env*/, jobject /*thiz*/)
     });
 
     // 推送消息回调
-    g_context->Events().Subscribe<nova::proto::PushMsg>([](const nova::proto::PushMsg& msg) {
+    g_context->Events().subscribe<nova::proto::PushMsg>("PushMsg", [](const nova::proto::PushMsg& msg) {
         if (g_shutdown) return;
         auto* env = GetJNIEnv();
         if (!env) return;
@@ -136,7 +135,7 @@ Java_com_nova_client_NovaClient_nativeConnect(JNIEnv* /*env*/, jobject /*thiz*/)
         }
     });
 
-    g_context->Network().Connect();
+    g_context->Connect();
     LOGI("Connected");
 }
 
@@ -168,7 +167,7 @@ Java_com_nova_client_NovaClient_nativeLogin(
 
     nova::proto::Packet pkt;
     pkt.cmd  = static_cast<uint16_t>(nova::proto::Cmd::kLogin);
-    pkt.seq  = g_context->Network().NextSeq();
+    pkt.seq  = g_context->NextSeq();
     pkt.body = nova::proto::Serialize(req);
 
     g_context->Requests().AddPending(pkt.seq,
@@ -220,7 +219,7 @@ Java_com_nova_client_NovaClient_nativeLogin(
         }
     );
 
-    g_context->Network().Send(pkt);
+    g_context->SendPacket(pkt);
 }
 
 // void sendTextMessage(long conversationId, String content)
@@ -237,10 +236,10 @@ Java_com_nova_client_NovaClient_nativeSendTextMessage(
 
     nova::proto::Packet pkt;
     pkt.cmd  = static_cast<uint16_t>(nova::proto::Cmd::kSendMsg);
-    pkt.seq  = g_context->Network().NextSeq();
+    pkt.seq  = g_context->NextSeq();
     pkt.body = nova::proto::Serialize(req);
 
-    g_context->Network().Send(pkt);
+    g_context->SendPacket(pkt);
 }
 
 // boolean isLoggedIn()

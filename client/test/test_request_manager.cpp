@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include <net/request_manager.h>
+#include <core/request_manager.h>
 
 #include <nova/packet.h>
 #include <nova/protocol.h>

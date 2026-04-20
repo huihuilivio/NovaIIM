@@ -3,7 +3,7 @@
 # iOS:     Objective-C++ 封装 → Swift/ObjC 调用
 # Android: JNI 封装 → Kotlin/Java 调用
 #
-# 共同依赖: nova_client 共享库
+# 共同依赖: nova_sdk 共享库
 
 cmake_minimum_required(VERSION 3.28)
 
@@ -13,7 +13,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "iOS" OR NOVA_BUILD_IOS)
         ios/NovaClient.mm
     )
 
-    target_link_libraries(nova_ios PRIVATE nova_client)
+    target_link_libraries(nova_ios PRIVATE nova_sdk)
 
     set_target_properties(nova_ios PROPERTIES
         FRAMEWORK TRUE
@@ -32,7 +32,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Android" OR NOVA_BUILD_ANDROID)
     )
 
     target_link_libraries(nova_jni PRIVATE
-        nova_client
+        nova_sdk
         log   # Android log
     )
 

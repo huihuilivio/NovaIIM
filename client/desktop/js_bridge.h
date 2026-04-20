@@ -20,7 +20,7 @@ public:
     JsBridge(ICoreWebView2* webview, nova::client::ClientContext* ctx);
     ~JsBridge();
 
-    /// 注册 WebMessage 监听 + EventBus 订阅
+    /// 注册 WebMessage 监听 + MsgBus 订阅
     void Init();
 
     /// 向 JS 发送事件: { "event": name, "data": {...} }
@@ -35,7 +35,7 @@ private:
     void HandleDisconnect();
     void HandleSendMessage(const std::string& to_uid, const std::string& content);
 
-    // EventBus 订阅
+    // MsgBus 订阅
     void SubscribeEvents();
 
     ICoreWebView2* webview_ = nullptr;

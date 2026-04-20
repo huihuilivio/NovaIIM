@@ -10,13 +10,13 @@
 //   UIDispatcher::Set([](auto fn) { QMetaObject::invokeMethod(qApp, fn); });
 //   UIDispatcher::Post([&] { emit loginSuccess(); });
 
-#include <core/export.h>
+#include <export.h>
 
 #include <functional>
 
 namespace nova::client {
 
-class NOVA_CLIENT_API UIDispatcher {
+class NOVA_SDK_API UIDispatcher {
 public:
     using DispatchFunc = std::function<void(std::function<void()>)>;
 

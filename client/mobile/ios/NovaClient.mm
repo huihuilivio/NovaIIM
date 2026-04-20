@@ -1,11 +1,10 @@
 // NovaClient.mm — Objective-C++ 实现
-// 桥接 nova_client C++ 共享库到 iOS/macOS
+// 桥接 nova_sdk C++ 共享库到 iOS/macOS
 
 #import "NovaClient.h"
 
 #include <core/client_config.h>
 #include <core/client_context.h>
-#include <core/event_bus.h>
 #include <core/ui_dispatcher.h>
 #include <net/connection_state.h>
 
@@ -81,7 +80,7 @@
     });
 
     // 监听推送消息
-    _context->Events().Subscribe<nova::proto::PushMsg>([weakSelf](const nova::proto::PushMsg& msg) {
+    _context->Events().subscribe<nova::proto::PushMsg>("PushMsg", [weakSelf](const nova::proto::PushMsg& msg) {
         dispatch_async(dispatch_get_main_queue(), ^{
             NovaClient *strongSelf = weakSelf;
             if (!strongSelf) return;
@@ -99,7 +98,7 @@
         });
     });
 
-    _context->Network().Connect();
+    _context->Connect();
 }
 
 - (void)disconnect {
@@ -120,7 +119,7 @@
 
     nova::proto::Packet pkt;
     pkt.cmd = static_cast<uint16_t>(nova::proto::Cmd::kLogin);
-    pkt.seq = _context->Network().NextSeq();
+    pkt.seq = _context->NextSeq();
     pkt.body = nova::proto::Serialize(req);
 
     __weak NovaClient *weakSelf = self;
@@ -165,7 +164,7 @@
         }
     );
 
-    _context->Network().Send(pkt);
+    _context->SendPacket(pkt);
 }
 
 - (void)logout {
@@ -173,8 +172,8 @@
 
     nova::proto::Packet pkt;
     pkt.cmd = static_cast<uint16_t>(nova::proto::Cmd::kLogout);
-    pkt.seq = _context->Network().NextSeq();
-    _context->Network().Send(pkt);
+    pkt.seq = _context->NextSeq();
+    _context->SendPacket(pkt);
     _context->SetUid("");
 }
 
@@ -188,10 +187,10 @@
 
     nova::proto::Packet pkt;
     pkt.cmd = static_cast<uint16_t>(nova::proto::Cmd::kSendMsg);
-    pkt.seq = _context->Network().NextSeq();
+    pkt.seq = _context->NextSeq();
     pkt.body = nova::proto::Serialize(req);
 
-    _context->Network().Send(pkt);
+    _context->SendPacket(pkt);
 }
 
 - (BOOL)isLoggedIn {

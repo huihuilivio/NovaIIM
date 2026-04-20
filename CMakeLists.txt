@@ -30,7 +30,7 @@ if(NOVA_BUILD_SERVER)
 endif()
 
 if(NOVA_BUILD_CLIENT)
-    add_subdirectory(client/cpp)
+    add_subdirectory(client/nova_sdk)
     add_subdirectory(client/desktop)
     add_subdirectory(client/mobile)
 endif()

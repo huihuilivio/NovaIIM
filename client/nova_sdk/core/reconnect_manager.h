@@ -4,7 +4,7 @@
 // 策略: 1s → 2s → 4s → 8s → 16s → 30s (cap)
 // 连接成功后重置计数器
 
-#include <core/export.h>
+#include <export.h>
 #include <core/client_config.h>
 #include <net/connection_state.h>
 
@@ -18,7 +18,7 @@ namespace nova::client {
 
 class TcpClient;
 
-class NOVA_CLIENT_API ReconnectManager {
+class NOVA_SDK_API ReconnectManager {
 public:
     using ReconnectFunc = std::function<void()>;
 

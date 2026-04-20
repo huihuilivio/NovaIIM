@@ -30,7 +30,7 @@ void Logger::Init(const std::string& name,
 std::shared_ptr<spdlog::logger>& Logger::Get() {
     if (!logger_) {
         // 懒初始化：未调用 Init 时使用默认 console logger
-        logger_ = spdlog::stdout_color_mt("nova_client");
+        logger_ = spdlog::stdout_color_mt("nova_sdk");
     }
     return logger_;
 }

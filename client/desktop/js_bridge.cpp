@@ -1,7 +1,6 @@
 #include "js_bridge.h"
 
 #include <core/client_context.h>
-#include <core/event_bus.h>
 #include <core/logger.h>
 #include <net/connection_state.h>
 
@@ -70,7 +69,7 @@ void JsBridge::Init() {
         &msg_token_
     );
 
-    // 订阅 EventBus 事件
+    // 订阅 MsgBus 事件
     SubscribeEvents();
 
     NOVA_LOG_INFO("JsBridge initialized");
@@ -138,7 +137,7 @@ void JsBridge::HandleLogin(const std::string& email, const std::string& password
 
     nova::proto::Packet pkt;
     pkt.cmd = static_cast<uint16_t>(nova::proto::Cmd::kLogin);
-    pkt.seq = ctx_->Network().NextSeq();
+    pkt.seq = ctx_->NextSeq();
     pkt.body = nova::proto::Serialize(req);
     if (pkt.body.empty()) {
         NOVA_LOG_ERROR("JsBridge: failed to serialize LoginReq");
@@ -172,11 +171,11 @@ void JsBridge::HandleLogin(const std::string& email, const std::string& password
         }
     );
 
-    ctx_->Network().Send(pkt);
+    ctx_->SendPacket(pkt);
 }
 
 void JsBridge::HandleConnect() {
-    ctx_->Network().Connect();
+    ctx_->Connect();
 }
 
 void JsBridge::HandleDisconnect() {
@@ -196,7 +195,7 @@ void JsBridge::HandleSendMessage(const std::string& to_uid, const std::string& c
 
     nova::proto::Packet pkt;
     pkt.cmd = static_cast<uint16_t>(nova::proto::Cmd::kSendMsg);
-    pkt.seq = ctx_->Network().NextSeq();
+    pkt.seq = ctx_->NextSeq();
     pkt.body = nova::proto::Serialize(req);
 
     ctx_->Requests().AddPending(pkt.seq,
@@ -213,13 +212,13 @@ void JsBridge::HandleSendMessage(const std::string& to_uid, const std::string& c
         }
     );
 
-    ctx_->Network().Send(pkt);
+    ctx_->SendPacket(pkt);
 }
 
-// ---- EventBus 订阅 ----
+// ---- MsgBus 订阅 ----
 
 void JsBridge::SubscribeEvents() {
-    auto& events = ctx_->Events();
+    auto& bus = ctx_->Events();
 
     // 连接状态变化
     ctx_->Network().OnStateChanged([this](nova::client::ConnectionState state) {
@@ -229,7 +228,7 @@ void JsBridge::SubscribeEvents() {
     });
 
     // 新消息推送
-    events.Subscribe<nova::proto::PushMsg>([this](const nova::proto::PushMsg& msg) {
+    bus.subscribe<nova::proto::PushMsg>("PushMsg", [this](const nova::proto::PushMsg& msg) {
         nlohmann::json data;
         data["conversationId"] = msg.conversation_id;
         data["senderUid"]      = msg.sender_uid;
@@ -241,7 +240,7 @@ void JsBridge::SubscribeEvents() {
     });
 
     // 消息撤回通知
-    events.Subscribe<nova::proto::RecallNotify>([this](const nova::proto::RecallNotify& n) {
+    bus.subscribe<nova::proto::RecallNotify>("RecallNotify", [this](const nova::proto::RecallNotify& n) {
         nlohmann::json data;
         data["conversationId"] = n.conversation_id;
         data["serverSeq"]      = n.server_seq;

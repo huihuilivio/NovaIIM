@@ -3,7 +3,7 @@ package com.nova.client
 /**
  * NovaIIM 客户端 — Kotlin 封装层
  *
- * 通过 JNI 调用 nova_client C++ 共享库
+ * 通过 JNI 调用 nova_sdk C++ 共享库
  */
 class NovaClient private constructor() {
 

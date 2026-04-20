@@ -56,8 +56,9 @@ macro(nova_fetch_spdlog)
             message(FATAL_ERROR "[NovaIIM] thirdparty/spdlog not found.")
         endif()
         message(STATUS "[NovaIIM] Using local spdlog from thirdparty/")
-        # 使用 bundled fmt（不依赖外部 fmt）
-        set(SPDLOG_FMT_EXTERNAL OFF CACHE BOOL "" FORCE)
+        # 使用 C++20 std::format，避免 bundled fmt 在 namespace 内模板实例化时的命名空间冲突
+        set(SPDLOG_USE_STD_FORMAT ON  CACHE BOOL "" FORCE)
+        set(SPDLOG_FMT_EXTERNAL   OFF CACHE BOOL "" FORCE)
         add_subdirectory(${_SPDLOG_DIR} ${CMAKE_BINARY_DIR}/_spdlog EXCLUDE_FROM_ALL SYSTEM)
     else()
         message(STATUS "[NovaIIM] Found system spdlog")

@@ -1,6 +1,6 @@
-# client/cpp — NovaIIM C++ 客户端共享库
+# client/nova_sdk — NovaIIM C++ 客户端共享库
 #
-# 编译为动态库 nova_client (.dll/.so/.dylib)
+# 编译为动态库 nova_sdk (.dll/.so/.dylib)
 # 供 Qt / iOS / Android / CLI 等上层调用
 
 cmake_minimum_required(VERSION 3.28)
@@ -9,45 +9,48 @@ cmake_minimum_required(VERSION 3.28)
 set(CLIENT_CORE_SOURCES
     core/logger.cpp
     core/client_config.cpp
-    core/event_bus.cpp
     core/ui_dispatcher.cpp
     core/client_context.cpp
+    core/reconnect_manager.cpp
+    core/request_manager.cpp
 )
 
 set(CLIENT_NET_SOURCES
     net/tcp_client.cpp
-    net/reconnect_manager.cpp
-    net/request_manager.cpp
+    net/http_client.cpp
+    net/ws_client.cpp
 )
 
 # ---- 动态库 ----
-add_library(nova_client SHARED
+add_library(nova_sdk SHARED
     ${CLIENT_CORE_SOURCES}
     ${CLIENT_NET_SOURCES}
 )
 
-target_include_directories(nova_client PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}          # client/cpp/ → #include <core/xxx.h>
+target_include_directories(nova_sdk PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}          # client/nova_sdk/ → #include <core/xxx.h>
 )
 
-target_link_libraries(nova_client PUBLIC
+target_link_libraries(nova_sdk PUBLIC
     nova_protocol
     spdlog::spdlog
     hv_static
+    msgbus
 )
 
 # 编译器选项（含 NOMINMAX / WIN32_LEAN_AND_MEAN）
-nova_set_compiler_options(nova_client)
+nova_set_compiler_options(nova_sdk)
 
 # 导出宏
-target_compile_definitions(nova_client
-    PRIVATE NOVA_CLIENT_EXPORTS
-    PUBLIC  NOVA_CLIENT_SHARED
+target_compile_definitions(nova_sdk
+    PRIVATE NOVA_SDK_EXPORTS
+    PUBLIC  NOVA_SDK_SHARED
 )
 
-nova_set_output_dirs(nova_client)
+nova_set_output_dirs(nova_sdk)
 
 # ---- 安装导出头文件 ----
+install(FILES export.h DESTINATION include/nova/client)
 install(DIRECTORY core/ DESTINATION include/nova/client/core FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY net/  DESTINATION include/nova/client/net  FILES_MATCHING PATTERN "*.h")
-install(TARGETS nova_client DESTINATION lib)
+install(TARGETS nova_sdk DESTINATION lib)

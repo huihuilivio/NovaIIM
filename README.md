@@ -123,11 +123,11 @@ GET    /permissions             权限列表（всех）
 - ✅ 开发代理自动转发至后端 :9091
 
 ### ✅ 已交付（客户端 C++ 共享库 — M2）
-- ✅ **nova_client 动态库** (.dll/.so) — 核心网络 + 事件总线 + 自动重连
+- ✅ **nova_sdk 动态库** (.dll/.so) — 核心网络 + 事件总线 + 自动重连
 - ✅ TcpClient（libhv 封装 + 帧编解码 + 心跳）
 - ✅ RequestManager（seq 请求-响应匹配 + 超时）
 - ✅ ReconnectManager（指数退避 1s→30s）
-- ✅ EventBus（类型安全发布-订阅）
+- ✅ MsgBus（高性能无锁发布-订阅消息总线）
 - ✅ ClientContext（依赖注入 + 服务端推送分发）
 - ✅ 14 个客户端单元测试（GTest）
 
@@ -316,8 +316,8 @@ NovaIIM/
         └── test_file_service.cpp
 │
 ├── client/                        # 客户端
-│   ├── cpp/                       # C++ 共享库 (nova_client.dll/.so)
-│   │   ├── core/                  # Logger, Config, EventBus, UIDispatcher, ClientContext
+│   ├── nova_sdk/                       # C++ 共享库 (nova_sdk.dll/.so)
+│   │   ├── core/                  # Logger, Config, MsgBus, UIDispatcher, ClientContext
 │   │   └── net/                   # TcpClient, ReconnectManager, RequestManager
 │   ├── desktop/                   # WebView2 桌面客户端 (Windows)
 │   │   ├── main.cpp               # Win32 + WebView2 入口

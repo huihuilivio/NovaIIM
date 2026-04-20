@@ -2,21 +2,29 @@
 // ClientContext — 客户端全局上下文（依赖注入容器）
 //
 // 持有 TcpClient / RequestManager / ReconnectManager 的生命周期
-// 供 ViewModel 层使用
+// 协议编解码、心跳、拆包等业务逻辑在此层处理
 
-#include <core/export.h>
+#include <export.h>
 #include <core/client_config.h>
-#include <core/event_bus.h>
+#include <core/reconnect_manager.h>
+#include <core/request_manager.h>
 #include <net/tcp_client.h>
-#include <net/reconnect_manager.h>
-#include <net/request_manager.h>
 
+#include <msgbus/message_bus.h>
+
+#include <atomic>
+#include <cstdint>
 #include <memory>
 #include <string>
 
+struct htimer_s;
+typedef struct htimer_s htimer_t;
+
+namespace nova::proto { struct Packet; }
+
 namespace nova::client {
 
-class NOVA_CLIENT_API ClientContext {
+class NOVA_SDK_API ClientContext {
 public:
     explicit ClientContext(const ClientConfig& config);
     ~ClientContext();
@@ -30,11 +38,20 @@ public:
     /// 关闭所有子系统
     void Shutdown();
 
+    /// 连接服务器
+    void Connect();
+
+    /// 发送协议包（编码后通过 TcpClient 发送）
+    bool SendPacket(const nova::proto::Packet& pkt);
+
+    /// 获取下一个 seq（原子递增）
+    uint32_t NextSeq() { return seq_counter_.fetch_add(1); }
+
     // ---- 访问器 ----
     TcpClient&        Network()    { return *tcp_client_; }
     RequestManager&   Requests()   { return *request_mgr_; }
     ReconnectManager& Reconnect()  { return *reconnect_mgr_; }
-    EventBus&         Events()     { return EventBus::Get(); }
+    msgbus::MessageBus& Events()   { return event_bus_; }
     const ClientConfig& Config() const { return config_; }
 
     // ---- 登录状态 ----
@@ -44,11 +61,16 @@ public:
 
 private:
     void SetupPacketDispatch();
+    void StartHeartbeat();
+    void StopHeartbeat();
 
     ClientConfig config_;
     std::unique_ptr<TcpClient> tcp_client_;
     std::unique_ptr<RequestManager> request_mgr_;
     std::unique_ptr<ReconnectManager> reconnect_mgr_;
+    msgbus::MessageBus event_bus_;
+    std::atomic<uint32_t> seq_counter_{1};
+    htimer_t* heartbeat_timer_ = nullptr;
     std::string uid_;
 };
 

@@ -1,6 +1,6 @@
 # client/desktop — NovaIIM WebView2 桌面客户端 (Windows Only)
 #
-# 依赖: WebView2 SDK + nova_client 共享库
+# 依赖: WebView2 SDK + nova_sdk 共享库
 # 构建条件: Windows 平台
 
 cmake_minimum_required(VERSION 3.28)
@@ -52,7 +52,7 @@ add_executable(nova_desktop WIN32
 )
 
 target_link_libraries(nova_desktop PRIVATE
-    nova_client
+    nova_sdk
     webview2_sdk
 )
 
