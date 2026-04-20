@@ -6,11 +6,8 @@
 cmake_minimum_required(VERSION 3.28)
 
 # ---- 源文件收集 ----
-set(CLIENT_MODEL_SOURCES
-    model/client_config.cpp
-)
-
 set(CLIENT_CORE_SOURCES
+    core/client_config.cpp
     core/client_context.cpp
     core/reconnect_manager.cpp
     core/request_manager.cpp
@@ -48,7 +45,6 @@ set(CLIENT_INFRA_SOURCES
 
 # ---- 动态库 ----
 add_library(nova_sdk SHARED
-    ${CLIENT_MODEL_SOURCES}
     ${CLIENT_CORE_SOURCES}
     ${CLIENT_SERVICE_SOURCES}
     ${CLIENT_VIEWMODEL_SOURCES}

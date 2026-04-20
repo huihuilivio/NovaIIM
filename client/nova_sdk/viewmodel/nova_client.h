@@ -12,7 +12,7 @@
 //   client.Chat()->SendTextMessage(conv_id, "hello", callback);
 
 #include <export.h>
-#include <model/client_config.h>
+#include <core/client_config.h>
 
 #include <viewmodel/app_vm.h>
 #include <viewmodel/login_vm.h>

@@ -1,5 +1,5 @@
 #include "reconnect_manager.h"
-#include <model/client_config.h>
+#include <core/client_config.h>
 #include <infra/logger.h>
 
 #include <algorithm>

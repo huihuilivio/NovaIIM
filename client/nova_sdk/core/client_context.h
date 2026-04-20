@@ -4,7 +4,7 @@
 // 持有 TcpClient / RequestManager / ReconnectManager 的生命周期
 // 协议编解码、心跳、拆包等业务逻辑在此层处理
 
-#include <model/client_config.h>
+#include <core/client_config.h>
 #include <model/client_state.h>
 #include <core/reconnect_manager.h>
 #include <core/request_manager.h>
