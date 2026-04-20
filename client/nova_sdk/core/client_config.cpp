@@ -1,7 +1,7 @@
 #include "client_config.h"
 #include <infra/device_info.h>
-#include <infra/logger.h>
 
+#include <cstdio>
 #include <fstream>
 
 #include <ylt/struct_yaml/yaml_reader.h>
@@ -21,7 +21,7 @@ static void AutoFillDeviceInfo(ClientConfig& cfg) {
 bool LoadClientConfig(ClientConfig& cfg, const std::string& path) {
     std::ifstream ifs(path);
     if (!ifs.is_open()) {
-        NOVA_LOG_ERROR("Failed to open config file: {}", path);
+        std::fprintf(stderr, "[nova] Failed to open config file: %s\n", path.c_str());
         return false;
     }
 
@@ -31,7 +31,7 @@ bool LoadClientConfig(ClientConfig& cfg, const std::string& path) {
     std::error_code ec;
     struct_yaml::from_yaml(cfg, content, ec);
     if (ec) {
-        NOVA_LOG_ERROR("Failed to parse config: {}", ec.message());
+        std::fprintf(stderr, "[nova] Failed to parse config: %s\n", ec.message().c_str());
         return false;
     }
 
