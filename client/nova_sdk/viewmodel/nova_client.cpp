@@ -1,163 +1,107 @@
 #include "nova_client.h"
-#include <model/client_context.h>
-#include <infra/logger.h>
 
-#include <nova/packet.h>
-#include <nova/protocol.h>
+#include <core/client_context.h>
+#include <service/auth_service.h>
+#include <service/message_service.h>
+#include <service/sync_service.h>
+#include <service/profile_service.h>
+#include <service/friend_service.h>
+#include <service/conversation_service.h>
+#include <service/group_service.h>
+#include <service/file_service.h>
 
 namespace nova::client {
 
+// ================================================================
+//  Impl — 内部实现（持有 ClientContext + 所有 Service）
+// ================================================================
+
+struct NovaClient::Impl {
+    std::unique_ptr<ClientContext> ctx;
+
+    // Services（生命周期由 Impl 管理，外部不可见）
+    std::unique_ptr<AuthService>         auth;
+    std::unique_ptr<MessageService>      msg;
+    std::unique_ptr<SyncService>         sync;
+    std::unique_ptr<ProfileService>      profile;
+    std::unique_ptr<FriendService>       friend_svc;
+    std::unique_ptr<ConversationService> conv;
+    std::unique_ptr<GroupService>        group;
+    std::unique_ptr<FileService>         file;
+
+    explicit Impl(const ClientConfig& config)
+        : ctx(std::make_unique<ClientContext>(config)),
+          auth(std::make_unique<AuthService>(*ctx)),
+          msg(std::make_unique<MessageService>(*ctx)),
+          sync(std::make_unique<SyncService>(*ctx)),
+          profile(std::make_unique<ProfileService>(*ctx)),
+          friend_svc(std::make_unique<FriendService>(*ctx)),
+          conv(std::make_unique<ConversationService>(*ctx)),
+          group(std::make_unique<GroupService>(*ctx)),
+          file(std::make_unique<FileService>(*ctx)) {}
+};
+
+// ================================================================
+//  构造 / 生命周期
+// ================================================================
+
 NovaClient::NovaClient(const ClientConfig& config)
-    : ctx_(std::make_unique<ClientContext>(config)) {}
+    : impl_(std::make_unique<Impl>(config)) {}
 
 NovaClient::~NovaClient() {
     Shutdown();
 }
 
 void NovaClient::Init() {
-    ctx_->Init();
+    impl_->ctx->Init();
 }
 
 void NovaClient::Shutdown() {
-    if (ctx_) ctx_->Shutdown();
+    if (impl_ && impl_->ctx) impl_->ctx->Shutdown();
 }
 
+// ================================================================
+//  连接
+// ================================================================
+
 void NovaClient::Connect() {
-    ctx_->Connect();
+    impl_->ctx->Connect();
 }
 
 void NovaClient::Disconnect() {
-    ctx_->Network().Disconnect();
-}
-
-ClientState NovaClient::GetState() const {
-    return ctx_->GetState();
-}
-
-void NovaClient::Login(const std::string& email, const std::string& password, LoginCallback cb) {
-    nova::proto::LoginReq req;
-    req.email       = email;
-    req.password    = password;
-    req.device_id   = ctx_->Config().device_id;
-    req.device_type = ctx_->Config().device_type;
-
-    nova::proto::Packet pkt;
-    pkt.cmd  = static_cast<uint16_t>(nova::proto::Cmd::kLogin);
-    pkt.seq  = ctx_->NextSeq();
-    pkt.body = nova::proto::Serialize(req);
-
-    if (pkt.body.empty()) {
-        if (cb) cb({.success = false, .msg = "serialize error"});
-        return;
-    }
-
-    ctx_->Requests().AddPending(pkt.seq,
-        [this, cb](const nova::proto::Packet& resp) {
-            auto ack = nova::proto::Deserialize<nova::proto::LoginAck>(resp.body);
-            LoginResult result;
-            if (ack && ack->code == 0) {
-                ctx_->SetAuthenticated(ack->uid);
-                result.success  = true;
-                result.uid      = ack->uid;
-                result.nickname = ack->nickname;
-                result.avatar   = ack->avatar;
-            } else {
-                result.msg = ack ? ack->msg : "deserialize error";
-            }
-            if (cb) cb(result);
-        },
-        [cb](uint32_t /*seq*/) {
-            if (cb) cb({.success = false, .msg = "login timeout"});
-        }
-    );
-
-    ctx_->SendPacket(pkt);
-}
-
-void NovaClient::Logout() {
-    nova::proto::Packet pkt;
-    pkt.cmd = static_cast<uint16_t>(nova::proto::Cmd::kLogout);
-    pkt.seq = ctx_->NextSeq();
-    ctx_->SendPacket(pkt);
-    ctx_->Shutdown();
-}
-
-bool NovaClient::IsLoggedIn() const {
-    return ctx_->IsLoggedIn();
-}
-
-const std::string& NovaClient::Uid() const {
-    return ctx_->Uid();
-}
-
-void NovaClient::SendTextMessage(int64_t conversation_id, const std::string& content, SendMsgCallback cb) {
-    nova::proto::SendMsgReq req;
-    req.conversation_id = conversation_id;
-    req.content         = content;
-    req.msg_type        = nova::proto::MsgType::kText;
-
-    nova::proto::Packet pkt;
-    pkt.cmd  = static_cast<uint16_t>(nova::proto::Cmd::kSendMsg);
-    pkt.seq  = ctx_->NextSeq();
-    pkt.body = nova::proto::Serialize(req);
-
-    if (pkt.body.empty()) {
-        if (cb) cb({.success = false, .msg = "serialize error"});
-        return;
-    }
-
-    ctx_->Requests().AddPending(pkt.seq,
-        [cb](const nova::proto::Packet& resp) {
-            auto ack = nova::proto::Deserialize<nova::proto::SendMsgAck>(resp.body);
-            SendMsgResult result;
-            if (ack && ack->code == 0) {
-                result.success     = true;
-                result.server_seq  = ack->server_seq;
-                result.server_time = ack->server_time;
-            } else {
-                result.msg = ack ? ack->msg : "deserialize error";
-            }
-            if (cb) cb(result);
-        },
-        [cb](uint32_t /*seq*/) {
-            if (cb) cb({.success = false, .msg = "send timeout"});
-        }
-    );
-
-    ctx_->SendPacket(pkt);
-}
-
-void NovaClient::OnStateChanged(StateCallback cb) {
-    ctx_->OnStateChanged(std::move(cb));
-}
-
-void NovaClient::OnMessageReceived(MessageCallback cb) {
-    ctx_->Events().subscribe<nova::proto::PushMsg>("PushMsg",
-        [cb](const nova::proto::PushMsg& msg) {
-            ReceivedMessage rm;
-            rm.conversation_id = msg.conversation_id;
-            rm.sender_uid      = msg.sender_uid;
-            rm.content         = msg.content;
-            rm.server_seq      = msg.server_seq;
-            rm.server_time     = msg.server_time;
-            rm.msg_type        = static_cast<int>(msg.msg_type);
-            cb(rm);
-        });
-}
-
-void NovaClient::OnMessageRecalled(RecallCallback cb) {
-    ctx_->Events().subscribe<nova::proto::RecallNotify>("RecallNotify",
-        [cb](const nova::proto::RecallNotify& n) {
-            RecallNotification rn;
-            rn.conversation_id = n.conversation_id;
-            rn.server_seq      = n.server_seq;
-            rn.operator_uid    = n.operator_uid;
-            cb(rn);
-        });
+    impl_->ctx->Network().Disconnect();
 }
 
 const ClientConfig& NovaClient::Config() const {
-    return ctx_->Config();
+    return impl_->ctx->Config();
+}
+
+// ================================================================
+//  ViewModel 工厂方法
+// ================================================================
+
+std::shared_ptr<AppVM> NovaClient::App() {
+    return std::make_shared<AppVM>(*impl_->ctx);
+}
+
+std::shared_ptr<LoginVM> NovaClient::Login() {
+    return std::make_shared<LoginVM>(*impl_->auth);
+}
+
+std::shared_ptr<ChatVM> NovaClient::Chat() {
+    return std::make_shared<ChatVM>(*impl_->msg, *impl_->sync, *impl_->file);
+}
+
+std::shared_ptr<ContactVM> NovaClient::Contacts() {
+    return std::make_shared<ContactVM>(*impl_->friend_svc, *impl_->profile);
+}
+
+std::shared_ptr<ConversationVM> NovaClient::Conversations() {
+    return std::make_shared<ConversationVM>(*impl_->conv);
+}
+
+std::shared_ptr<GroupVM> NovaClient::Groups() {
+    return std::make_shared<GroupVM>(*impl_->group);
 }
 
 }  // namespace nova::client

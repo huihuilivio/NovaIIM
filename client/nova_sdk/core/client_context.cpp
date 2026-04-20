@@ -68,6 +68,7 @@ void ClientContext::Init() {
     });
 
     SetupPacketDispatch();
+    StartTimeoutChecker();
 
     NOVA_LOG_INFO("ClientContext initialized (server={}:{})",
                   config_.server_host, config_.server_port);
@@ -75,12 +76,13 @@ void ClientContext::Init() {
 
 void ClientContext::Shutdown() {
     StopHeartbeat();
+    StopTimeoutChecker();
     if (reconnect_mgr_) reconnect_mgr_->Stop();
     if (tcp_client_) tcp_client_->Disconnect();
     if (request_mgr_) request_mgr_->CancelAll();
     event_bus_.stop();
     uid_.clear();
-    state_.store(ClientState::kDisconnected);
+    SetState(ClientState::kDisconnected);
     NOVA_LOG_INFO("ClientContext shutdown");
 }
 
@@ -177,6 +179,24 @@ void ClientContext::StopHeartbeat() {
     if (heartbeat_timer_id_) {
         timer_.KillTimer(heartbeat_timer_id_);
         heartbeat_timer_id_ = 0;
+    }
+}
+
+void ClientContext::StartTimeoutChecker() {
+    if (timeout_checker_id_) return;
+
+    // 每秒检查一次请求超时
+    timeout_checker_id_ = timer_.SetInterval(1000, [this](Timer::TimerID) {
+        if (request_mgr_) {
+            request_mgr_->CheckTimeouts();
+        }
+    });
+}
+
+void ClientContext::StopTimeoutChecker() {
+    if (timeout_checker_id_) {
+        timer_.KillTimer(timeout_checker_id_);
+        timeout_checker_id_ = 0;
     }
 }
 

@@ -11,13 +11,13 @@
 
 #include <string>
 
-namespace nova::client { class ClientContext; }
+namespace nova::client { class NovaClient; }
 
 namespace nova::desktop {
 
 class JsBridge {
 public:
-    JsBridge(ICoreWebView2* webview, nova::client::ClientContext* ctx);
+    JsBridge(ICoreWebView2* webview, nova::client::NovaClient* client);
     ~JsBridge();
 
     /// 注册 WebMessage 监听 + MsgBus 订阅
@@ -39,7 +39,7 @@ private:
     void SubscribeEvents();
 
     ICoreWebView2* webview_ = nullptr;
-    nova::client::ClientContext* ctx_ = nullptr;
+    nova::client::NovaClient* client_ = nullptr;
     EventRegistrationToken msg_token_ = {};
 };
 

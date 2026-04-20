@@ -4,11 +4,10 @@
 // 持有 TcpClient / RequestManager / ReconnectManager 的生命周期
 // 协议编解码、心跳、拆包等业务逻辑在此层处理
 
-#include <export.h>
 #include <model/client_config.h>
 #include <model/client_state.h>
-#include <model/reconnect_manager.h>
-#include <model/request_manager.h>
+#include <core/reconnect_manager.h>
+#include <core/request_manager.h>
 #include <infra/tcp_client.h>
 #include <infra/timer.h>
 
@@ -23,7 +22,7 @@ namespace nova::proto { struct Packet; }
 
 namespace nova::client {
 
-class NOVA_SDK_API ClientContext {
+class ClientContext {
 public:
     explicit ClientContext(const ClientConfig& config);
     ~ClientContext();
@@ -68,6 +67,8 @@ private:
     void SetupPacketDispatch();
     void StartHeartbeat();
     void StopHeartbeat();
+    void StartTimeoutChecker();
+    void StopTimeoutChecker();
 
     ClientConfig config_;
     std::atomic<ClientState> state_{ClientState::kDisconnected};
@@ -79,6 +80,7 @@ private:
     std::atomic<uint32_t> seq_counter_{1};
     Timer timer_;
     Timer::TimerID heartbeat_timer_id_ = 0;
+    Timer::TimerID timeout_checker_id_ = 0;
     std::string uid_;
 };
 

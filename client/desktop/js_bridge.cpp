@@ -2,10 +2,6 @@
 
 #include <viewmodel/nova_client.h>
 #include <infra/logger.h>
-#include <infra/connection_state.h>
-
-#include <nova/packet.h>
-#include <nova/protocol.h>
 
 #include <hv/json.hpp>
 #include <wrl/event.h>
@@ -40,8 +36,8 @@ static std::string WideToUtf8(const std::wstring& ws) {
 
 // ---- 构造 / 析构 ----
 
-JsBridge::JsBridge(ICoreWebView2* webview, nova::client::ClientContext* ctx)
-    : webview_(webview), ctx_(ctx) {}
+JsBridge::JsBridge(ICoreWebView2* webview, nova::client::NovaClient* client)
+    : webview_(webview), client_(client) {}
 
 JsBridge::~JsBridge() {
     if (webview_ && msg_token_.value != 0) {
@@ -129,118 +125,69 @@ void JsBridge::OnWebMessage(const std::wstring& raw) {
 void JsBridge::HandleLogin(const std::string& email, const std::string& password) {
     NOVA_LOG_INFO("JsBridge: login request for {}", email);
 
-    nova::proto::LoginReq req;
-    req.email       = email;
-    req.password    = password;
-    req.device_id   = ctx_->Config().device_id;
-    req.device_type = ctx_->Config().device_type;
-
-    nova::proto::Packet pkt;
-    pkt.cmd = static_cast<uint16_t>(nova::proto::Cmd::kLogin);
-    pkt.seq = ctx_->NextSeq();
-    pkt.body = nova::proto::Serialize(req);
-    if (pkt.body.empty()) {
-        NOVA_LOG_ERROR("JsBridge: failed to serialize LoginReq");
-        nlohmann::json data;
-        data["success"] = false;
-        data["msg"]     = "serialize error";
-        PostEvent("loginResult", data.dump());
-        return;
-    }
-
-    ctx_->Requests().AddPending(pkt.seq,
-        [this](const nova::proto::Packet& resp) {
-            auto ack = nova::proto::Deserialize<nova::proto::LoginAck>(resp.body);
+    client_->Login()->Login(email, password,
+        [this](const nova::client::LoginResult& result) {
             nlohmann::json data;
-            if (ack && ack->code == 0) {
-                ctx_->SetAuthenticated(ack->uid);
-                data["success"]  = true;
-                data["uid"]      = ack->uid;
-                data["nickname"] = ack->nickname;
+            data["success"]  = result.success;
+            if (result.success) {
+                data["uid"]      = result.uid;
+                data["nickname"] = result.nickname;
             } else {
-                data["success"] = false;
-                data["msg"]     = ack ? ack->msg : "deserialize error";
+                data["msg"] = result.msg;
             }
             PostEvent("loginResult", data.dump());
-        },
-        [this](uint32_t /*seq*/) {
-            nlohmann::json data;
-            data["success"] = false;
-            data["msg"]     = "login timeout";
-            PostEvent("loginResult", data.dump());
-        }
-    );
-
-    ctx_->SendPacket(pkt);
+        });
 }
 
 void JsBridge::HandleConnect() {
-    ctx_->Connect();
+    client_->Connect();
 }
 
 void JsBridge::HandleDisconnect() {
-    ctx_->Network().Disconnect();
+    client_->Disconnect();
 }
 
 void JsBridge::HandleSendMessage(const std::string& to_uid, const std::string& content) {
-    nova::proto::SendMsgReq req;
+    int64_t conversation_id = 0;
     try {
-        req.conversation_id = std::stoll(to_uid);
+        conversation_id = std::stoll(to_uid);
     } catch (const std::exception&) {
         NOVA_LOG_WARN("JsBridge: invalid conversation id: {}", to_uid);
         return;
     }
-    req.content         = content;
-    req.msg_type        = nova::proto::MsgType::kText;
 
-    nova::proto::Packet pkt;
-    pkt.cmd = static_cast<uint16_t>(nova::proto::Cmd::kSendMsg);
-    pkt.seq = ctx_->NextSeq();
-    pkt.body = nova::proto::Serialize(req);
-
-    ctx_->Requests().AddPending(pkt.seq,
-        [this](const nova::proto::Packet& resp) {
-            auto ack = nova::proto::Deserialize<nova::proto::SendMsgAck>(resp.body);
+    client_->Chat()->SendTextMessage(conversation_id, content,
+        [this](const nova::client::SendMsgResult& result) {
             nlohmann::json data;
-            data["success"] = ack && ack->code == 0;
-            if (ack) {
-                data["serverSeq"]  = ack->server_seq;
-                data["serverTime"] = ack->server_time;
-                data["msg"]        = ack->msg;
-            }
+            data["success"]    = result.success;
+            data["serverSeq"]  = result.server_seq;
+            data["serverTime"] = result.server_time;
+            data["msg"]        = result.msg;
             PostEvent("sendMsgResult", data.dump());
-        }
-    );
-
-    ctx_->SendPacket(pkt);
+        });
 }
 
-// ---- MsgBus 订阅 ----
+// ---- 事件订阅 ----
 
 void JsBridge::SubscribeEvents() {
-    auto& bus = ctx_->Events();
-
-    // 连接状态变化
-    ctx_->Network().OnStateChanged([this](nova::client::ConnectionState state) {
+    client_->App()->State().Observe([this](nova::client::ClientState state) {
         nlohmann::json data;
-        data["state"] = nova::client::ConnectionStateStr(state);
+        data["state"] = nova::client::ClientStateStr(state);
         PostEvent("connectionState", data.dump());
     });
 
-    // 新消息推送
-    bus.subscribe<nova::proto::PushMsg>("PushMsg", [this](const nova::proto::PushMsg& msg) {
+    client_->Chat()->OnMessageReceived([this](const nova::client::ReceivedMessage& msg) {
         nlohmann::json data;
         data["conversationId"] = msg.conversation_id;
         data["senderUid"]      = msg.sender_uid;
         data["content"]        = msg.content;
         data["serverSeq"]      = msg.server_seq;
         data["serverTime"]     = msg.server_time;
-        data["msgType"]        = static_cast<int>(msg.msg_type);
+        data["msgType"]        = msg.msg_type;
         PostEvent("newMessage", data.dump());
     });
 
-    // 消息撤回通知
-    bus.subscribe<nova::proto::RecallNotify>("RecallNotify", [this](const nova::proto::RecallNotify& n) {
+    client_->Chat()->OnMessageRecalled([this](const nova::client::RecallNotification& n) {
         nlohmann::json data;
         data["conversationId"] = n.conversation_id;
         data["serverSeq"]      = n.server_seq;

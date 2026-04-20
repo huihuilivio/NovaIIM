@@ -14,8 +14,8 @@ static WebView2App* g_app = nullptr;
 
 // ---- 构造 / 析构 ----
 
-WebView2App::WebView2App(HINSTANCE hInstance, nova::client::ClientContext* ctx)
-    : hinstance_(hInstance), ctx_(ctx) {
+WebView2App::WebView2App(HINSTANCE hInstance, nova::client::NovaClient* client)
+    : hinstance_(hInstance), client_(client) {
     g_app = this;
 }
 
@@ -157,7 +157,7 @@ void WebView2App::OnWebViewReady() {
 #endif
 
     // 建立 JS Bridge
-    bridge_ = std::make_unique<JsBridge>(webview_.Get(), ctx_);
+    bridge_ = std::make_unique<JsBridge>(webview_.Get(), client_);
     bridge_->Init();
 
     // 将本地 web/ 目录映射为虚拟主机

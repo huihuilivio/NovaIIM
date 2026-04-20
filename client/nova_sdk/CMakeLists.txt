@@ -8,14 +8,34 @@ cmake_minimum_required(VERSION 3.28)
 # ---- 源文件收集 ----
 set(CLIENT_MODEL_SOURCES
     model/client_config.cpp
-    model/client_context.cpp
-    model/reconnect_manager.cpp
-    model/request_manager.cpp
+)
+
+set(CLIENT_CORE_SOURCES
+    core/client_context.cpp
+    core/reconnect_manager.cpp
+    core/request_manager.cpp
+)
+
+set(CLIENT_SERVICE_SOURCES
+    service/auth_service.cpp
+    service/message_service.cpp
+    service/sync_service.cpp
+    service/profile_service.cpp
+    service/friend_service.cpp
+    service/conversation_service.cpp
+    service/group_service.cpp
+    service/file_service.cpp
 )
 
 set(CLIENT_VIEWMODEL_SOURCES
     viewmodel/ui_dispatcher.cpp
     viewmodel/nova_client.cpp
+    viewmodel/app_vm.cpp
+    viewmodel/login_vm.cpp
+    viewmodel/chat_vm.cpp
+    viewmodel/contact_vm.cpp
+    viewmodel/conversation_vm.cpp
+    viewmodel/group_vm.cpp
 )
 
 set(CLIENT_INFRA_SOURCES
@@ -29,6 +49,8 @@ set(CLIENT_INFRA_SOURCES
 # ---- 动态库 ----
 add_library(nova_sdk SHARED
     ${CLIENT_MODEL_SOURCES}
+    ${CLIENT_CORE_SOURCES}
+    ${CLIENT_SERVICE_SOURCES}
     ${CLIENT_VIEWMODEL_SOURCES}
     ${CLIENT_INFRA_SOURCES}
 )
@@ -58,6 +80,7 @@ nova_set_output_dirs(nova_sdk)
 # ---- 安装导出头文件 ----
 install(FILES export.h DESTINATION include/nova/client)
 install(DIRECTORY model/     DESTINATION include/nova/client/model     FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY service/   DESTINATION include/nova/client/service   FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY viewmodel/ DESTINATION include/nova/client/viewmodel FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY infra/     DESTINATION include/nova/client/infra     FILES_MATCHING PATTERN "*.h")
 install(TARGETS nova_sdk DESTINATION lib)

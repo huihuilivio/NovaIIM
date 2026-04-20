@@ -3,22 +3,20 @@
 //
 // 策略: 1s → 2s → 4s → 8s → 16s → 30s (cap)
 // 连接成功后重置计数器
+// 使用 Timer 代替 std::thread，可即时取消
 
-#include <export.h>
-#include <model/client_config.h>
 #include <model/client_state.h>
+#include <infra/timer.h>
 
 #include <atomic>
 #include <cstdint>
 #include <functional>
-#include <mutex>
-#include <thread>
 
 namespace nova::client {
 
-class TcpClient;
+struct ClientConfig;
 
-class NOVA_SDK_API ReconnectManager {
+class ReconnectManager {
 public:
     using ReconnectFunc = std::function<void()>;
 
@@ -48,17 +46,20 @@ private:
     void ScheduleReconnect();
     uint32_t NextDelay();
 
-    ClientConfig config_;
+    // 只保留需要的配置字段
+    uint32_t initial_delay_ms_;
+    uint32_t max_delay_ms_;
+    double   multiplier_;
+
     ReconnectFunc reconnect_func_;
+    Timer timer_;
 
     std::atomic<bool> enabled_{true};
-    std::atomic<bool> running_{false};
     std::atomic<bool> stopped_{false};
     std::atomic<uint32_t> current_delay_ms_{0};
     std::atomic<uint32_t> attempt_count_{0};
 
-    std::thread timer_thread_;
-    std::mutex thread_mutex_;
+    Timer::TimerID pending_timer_{0};
 };
 
 }  // namespace nova::client

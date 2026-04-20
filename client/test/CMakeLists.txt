@@ -3,6 +3,8 @@
 add_executable(test_nova_sdk
     test_request_manager.cpp
     test_connection_state.cpp
+    # core/ 不导出，直接编译源文件以供测试
+    ${CMAKE_SOURCE_DIR}/client/nova_sdk/core/request_manager.cpp
 )
 
 target_link_libraries(test_nova_sdk PRIVATE

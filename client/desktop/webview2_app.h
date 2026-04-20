@@ -9,7 +9,7 @@
 #include <memory>
 #include <string>
 
-namespace nova::client { class ClientContext; }
+namespace nova::client { class NovaClient; }
 
 namespace nova::desktop {
 
@@ -17,7 +17,7 @@ class JsBridge;
 
 class WebView2App {
 public:
-    WebView2App(HINSTANCE hInstance, nova::client::ClientContext* ctx);
+    WebView2App(HINSTANCE hInstance, nova::client::NovaClient* client);
     ~WebView2App();
 
     WebView2App(const WebView2App&) = delete;
@@ -42,7 +42,7 @@ private:
 
     HINSTANCE hinstance_ = nullptr;
     HWND hwnd_ = nullptr;
-    nova::client::ClientContext* ctx_ = nullptr;
+    nova::client::NovaClient* client_ = nullptr;
 
     Microsoft::WRL::ComPtr<ICoreWebView2Environment> env_;
     Microsoft::WRL::ComPtr<ICoreWebView2Controller> controller_;

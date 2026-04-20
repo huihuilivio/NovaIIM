@@ -3,9 +3,7 @@
 #include "webview2_app.h"
 #include "win32_ui_dispatcher.h"
 
-#include <model/client_config.h>
 #include <viewmodel/nova_client.h>
-#include <infra/logger.h>
 
 #include <Windows.h>
 #include <objbase.h>
@@ -32,20 +30,18 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*prev*/, LPWSTR /*cmdLine*/,
     config.device_id   = GenerateDeviceId();
     config.log_level   = "debug";
 
-    // 初始化客户端上下文
-    nova::client::ClientContext ctx(config);
-    ctx.Init();
+    nova::client::NovaClient client(config);
+    client.Init();
 
-    // 创建并运行 WebView2 应用
-    nova::desktop::WebView2App app(hInstance, &ctx);
+    nova::desktop::WebView2App app(hInstance, &client);
     if (!app.Init(nCmdShow)) {
-        ctx.Shutdown();
+        client.Shutdown();
         CoUninitialize();
         return -1;
     }
 
     int ret = app.Run();
-    ctx.Shutdown();
+    client.Shutdown();
     CoUninitialize();
     return ret;
 }
