@@ -5,7 +5,7 @@
 
 #include <core/client_config.h>
 #include <core/client_context.h>
-#include <core/logger.h>
+#include <infra/logger.h>
 
 #include <Windows.h>
 #include <objbase.h>

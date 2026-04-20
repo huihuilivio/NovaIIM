@@ -11,9 +11,6 @@
 #include <memory>
 #include <string>
 
-struct hloop_s;
-typedef struct hloop_s hloop_t;
-
 namespace nova::client {
 
 class TcpClient {
@@ -59,9 +56,6 @@ public:
 
     /// 设置状态变化回调
     void OnStateChanged(StateCallback cb);
-
-    /// 获取底层事件循环（供上层添加定时器等）
-    hloop_t* GetRawLoop();
 
 private:
     struct Impl;

@@ -1,5 +1,5 @@
 #include "reconnect_manager.h"
-#include <core/logger.h>
+#include <infra/logger.h>
 
 #include <algorithm>
 #include <chrono>
@@ -15,12 +15,12 @@ ReconnectManager::~ReconnectManager() {
     Stop();
 }
 
-void ReconnectManager::OnStateChanged(ConnectionState state) {
+void ReconnectManager::OnStateChanged(ClientState state) {
     switch (state) {
-        case ConnectionState::kAuthenticated:
+        case ClientState::kAuthenticated:
             Reset();
             break;
-        case ConnectionState::kDisconnected:
+        case ClientState::kDisconnected:
             if (enabled_ && !stopped_) {
                 ScheduleReconnect();
             }

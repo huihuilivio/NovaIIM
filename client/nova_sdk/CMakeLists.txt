@@ -7,7 +7,6 @@ cmake_minimum_required(VERSION 3.28)
 
 # ---- 源文件收集 ----
 set(CLIENT_CORE_SOURCES
-    core/logger.cpp
     core/client_config.cpp
     core/ui_dispatcher.cpp
     core/client_context.cpp
@@ -15,16 +14,18 @@ set(CLIENT_CORE_SOURCES
     core/request_manager.cpp
 )
 
-set(CLIENT_NET_SOURCES
-    net/tcp_client.cpp
-    net/http_client.cpp
-    net/ws_client.cpp
+set(CLIENT_INFRA_SOURCES
+    infra/logger.cpp
+    infra/tcp_client.cpp
+    infra/http_client.cpp
+    infra/ws_client.cpp
+    infra/timer.cpp
 )
 
 # ---- 动态库 ----
 add_library(nova_sdk SHARED
     ${CLIENT_CORE_SOURCES}
-    ${CLIENT_NET_SOURCES}
+    ${CLIENT_INFRA_SOURCES}
 )
 
 target_include_directories(nova_sdk PUBLIC
@@ -51,6 +52,6 @@ nova_set_output_dirs(nova_sdk)
 
 # ---- 安装导出头文件 ----
 install(FILES export.h DESTINATION include/nova/client)
-install(DIRECTORY core/ DESTINATION include/nova/client/core FILES_MATCHING PATTERN "*.h")
-install(DIRECTORY net/  DESTINATION include/nova/client/net  FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY core/  DESTINATION include/nova/client/core  FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY infra/ DESTINATION include/nova/client/infra FILES_MATCHING PATTERN "*.h")
 install(TARGETS nova_sdk DESTINATION lib)

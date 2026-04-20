@@ -6,7 +6,7 @@
 #include <core/client_config.h>
 #include <core/client_context.h>
 #include <core/ui_dispatcher.h>
-#include <net/connection_state.h>
+#include <infra/connection_state.h>
 
 #include <nova/protocol.h>
 
@@ -138,7 +138,7 @@
                     result.avatar = [NSString stringWithUTF8String:ack->avatar.c_str()];
 
                     if (ack->code == 0 && strongSelf->_context) {
-                        strongSelf->_context->SetUid(ack->uid);
+                        strongSelf->_context->SetAuthenticated(ack->uid);
                     }
                 } else {
                     result.code = -1;
@@ -174,7 +174,7 @@
     pkt.cmd = static_cast<uint16_t>(nova::proto::Cmd::kLogout);
     pkt.seq = _context->NextSeq();
     _context->SendPacket(pkt);
-    _context->SetUid("");
+    _context->Shutdown();
 }
 
 - (void)sendTextMessage:(NSString *)content conversationId:(int64_t)conversationId {

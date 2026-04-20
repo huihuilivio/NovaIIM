@@ -1,10 +1,8 @@
 #include "client_context.h"
-#include "logger.h"
+#include <infra/logger.h>
 
 #include <nova/packet.h>
 #include <nova/protocol.h>
-
-#include <hv/hloop.h>
 
 namespace nova::client {
 
@@ -16,7 +14,10 @@ ClientContext::~ClientContext() {
 }
 
 void ClientContext::Init() {
-    Logger::Init("nova_sdk", config_.log_file, config_.log_level);
+    nova::log::Init({
+        .level = spdlog::level::from_str(config_.log_level),
+        .file  = config_.log_file,
+    });
 
     event_bus_.start();
 
@@ -36,14 +37,29 @@ void ClientContext::Init() {
         true                        // little_endian
     );
 
-    // 连接状态 → 重连管理器 + 心跳管理
+    // 网络层状态 → 业务层状态映射
     tcp_client_->OnStateChanged([this](ConnectionState s) {
-        reconnect_mgr_->OnStateChanged(s);
-        if (s == ConnectionState::kConnected) {
-            StartHeartbeat();
-        } else if (s == ConnectionState::kDisconnected) {
-            StopHeartbeat();
+        switch (s) {
+            case ConnectionState::kConnecting:
+                SetState(ClientState::kConnecting);
+                break;
+            case ConnectionState::kConnected:
+                SetState(ClientState::kConnected);
+                StartHeartbeat();
+                break;
+            case ConnectionState::kDisconnected:
+                StopHeartbeat();
+                uid_.clear();
+                // 如果是从已连接/已认证断开，且重连已启用，则进入重连状态
+                if (reconnect_mgr_->IsEnabled() &&
+                    state_.load() != ClientState::kDisconnected) {
+                    SetState(ClientState::kReconnecting);
+                } else {
+                    SetState(ClientState::kDisconnected);
+                }
+                break;
         }
+        reconnect_mgr_->OnStateChanged(state_.load());
     });
 
     // 重连回调
@@ -64,11 +80,25 @@ void ClientContext::Shutdown() {
     if (request_mgr_) request_mgr_->CancelAll();
     event_bus_.stop();
     uid_.clear();
+    state_.store(ClientState::kDisconnected);
     NOVA_LOG_INFO("ClientContext shutdown");
 }
 
 void ClientContext::Connect() {
     tcp_client_->Connect(config_.server_host, config_.server_port);
+}
+
+void ClientContext::SetState(ClientState s) {
+    auto old = state_.exchange(s);
+    if (old != s) {
+        NOVA_LOG_INFO("ClientState: {} → {}", ClientStateStr(old), ClientStateStr(s));
+        if (on_state_) on_state_(s);
+    }
+}
+
+void ClientContext::SetAuthenticated(const std::string& uid) {
+    uid_ = uid;
+    SetState(ClientState::kAuthenticated);
 }
 
 bool ClientContext::SendPacket(const nova::proto::Packet& pkt) {
@@ -131,28 +161,22 @@ void ClientContext::SetupPacketDispatch() {
 }
 
 void ClientContext::StartHeartbeat() {
-    if (heartbeat_timer_) return;
-    hloop_t* raw_loop = tcp_client_->GetRawLoop();
-    if (!raw_loop) return;
+    if (heartbeat_timer_id_) return;
 
-    heartbeat_timer_ = htimer_add(raw_loop, [](htimer_t* timer) {
-        auto* self = static_cast<ClientContext*>(hevent_userdata(timer));
-        if (!self) return;
-        if (self->tcp_client_->GetState() == ConnectionState::kAuthenticated) {
+    heartbeat_timer_id_ = timer_.SetInterval(config_.heartbeat_interval_ms, [this](Timer::TimerID) {
+        if (tcp_client_->GetState() == ConnectionState::kConnected && IsLoggedIn()) {
             nova::proto::Packet hb;
             hb.cmd = static_cast<uint16_t>(nova::proto::Cmd::kHeartbeat);
-            hb.seq = self->NextSeq();
-            self->SendPacket(hb);
+            hb.seq = NextSeq();
+            SendPacket(hb);
         }
-    }, config_.heartbeat_interval_ms);
-
-    hevent_set_userdata(heartbeat_timer_, this);
+    });
 }
 
 void ClientContext::StopHeartbeat() {
-    if (heartbeat_timer_) {
-        htimer_del(heartbeat_timer_);
-        heartbeat_timer_ = nullptr;
+    if (heartbeat_timer_id_) {
+        timer_.KillTimer(heartbeat_timer_id_);
+        heartbeat_timer_id_ = 0;
     }
 }
 

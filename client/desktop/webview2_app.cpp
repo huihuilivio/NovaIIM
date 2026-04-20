@@ -2,7 +2,7 @@
 #include "js_bridge.h"
 #include "win32_ui_dispatcher.h"
 
-#include <core/logger.h>
+#include <infra/logger.h>
 
 #include <wrl/event.h>
 

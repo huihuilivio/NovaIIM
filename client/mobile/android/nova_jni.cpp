@@ -194,7 +194,7 @@ Java_com_nova_client_NovaClient_nativeLogin(
                 env->DeleteLocalRef(nickname);
 
                 if (ack->code == 0) {
-                    g_context->SetUid(ack->uid);
+                    g_context->SetAuthenticated(ack->uid);
                 }
             }
         },

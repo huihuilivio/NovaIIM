@@ -54,8 +54,7 @@ void TcpClient::SetLengthFieldUnpack(uint32_t package_max_length,
 }
 
 void TcpClient::Connect(const std::string& host, uint16_t port) {
-    if (impl_->state != ConnectionState::kDisconnected &&
-        impl_->state != ConnectionState::kReconnecting) {
+    if (impl_->state != ConnectionState::kDisconnected) {
         return;
     }
 
@@ -109,8 +108,7 @@ bool TcpClient::Send(const void* data, size_t len) {
     std::lock_guard lock(impl_->send_mutex);
     if (!impl_->client) return false;
     auto state = impl_->state.load();
-    if (state != ConnectionState::kConnected &&
-        state != ConnectionState::kAuthenticated) {
+    if (state != ConnectionState::kConnected) {
         return false;
     }
     return impl_->client->send(data, len) == static_cast<int>(len);
@@ -130,14 +128,6 @@ void TcpClient::OnData(DataCallback cb) {
 
 void TcpClient::OnStateChanged(StateCallback cb) {
     impl_->on_state = std::move(cb);
-}
-
-hloop_t* TcpClient::GetRawLoop() {
-    if (impl_->client) {
-        auto loop = impl_->client->loop();
-        if (loop) return loop->loop();
-    }
-    return nullptr;
 }
 
 }  // namespace nova::client

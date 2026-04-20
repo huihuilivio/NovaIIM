@@ -1,8 +1,8 @@
 #include "js_bridge.h"
 
 #include <core/client_context.h>
-#include <core/logger.h>
-#include <net/connection_state.h>
+#include <infra/logger.h>
+#include <infra/connection_state.h>
 
 #include <nova/packet.h>
 #include <nova/protocol.h>
@@ -153,7 +153,7 @@ void JsBridge::HandleLogin(const std::string& email, const std::string& password
             auto ack = nova::proto::Deserialize<nova::proto::LoginAck>(resp.body);
             nlohmann::json data;
             if (ack && ack->code == 0) {
-                ctx_->SetUid(ack->uid);
+                ctx_->SetAuthenticated(ack->uid);
                 data["success"]  = true;
                 data["uid"]      = ack->uid;
                 data["nickname"] = ack->nickname;

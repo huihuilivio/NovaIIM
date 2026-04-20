@@ -6,7 +6,7 @@
 
 #include <export.h>
 #include <core/client_config.h>
-#include <net/connection_state.h>
+#include <core/client_state.h>
 
 #include <atomic>
 #include <cstdint>
@@ -31,8 +31,8 @@ public:
     /// 设置重连回调（通常调用 TcpClient::Connect）
     void OnReconnect(ReconnectFunc cb) { reconnect_func_ = std::move(cb); }
 
-    /// 连接状态变化通知
-    void OnStateChanged(ConnectionState state);
+    /// 业务状态变化通知
+    void OnStateChanged(ClientState state);
 
     /// 启用/禁用自动重连
     void SetEnabled(bool enabled) { enabled_ = enabled; }

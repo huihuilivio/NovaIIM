@@ -6,9 +6,11 @@
 
 #include <export.h>
 #include <core/client_config.h>
+#include <core/client_state.h>
 #include <core/reconnect_manager.h>
 #include <core/request_manager.h>
-#include <net/tcp_client.h>
+#include <infra/tcp_client.h>
+#include <infra/timer.h>
 
 #include <msgbus/message_bus.h>
 
@@ -16,9 +18,6 @@
 #include <cstdint>
 #include <memory>
 #include <string>
-
-struct htimer_s;
-typedef struct htimer_s htimer_t;
 
 namespace nova::proto { struct Packet; }
 
@@ -54,23 +53,32 @@ public:
     msgbus::MessageBus& Events()   { return event_bus_; }
     const ClientConfig& Config() const { return config_; }
 
+    // ---- 业务状态 ----
+    ClientState GetState() const { return state_.load(); }
+    using StateCallback = std::function<void(ClientState)>;
+    void OnStateChanged(StateCallback cb) { on_state_ = std::move(cb); }
+
     // ---- 登录状态 ----
-    void SetUid(const std::string& uid) { uid_ = uid; }
+    void SetAuthenticated(const std::string& uid);
     const std::string& Uid() const { return uid_; }
     bool IsLoggedIn() const { return !uid_.empty(); }
 
 private:
+    void SetState(ClientState s);
     void SetupPacketDispatch();
     void StartHeartbeat();
     void StopHeartbeat();
 
     ClientConfig config_;
+    std::atomic<ClientState> state_{ClientState::kDisconnected};
+    StateCallback on_state_;
     std::unique_ptr<TcpClient> tcp_client_;
     std::unique_ptr<RequestManager> request_mgr_;
     std::unique_ptr<ReconnectManager> reconnect_mgr_;
     msgbus::MessageBus event_bus_;
     std::atomic<uint32_t> seq_counter_{1};
-    htimer_t* heartbeat_timer_ = nullptr;
+    Timer timer_;
+    Timer::TimerID heartbeat_timer_id_ = 0;
     std::string uid_;
 };
 

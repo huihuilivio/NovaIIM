@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include <net/connection_state.h>
+#include <infra/connection_state.h>
 
 using namespace nova::client;
 
