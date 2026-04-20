@@ -123,18 +123,24 @@ GET    /permissions             权限列表（всех）
 - ✅ 开发代理自动转发至后端 :9091
 
 ### ✅ 已交付（客户端 C++ 共享库 — M2）
-- ✅ **nova_sdk 动态库** (.dll/.so) — 核心网络 + 事件总线 + 自动重连
+- ✅ **nova_sdk 动态库** (.dll/.so) — MVVM 架构，PIMPL 封装
+- ✅ **分层架构**：`infra/` → `core/` → `service/` → `viewmodel/`（仅 viewmodel 导出）
+- ✅ Observable\<T\> 数据驱动（线程安全，mutex 保护）
+- ✅ NovaClient 单入口 + 缓存 VM 单例（shared_ptr）
 - ✅ TcpClient（libhv 封装 + 帧编解码 + 心跳）
 - ✅ RequestManager（seq 请求-响应匹配 + 超时）
 - ✅ ReconnectManager（指数退避 1s→30s）
-- ✅ MsgBus（高性能无锁发布-订阅消息总线）
+- ✅ MsgBus（高性能发布-订阅消息总线）
 - ✅ ClientContext（依赖注入 + 服务端推送分发）
-- ✅ 14 个客户端单元测试（GTest）
+- ✅ UIDispatcher（跨线程 UI 调度，平台可注入）
+- ✅ DeviceInfo（自动检测设备类型 + FNV-1a 设备 ID）
 
-### 🟡 已搭建（WebView2 桌面端 — M3 + 移动端 Bridge — M7）
+### ✅ 已交付（WebView2 桌面端 — M3 + 移动端 Bridge — M7）
 - ✅ WebView2 桌面端（Win32 窗口 + WebView2 SDK 自动下载）
-- ✅ 登录页 + 主界面三栏布局 (HTML/CSS/JS)
+- ✅ 登录/注册页面切换 + 主界面三栏布局 (HTML/CSS/JS)
 - ✅ C++ ↔ JS 双向通信桥 (JsBridge + NovaBridge)
+- ✅ 应用图标（app.ico + app.rc）
+- ✅ 线程安全：PostEvent 生命周期守护 + WM_DESTROY 正确关闭顺序
 - ✅ iOS Objective-C++ Bridge（NovaClient.h/.mm）
 - ✅ Android JNI Bridge（nova_jni.cpp + NovaClient.kt）
 
@@ -223,16 +229,22 @@ NovaIIM/
 │   ├── protocol.md                # IM 二进制协议文档
 │   ├── architecture.md            # 系统架构总览
 │   ├── server_arch.md             # 服务端架构详解
+│   ├── software_design.md         # 软件设计文档（含 Mermaid 图）
 │   ├── admin_server/              # Admin 模块文档
 │   │   ├── requirements.md
 │   │   ├── implementation_plan.md
 │   │   ├── api_design.md
+│   │   ├── db_design.md
+│   │   └── frontend_design.md
+│   ├── im_server/                 # IM 服务端设计文档
+│   │   ├── README.md
+│   │   ├── design.md
+│   │   ├── api.md
 │   │   └── db_design.md
-│   └── im_server/                 # IM 模块设计文档（规划中）
-│       ├── README.md
-│       ├── design.md
-│       ├── api.md
-│       └── db_design.md
+│   ├── sdk/                       # 客户端 SDK 文档
+│   │   └── README.md              # API 参考 + 架构 + 平台集成
+│   └── desktop/                   # 桌面客户端文档
+│       └── README.md              # UI 结构 + 通信协议 + 生命周期
 │
 ├── protocol/                      # IM 协议层（binary frames）
 │   └── CMakeLists.txt
@@ -316,19 +328,27 @@ NovaIIM/
         └── test_file_service.cpp
 │
 ├── client/                        # 客户端
-│   ├── nova_sdk/                       # C++ 共享库 (nova_sdk.dll/.so)
-│   │   ├── core/                  # Logger, Config, MsgBus, UIDispatcher, ClientContext
-│   │   └── net/                   # TcpClient, ReconnectManager, RequestManager
+│   ├── nova_sdk/                  # C++ 共享库 (nova_sdk.dll/.so)
+│   │   ├── viewmodel/             # 公共 API (NovaClient, VMs, Observable, types)
+│   │   ├── service/               # 业务逻辑 (Auth, Message, Friend, Conv, Group, Sync)
+│   │   ├── core/                  # 核心 (ClientContext, Config, RequestManager, MsgBus)
+│   │   └── infra/                 # 底层 (TcpClient, HttpClient, Logger, DeviceInfo)
 │   ├── desktop/                   # WebView2 桌面客户端 (Windows)
-│   │   ├── main.cpp               # Win32 + WebView2 入口
-│   │   ├── webview2_app.*         # Win32 窗口 + WebView2 生命周期
-│   │   ├── win32_ui_dispatcher.*  # Win32 PostMessage UIDispatcher
-│   │   ├── js_bridge.*            # C++ ↔ JS 双向通信桥
-│   │   └── web/                   # HTML/CSS/JS 前端 (登录 + 三栏聊天)
+│   │   ├── win/                   # Win32 平台代码
+│   │   │   ├── main.cpp           # wWinMain 入口
+│   │   │   ├── webview2_app.*     # Win32 窗口 + WebView2 生命周期
+│   │   │   ├── win32_ui_dispatcher.*  # PostMessage UI 调度
+│   │   │   ├── js_bridge.*        # C++ ↔ JS 双向通信桥
+│   │   │   ├── app.rc / app.ico   # 应用图标
+│   │   │   └── CMakeLists.txt     # WebView2 SDK 自动下载 + 构建
+│   │   └── web/                   # HTML/CSS/JS 前端
+│   │       ├── index.html         # SPA 入口
+│   │       ├── css/style.css      # 主题样式
+│   │       └── js/                # bridge.js / login.js / main.js / app.js
 │   ├── mobile/                    # 移动端 Bridge
 │   │   ├── ios/                   # Objective-C++ (NovaClient.h/.mm)
 │   │   └── android/               # JNI (nova_jni.cpp + NovaClient.kt)
-│   └── test/                      # 客户端单元测试 (14 用例)
+│   └── test/                      # SDK 测试（公共 API 级别）
 │
 ├── admin-web/                     # Admin 管理后台 (Vue 3 + TS)
 │   ├── src/

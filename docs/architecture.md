@@ -135,53 +135,61 @@ admin-web/                    ← Vue 3 + TypeScript
 ### 分层设计
 
 ```
-┌────────────────────────────────────────────────────────┐
-│                  View (平台原生 UI)                      │
-│  ┌──────────┐   ┌──────────────┐   ┌────────────────┐  │
-│  │ PC (Qt)  │   │ iOS (Swift   │   │ Android        │  │
-│  │ QML      │   │ UIKit/       │   │ Jetpack        │  │
-│  │          │   │ SwiftUI)     │   │ Compose)       │  │
-│  └────┬─────┘   └──────┬───────┘   └──────┬─────────┘  │
-│       │                │                   │            │
-│  ═════╪════════════════╪═══════════════════╪══════════  │
-│       │        C++ Shared Layer            │            │
-│  ┌────┴────────────────┴───────────────────┴─────────┐  │
-│  │             ViewModel (C++)                       │  │
-│  │  LoginVM · ChatVM · ContactVM · ConvListVM       │  │
-│  │  GroupVM · ProfileVM · FileVM · SyncVM           │  │
-│  ├───────────────────────────────────────────────────┤  │
-│  │             Model (C++)                           │  │
-│  │  UserModel · MsgModel · ConvModel · GroupModel   │  │
-│  ├───────────────────────────────────────────────────┤  │
-│  │             Network (C++)                         │  │
-│  │  TcpClient (libhv) · Codec · ReconnectMgr       │  │
-│  ├───────────────────────────────────────────────────┤  │
-│  │             Local Storage (C++)                   │  │
-│  │  SQLite (消息缓存 / 联系人 / 配置)                 │  │
-│  └───────────────────────────────────────────────────┘  │
-└────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│                 View (平台原生 UI)                        │
+│  ┌──────────────┐  ┌──────────────┐  ┌───────────────┐  │
+│  │ Win32+WebView │  │ iOS          │  │ Android       │  │
+│  │ (HTML/JS)    │  │ (ObjC++)     │  │ (JNI+Kotlin)  │  │
+│  └──────┬───────┘  └──────┬───────┘  └──────┬────────┘  │
+│         │                 │                  │           │
+│  ═══════╪═════════════════╪══════════════════╪═════════  │
+│         │        nova_sdk (.dll/.so)         │           │
+│  ┌──────┴─────────────────┴──────────────────┴────────┐  │
+│  │  viewmodel/   ← 公共 API (导出符号)                 │  │
+│  │  NovaClient · AppVM · LoginVM · ChatVM             │  │
+│  │  ContactsVM · ConversationsVM · GroupsVM            │  │
+│  │  Observable<T> · UIDispatcher · types.h             │  │
+│  ├────────────────────────────────────────────────────┤  │
+│  │  service/     ← 业务逻辑 (内部)                     │  │
+│  │  AuthService · MessageService · FriendService       │  │
+│  │  ConvService · GroupService · SyncService           │  │
+│  ├────────────────────────────────────────────────────┤  │
+│  │  core/        ← 核心基础设施 (内部)                  │  │
+│  │  ClientContext · ClientConfig · RequestManager      │  │
+│  │  ReconnectManager · MsgBus                          │  │
+│  ├────────────────────────────────────────────────────┤  │
+│  │  infra/       ← 底层封装 (内部)                     │  │
+│  │  TcpClient · HttpClient · WsClient · Logger        │  │
+│  │  DeviceInfo (自动检测 + FNV-1a ID)                  │  │
+│  └────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────┘
 ```
 
 ### 核心设计原则
 
-1. **C++ ViewModel + Model**: 业务逻辑、网络通信、本地存储全部用 C++ 实现，编译为共享库
-2. **平台 View 各自实现**: PC 用 Qt/QML，iOS 用 SwiftUI，Android 用 Jetpack Compose
-3. **Bridge 层**: PC (Qt C++ 直接调用)，iOS (Objective-C++ bridge)，Android (JNI bridge)
-4. **协议复用**: 客户端与服务端共用 `protocol/` 目录的 Packet 定义
+1. **PIMPL 封装**: `NovaClient` 使用 PIMPL 隐藏实现，公共头文件无内部依赖
+2. **仅 viewmodel/ 导出**: `service/` / `core/` / `infra/` 为内部实现，不暴露符号
+3. **Observable\<T\>**: 线程安全的数据驱动机制（mutex 保护 + 锁外通知）
+4. **缓存 VM 单例**: ViewModel 为 `shared_ptr` 缓存实例，生命周期与 NovaClient 一致
+5. **UIDispatcher**: 平台注入 UI 线程调度器（Win32 PostMessage / Android Handler / iOS dispatch_async）
+6. **协议复用**: 客户端与服务端共用 `protocol/` 目录的 Packet 定义
 
 ### 客户端目录结构
 
 ```
 client/
-├── cpp/                      ← C++ 跨平台共享层
-│   ├── core/                 ← 日志, 配置, 事件总线
-│   ├── net/                  ← TcpClient, Codec, ReconnectMgr, RequestMgr
-│   ├── model/                ← 数据模型 + 本地 SQLite 存储
-│   ├── viewmodel/            ← ViewModel 层 (登录/聊天/联系人/会话/群/...)
-│   └── CMakeLists.txt
-├── desktop/                  ← PC 端 (Qt/QML View 层)
-├── ios/                      ← iOS 端 (SwiftUI View 层)
-└── android/                  ← Android 端 (Compose View 层)
+├── nova_sdk/                 ← C++ 共享库
+│   ├── viewmodel/            ← 公共 API (NovaClient, VMs, Observable, types)
+│   ├── service/              ← 业务逻辑 (Auth, Message, Friend, Conv, Group, Sync)
+│   ├── core/                 ← 核心 (ClientContext, Config, RequestManager, MsgBus)
+│   └── infra/                ← 底层 (TcpClient, HttpClient, Logger, DeviceInfo)
+├── desktop/                  ← WebView2 桌面端
+│   ├── win/                  ← Win32 平台 (main, webview2_app, js_bridge, ui_dispatcher)
+│   └── web/                  ← HTML/CSS/JS 前端 (login, main, bridge, app)
+├── mobile/                   ← 移动端 Bridge
+│   ├── ios/                  ← Objective-C++ (NovaClient.h/.mm)
+│   └── android/              ← JNI (nova_jni.cpp + NovaClient.kt)
+└── test/                     ← SDK 测试 (公共 API 级别)
 ```
 
 ### 数据流
@@ -189,17 +197,15 @@ client/
 ```
 用户操作 → View → ViewModel::Action()
                      ↓
-              Model (业务逻辑)
+              Service (业务逻辑)
                      ↓
-         ┌───────────┴───────────┐
-         ↓                       ↓
-   Network (TCP)          LocalStorage (SQLite)
-         ↓                       ↓
-    Server 响应             本地缓存更新
-         ↓                       ↓
-         └───────────┬───────────┘
+              ClientContext → TcpClient → Server
+                     ↓ (响应回调)
+              RequestManager → Service callback
                      ↓
-              ViewModel (状态更新)
-                     ↓
+              ViewModel (Observable::Set)
+                     ↓ (UIDispatcher::Post)
               View (UI 刷新)
 ```
+
+详细 SDK 文档见 [sdk/README.md](sdk/README.md)，桌面端文档见 [desktop/README.md](desktop/README.md)。
