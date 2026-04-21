@@ -8,6 +8,7 @@ project(NovaIIM
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 include(compiler)
 include(options)
+include(environment)
 include(utils)
 include(dependencies)
 

@@ -167,7 +167,7 @@ body {
 .main-page {
     display: flex;
     width: 100%;
-    height: 100%;
+    height: calc(100% - 24px);
 }
 
 /* ---- 侧边栏 ---- */
@@ -387,9 +387,6 @@ body {
     font-size: var(--font-base);
     line-height: 1.5;
     word-break: break-word;
-}
-
-.chat-msg .msg-bubble {
     background: var(--bg-primary);
     color: var(--text-primary);
 }
@@ -454,6 +451,8 @@ body {
     margin-right: 6px;
 }
 
-.status-dot.connected    { background: var(--success); }
-.status-dot.connecting   { background: var(--warning); }
-.status-dot.disconnected { background: var(--danger); }
+.status-dot.connected,
+.status-dot.authenticated { background: var(--success); }
+.status-dot.connecting,
+.status-dot.reconnecting  { background: var(--warning); }
+.status-dot.disconnected   { background: var(--danger); }

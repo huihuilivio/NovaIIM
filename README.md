@@ -137,8 +137,11 @@ GET    /permissions             权限列表（всех）
 
 ### ✅ 已交付（WebView2 桌面端 — M3 + 移动端 Bridge — M7）
 - ✅ WebView2 桌面端（Win32 窗口 + WebView2 SDK 自动下载）
-- ✅ 登录/注册页面切换 + 主界面三栏布局 (HTML/CSS/JS)
-- ✅ C++ ↔ JS 双向通信桥 (JsBridge + NovaBridge)
+- ✅ **Vue 3 + TypeScript + Vite + Pinia** 前端（取代原 vanilla JS）
+- ✅ 登录/注册页面切换 + 主界面三栏布局
+- ✅ Bridge 抽象层（Win32: `__novaBridge` + `chrome.webview.postMessage`，其他平台待定）
+- ✅ Pinia Store 封装（auth/chat/connection，Promise-based API）
+- ✅ C++ ↔ JS 双向通信桥 (JsBridge)
 - ✅ 应用图标（app.ico + app.rc）
 - ✅ 线程安全：PostEvent 生命周期守护 + WM_DESTROY 正确关闭顺序
 - ✅ iOS Objective-C++ Bridge（NovaClient.h/.mm）
@@ -341,10 +344,10 @@ NovaIIM/
 │   │   │   ├── js_bridge.*        # C++ ↔ JS 双向通信桥
 │   │   │   ├── app.rc / app.ico   # 应用图标
 │   │   │   └── CMakeLists.txt     # WebView2 SDK 自动下载 + 构建
-│   │   └── web/                   # HTML/CSS/JS 前端
-│   │       ├── index.html         # SPA 入口
-│   │       ├── css/style.css      # 主题样式
-│   │       └── js/                # bridge.js / login.js / main.js / app.js
+│   │   └── web/                   # Vue 3 + TypeScript 前端
+│   │       ├── package.json       # 依赖 (vue, pinia, vue-router)
+│   │       ├── vite.config.ts     # Vite 构建配置
+│   │       └── src/               # bridge/ stores/ views/ router/ styles/
 │   ├── mobile/                    # 移动端 Bridge
 │   │   ├── ios/                   # Objective-C++ (NovaClient.h/.mm)
 │   │   └── android/               # JNI (nova_jni.cpp + NovaClient.kt)
@@ -490,6 +493,8 @@ curl "http://localhost:9091/api/v1/users?page=1&page_size=20" \
 | [protocol.md](docs/protocol.md) | 📡 IM 二进制协议 | ✅ |
 | [architecture.md](docs/architecture.md) | 🏗️ 系统架构 | ✅ |
 | [server_arch.md](docs/server_arch.md) | 🖥️ 服务端架构详解 | ✅ |
+| [sdk/README.md](docs/sdk/README.md) | 📱 客户端 SDK API + 架构 | ✅ |
+| [desktop/README.md](docs/desktop/README.md) | 🖥️ 桌面端架构 + Vue 3 + Bridge | ✅ |
 
 ---
 

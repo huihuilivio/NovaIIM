@@ -6,7 +6,9 @@
 
 ## 概览
 
-NovaIIM 桌面客户端使用 **Win32 窗口 + Microsoft WebView2** 架构，C++ 后端通过 `nova_sdk` 处理 IM 逻辑，前端使用纯 HTML/CSS/JS 实现 UI。
+NovaIIM 桌面客户端使用 **Win32 窗口 + Microsoft WebView2** 架构，C++ 后端通过 `nova_sdk` 处理 IM 逻辑，前端使用 **Vue 3 + TypeScript + Vite + Pinia** 实现 UI。
+
+Windows 下通过 `window.__novaBridge` / `chrome.webview.postMessage` 与 C++ 通信，其他平台通信方式待定。
 
 ```
 ┌──────────────────────────────────────────┐
@@ -14,16 +16,17 @@ NovaIIM 桌面客户端使用 **Win32 窗口 + Microsoft WebView2** 架构，C++
 │  ┌────────────────────────────────────┐  │
 │  │  WebView2 (Chromium)               │  │
 │  │  ┌──────────────────────────────┐  │  │
-│  │  │  HTML / CSS / JS             │  │  │
-│  │  │  (login.js / main.js)        │  │  │
+│  │  │  Vue 3 + TypeScript          │  │  │
+│  │  │  (Vite build → dist/)        │  │  │
 │  │  └──────────┬───────────────────┘  │  │
-│  │             │ chrome.webview       │  │
-│  │             │ postMessage          │  │
+│  │             │ bridge 抽象层        │  │
+│  │             │ (Win32: chrome.      │  │
+│  │             │  webview.postMessage)│  │
 │  └─────────────┼──────────────────────┘  │
 │                │                         │
 │  ┌─────────────▼──────────────────────┐  │
 │  │  JsBridge (C++)                    │  │
-│  │  ↔ NovaBridge (JS)                │  │
+│  │  ↔ NovaBridge (TS)                │  │
 │  └─────────────┬──────────────────────┘  │
 │                │                         │
 │  ┌─────────────▼──────────────────────┐  │
@@ -39,14 +42,29 @@ NovaIIM 桌面客户端使用 **Win32 窗口 + Microsoft WebView2** 架构，C++
 ```
 client/desktop/
 ├── CMakeLists.txt          # 平台路由（当前仅 Windows）
-├── web/                    # 前端资源
-│   ├── index.html          # SPA 入口
-│   ├── css/style.css       # 主题样式
-│   └── js/
-│       ├── bridge.js       # NovaBridge — JS ↔ C++ 通信层
-│       ├── login.js        # 登录/注册页面
-│       ├── main.js         # 主界面（三栏布局）
-│       └── app.js          # SPA 路由器
+├── web/                    # Vue 3 + TypeScript 前端
+│   ├── package.json        # 依赖：vue, vue-router, pinia
+│   ├── vite.config.ts      # Vite 构建配置
+│   ├── tsconfig.json       # TypeScript 配置
+│   ├── index.html          # Vite 入口
+│   ├── src/
+│   │   ├── main.ts         # App 挂载 (createApp + Pinia + Router)
+│   │   ├── App.vue         # 根组件 (<RouterView />)
+│   │   ├── bridge/         # 平台通信抽象层
+│   │   │   ├── types.ts    # NovaBridge 接口定义
+│   │   │   └── index.ts    # Win32Bridge / MockBridge 实现
+│   │   ├── stores/         # Pinia 状态管理
+│   │   │   ├── auth.ts     # 登录/注册/登出
+│   │   │   ├── chat.ts     # 会话/消息
+│   │   │   └── connection.ts  # 连接状态
+│   │   ├── views/          # 页面组件
+│   │   │   ├── LoginView.vue  # 登录/注册（双表单切换）
+│   │   │   └── MainView.vue   # 三栏聊天主界面
+│   │   ├── router/
+│   │   │   └── index.ts    # hash 路由 (/login, /main)
+│   │   └── styles/
+│   │       └── main.css    # 主题样式（CSS Variables）
+│   └── dist/               # Vite 构建输出 (git ignored)
 └── win/                    # Windows 平台实现
     ├── CMakeLists.txt      # 构建配置 + WebView2 SDK 下载
     ├── main.cpp            # wWinMain 入口
@@ -88,30 +106,55 @@ client/desktop/
 
 ### 通信实现
 
-**JS 端 (bridge.js)**：
-```javascript
-NovaBridge.send('login', { email: 'user@example.com', password: '123456' });
-NovaBridge.on('loginResult', function(data) { /* ... */ });
+**前端 Bridge 抽象 (src/bridge/)**：
+
+```typescript
+// 接口定义 — 平台无关
+export interface NovaBridge {
+  send(action: string, data?: Record<string, unknown>): void
+  on<T>(event: string, callback: (data: T) => void): void
+  off(event: string, callback?: EventCallback): void
+}
+
+// Win32 实现 — WebView2 postMessage
+class Win32Bridge implements NovaBridge {
+  send(action, data) {
+    window.chrome.webview.postMessage(JSON.stringify({ action, ...data }))
+  }
+  // C++ 通过 window.__novaBridge.onEvent() 推送事件
+}
+
+// MockBridge — 无原生环境时用于开发调试
 ```
 
-**C++ 端 (js_bridge.cpp)**：
-- `OnWebMessage()` → 解析 JSON → 分发到 `Handle*()` 方法
-- `PostEvent()` → 构造 JS 调用 → 通过 `UIDispatcher::Post()` 回到 UI 线程 → `ExecuteScript()`
+**Pinia Store 封装 (src/stores/)**：
+```typescript
+// auth.ts — Promise-based API
+const result = await auth.login(email, password)
+const result = await auth.register(email, nickname, password)
+auth.logout()
+
+// chat.ts — 自动订阅 newMessage / sendMsgResult
+chat.sendMessage(content, senderUid)
+
+// connection.ts — 订阅 connectionState 事件
+conn.connect() / conn.disconnect()
+```
 
 ---
 
 ## UI 页面
 
-### 登录/注册页 (login.js)
+### 登录/注册页 (LoginView.vue)
 
-- 两个表单可切换：登录 ↔ 注册
-- **登录**：邮箱 + 密码，15 秒超时
+- 两个表单通过 `v-if/v-else` 切换：登录 ↔ 注册
+- **登录**：邮箱 + 密码，15 秒超时（Promise）
 - **注册**：邮箱 + 昵称 + 密码 + 确认密码
   - 前端校验：密码一致性、最小 6 位
   - 注册成功自动切回登录，回填邮箱
-- 按钮防重复提交（disabled + 文案切换）
+- 按钮防重复提交（computed disabled + loading 文案）
 
-### 主界面 (main.js)
+### 主界面 (MainView.vue)
 
 三栏布局：
 
@@ -171,15 +214,35 @@ wWinMain()
 ## 构建
 
 ```bash
+# 1. 构建前端 (Vue + Vite)
+cd client/desktop/web
+npm install
+npm run build          # 输出到 dist/
+
+# 2. 构建 C++ 桌面端
 cmake -B build -DNOVA_BUILD_CLIENT=ON
 cmake --build build --target nova_desktop
+# POST_BUILD 自动将 web/dist/ 复制到 output/bin/web/
 
-# WebView2 SDK 自动下载 (NuGet)
 # 输出: output/bin/nova_desktop.exe + output/bin/web/
+```
+
+### 前端开发
+
+```bash
+cd client/desktop/web
+npm run dev            # Vite 开发服务器 (localhost:5173)
+# MockBridge 在无 WebView2 环境下自动启用
 ```
 
 ### 依赖
 
+**前端**：
+- **Vue 3** + **Vue Router** (hash mode) + **Pinia** 状态管理
+- **Vite** 构建工具
+- **TypeScript** 类型安全
+
+**C++ / 系统**：
 - **WebView2 Runtime** — Microsoft Edge WebView2（自动下载 NuGet SDK）
 - **nova_sdk.dll** — 自动复制到输出目录
 - **Windows 10 1809+** — WebView2 最低系统要求
