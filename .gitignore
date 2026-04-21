@@ -68,3 +68,4 @@ qrc_*
 
 deploy/
 scripts/__pycache__/
+nova_im.db*

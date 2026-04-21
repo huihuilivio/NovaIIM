@@ -16,7 +16,7 @@ from common import project_root
 def is_running(pid: int) -> bool:
     try:
         os.kill(pid, 0)
-    except OSError:
+    except (OSError, SystemError):
         return False
     return True
 
