@@ -1,7 +1,13 @@
 #include "nova_client.h"
 
+#include <cache/cache_db.h>
+#include <cache/user_cache_dao.h>
+#include <cache/message_cache_dao.h>
+#include <cache/conversation_cache_dao.h>
+#include <cache/group_cache_dao.h>
 #include <core/client_config.h>
 #include <core/client_context.h>
+#include <infra/logger.h>
 #include <service/auth_service.h>
 #include <service/message_service.h>
 #include <service/sync_service.h>
@@ -38,6 +44,13 @@ struct NovaClient::Impl {
     std::shared_ptr<ConversationVM> conv_vm;
     std::shared_ptr<GroupVM>        group_vm;
 
+    // 本地缓存
+    CacheDatabase        cache_db;
+    std::unique_ptr<UserCacheDao>         user_cache;
+    std::unique_ptr<MessageCacheDao>      msg_cache;
+    std::unique_ptr<ConversationCacheDao> conv_cache;
+    std::unique_ptr<GroupCacheDao>        group_cache;
+
     explicit Impl(const std::string& config_path) {
         ClientConfig config;
         LoadClientConfig(config, config_path);
@@ -60,6 +73,28 @@ struct NovaClient::Impl {
         conv_vm    = std::make_shared<ConversationVM>(*conv);
         group_vm   = std::make_shared<GroupVM>(*group);
     }
+
+    void OpenCache(const std::string& uid) {
+        const auto& data_dir = ctx->Config().data_dir;
+        if (data_dir.empty()) {
+            NOVA_LOG_WARN("CacheDB: data_dir not set, cache disabled");
+            return;
+        }
+        if (cache_db.Open(data_dir, uid)) {
+            user_cache  = std::make_unique<UserCacheDao>(cache_db);
+            msg_cache   = std::make_unique<MessageCacheDao>(cache_db);
+            conv_cache  = std::make_unique<ConversationCacheDao>(cache_db);
+            group_cache = std::make_unique<GroupCacheDao>(cache_db);
+        }
+    }
+
+    void CloseCache() {
+        user_cache.reset();
+        msg_cache.reset();
+        conv_cache.reset();
+        group_cache.reset();
+        cache_db.Close();
+    }
 };
 
 // ================================================================
@@ -76,10 +111,20 @@ NovaClient::~NovaClient() {
 void NovaClient::Init() {
     impl_->ctx->Init();
     impl_->CreateVMs();
+
+    // 登录成功后自动打开本地缓存
+    impl_->ctx->OnStateChanged([this](ClientState state) {
+        if (state == ClientState::kAuthenticated) {
+            impl_->OpenCache(impl_->ctx->Uid());
+        }
+    });
 }
 
 void NovaClient::Shutdown() {
-    if (impl_ && impl_->ctx) impl_->ctx->Shutdown();
+    if (impl_ && impl_->ctx) {
+        impl_->CloseCache();
+        impl_->ctx->Shutdown();
+    }
 }
 
 // ================================================================

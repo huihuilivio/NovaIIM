@@ -44,12 +44,21 @@ set(CLIENT_INFRA_SOURCES
     infra/device_info.cpp
 )
 
+set(CLIENT_CACHE_SOURCES
+    cache/cache_db.cpp
+    cache/user_cache_dao.cpp
+    cache/message_cache_dao.cpp
+    cache/conversation_cache_dao.cpp
+    cache/group_cache_dao.cpp
+)
+
 # ---- 动态库 ----
 add_library(nova_sdk SHARED
     ${CLIENT_CORE_SOURCES}
     ${CLIENT_SERVICE_SOURCES}
     ${CLIENT_VIEWMODEL_SOURCES}
     ${CLIENT_INFRA_SOURCES}
+    ${CLIENT_CACHE_SOURCES}
 )
 
 target_include_directories(nova_sdk PUBLIC
@@ -61,6 +70,7 @@ target_link_libraries(nova_sdk PUBLIC
     spdlog::spdlog
     hv_static
     msgbus
+    ormpp
 )
 
 # 编译器选项（含 NOMINMAX / WIN32_LEAN_AND_MEAN）
