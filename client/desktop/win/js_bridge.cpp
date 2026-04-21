@@ -236,6 +236,13 @@ void JsBridge::SubscribeEvents() {
         data["operatorUid"]    = n.operator_uid;
         PostEvent("recallNotify", data.dump());
     });
+
+    app_vm_->OnKicked([this](int reason, const std::string& msg) {
+        nlohmann::json data;
+        data["reason"] = reason;
+        data["msg"]    = msg;
+        PostEvent("kicked", data.dump());
+    });
 }
 
 }  // namespace nova::desktop

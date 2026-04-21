@@ -49,9 +49,13 @@ void ClientContext::Init() {
                 break;
             case ConnectionState::kDisconnected:
                 StopHeartbeat();
-                uid_.clear();
-                // 如果是从已连接/已认证断开，且重连已启用，则进入重连状态
-                if (reconnect_mgr_->IsEnabled() &&
+                {
+                    std::lock_guard lock(uid_mutex_);
+                    uid_.clear();
+                }
+                // 如果重连已被显式停止（如被踢），直接进入断开状态
+                // 否则如果重连已启用且之前不是断开状态，则进入重连状态
+                if (reconnect_mgr_->IsEnabled() && !reconnect_mgr_->IsStopped() &&
                     state_.load() != ClientState::kDisconnected) {
                     SetState(ClientState::kReconnecting);
                 } else {
@@ -81,7 +85,10 @@ void ClientContext::Shutdown() {
     if (tcp_client_) tcp_client_->Disconnect();
     if (request_mgr_) request_mgr_->CancelAll();
     event_bus_.stop();
-    uid_.clear();
+    {
+        std::lock_guard lock(uid_mutex_);
+        uid_.clear();
+    }
     SetState(ClientState::kDisconnected);
     NOVA_LOG_INFO("ClientContext shutdown");
 }
@@ -104,7 +111,10 @@ void ClientContext::SetState(ClientState s) {
 }
 
 void ClientContext::SetAuthenticated(const std::string& uid) {
-    uid_ = uid;
+    {
+        std::lock_guard lock(uid_mutex_);
+        uid_ = uid;
+    }
     SetState(ClientState::kAuthenticated);
 }
 
@@ -156,6 +166,20 @@ void ClientContext::SetupPacketDispatch() {
             case Cmd::kGroupNotify: {
                 auto notify = nova::proto::Deserialize<nova::proto::GroupNotifyMsg>(pkt.body);
                 if (notify) Events().publish<nova::proto::GroupNotifyMsg>("GroupNotify", std::move(*notify));
+                break;
+            }
+            case Cmd::kKickNotify: {
+                auto notify = nova::proto::Deserialize<nova::proto::KickNotify>(pkt.body);
+                if (notify) {
+                    NOVA_LOG_WARN("Kicked: reason={} msg={}", notify->code, notify->msg);
+                    reconnect_mgr_->Stop();
+                    {
+                        std::lock_guard lock(uid_mutex_);
+                        uid_.clear();
+                    }
+                    SetState(ClientState::kDisconnected);
+                    Events().publish<nova::proto::KickNotify>("KickNotify", std::move(*notify));
+                }
                 break;
             }
             case Cmd::kHeartbeatAck:

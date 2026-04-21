@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
+const route = useRoute()
 const auth = useAuthStore()
 
 // ---- 账号缓存 ----
@@ -57,6 +58,9 @@ function onEmailBlur() {
 }
 
 onMounted(loadSavedAccounts)
+
+// ---- 被踢下线提示 ----
+const kickedMsg = computed(() => (route.query.kicked as string) || '')
 
 // ---- 表单模式 ----
 const isLogin = ref(true)
@@ -187,6 +191,7 @@ function onRegKeydown(e: KeyboardEvent) {
           />
         </div>
         <div class="login-error" :style="loginErrorStyle">{{ loginError }}</div>
+        <div v-if="kickedMsg" class="login-error" style="color: var(--warning, #e6a23c)">{{ kickedMsg }}</div>
         <button class="btn-primary" :disabled="loginDisabled" @click="handleLogin">
           {{ loginLoading ? '登录中...' : '登 录' }}
         </button>

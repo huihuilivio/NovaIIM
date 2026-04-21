@@ -54,9 +54,22 @@ inline constexpr Error kUserNotFound            {1019, "user not found"};
 inline constexpr Error kNothingToUpdate         {1020, "nothing to update"};
 inline constexpr Error kUpdateProfileFailed     {1021, "failed to update profile"};
 inline constexpr Error kAvatarPathTooLong       {1022, "avatar path exceeds 512 characters"};
+inline constexpr Error kAlreadyLoggedIn         {1023, "already logged in on this device"};
 // clang-format on
 
 }  // namespace user
+
+// ================================================================
+// Kick (1101 - 1199)
+// ================================================================
+namespace kick {
+
+// clang-format off
+inline constexpr Error kSameDeviceTypeRelogin    {1101, "your account logged in on another device of the same type"};
+inline constexpr Error kAdminKick                {1102, "you have been kicked by the administrator"};
+// clang-format on
+
+}  // namespace kick
 
 // ================================================================
 // Message (2001 - 2099)

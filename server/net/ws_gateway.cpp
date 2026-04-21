@@ -53,6 +53,7 @@ int WsGateway::Start(int port) {
         if (conn && conn->is_authenticated()) {
             ctx_.conn_manager().Remove(conn->user_id(), conn.get());
         }
+        channel->deleteContextPtr();
         ctx_.remove_connection();
         NOVA_NLOG_DEBUG(kLogTag, "ws closed: {}", channel->peeraddr());
     };

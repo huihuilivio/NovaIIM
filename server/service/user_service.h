@@ -11,7 +11,8 @@ class UserService : public ServiceBase {
 public:
     explicit UserService(ServerContext& ctx)
         : ServiceBase(ctx),
-          login_limiter_(ctx.config().server.login_max_attempts, std::chrono::seconds(ctx.config().server.login_window_secs)) {}
+          login_limiter_(ctx.config().server.login_max_attempts, std::chrono::seconds(ctx.config().server.login_window_secs)),
+          register_limiter_(ctx.config().server.login_max_attempts, std::chrono::seconds(ctx.config().server.login_window_secs)) {}
 
     void HandleLogin(ConnectionPtr conn, Packet& pkt);
     void HandleRegister(ConnectionPtr conn, Packet& pkt);
@@ -22,7 +23,8 @@ public:
     void HandleUpdateProfile(ConnectionPtr conn, Packet& pkt);
 
 private:
-    RateLimiter login_limiter_;  // 从 config.server.login_* 初始化
+    RateLimiter login_limiter_;     // 从 config.server.login_* 初始化
+    RateLimiter register_limiter_;  // 注册频率限制（同参数）
 };
 
 }  // namespace nova

@@ -39,7 +39,7 @@ struct RspBase {
 
 // C→S  Cmd::kLogin (0x0001)
 struct LoginReq {
-    std::string email;       // 登录邮箱
+    std::string email;  // 登录邮箱
     std::string password;
     std::string device_id;
     std::string device_type;  // "pc", "mobile", "web" 等
@@ -49,12 +49,15 @@ struct LoginReq {
 struct LoginAck {
     int32_t code = 0;
     std::string msg;
-    std::string uid;      // Snowflake uid（对外用户标识）
+    std::string uid;  // Snowflake uid（对外用户标识）
     std::string nickname;
     std::string avatar;
 };
 
 // S→C  Cmd::kLogout (0x0003)  — 复用 RspBase
+
+// S→C  Cmd::kKickNotify (0x0006) — 复用 RspBase
+using KickNotify = RspBase;
 
 // C→S  Cmd::kRegister (0x0004)
 struct RegisterReq {
@@ -67,7 +70,7 @@ struct RegisterReq {
 struct RegisterAck {
     int32_t code = 0;
     std::string msg;
-    std::string uid;       // 服务端生成的唯一 UID
+    std::string uid;  // 服务端生成的唯一 UID
 };
 
 // ============================================================
@@ -100,7 +103,7 @@ struct SendMsgAck {
 // S→C  Cmd::kPushMsg (0x0102)
 struct PushMsg {
     int64_t conversation_id = 0;
-    std::string sender_uid;         // 发送者 Snowflake uid
+    std::string sender_uid;  // 发送者 Snowflake uid
     std::string content;
     int64_t server_seq  = 0;
     int64_t server_time = 0;
@@ -123,7 +126,7 @@ struct RecallMsgAck {
 struct RecallNotify {
     int64_t conversation_id = 0;
     int64_t server_seq      = 0;
-    std::string operator_uid;   // 撤回操作者 uid
+    std::string operator_uid;  // 撤回操作者 uid
 };
 
 // C→S  Cmd::kDeliverAck (0x0103)
@@ -152,7 +155,7 @@ struct SyncMsgReq {
 // 同步消息条目（嵌套在 SyncMsgResp 中）
 struct SyncMsgItem {
     int64_t server_seq = 0;
-    std::string sender_uid;   // 发送者 Snowflake uid
+    std::string sender_uid;  // 发送者 Snowflake uid
     std::string content;
     MsgType msg_type = MsgType::kText;
     std::string server_time;  // 数据库时间字符串
@@ -243,44 +246,59 @@ struct UpdateProfileAck {
 
 // C→S  Cmd::kAddFriend (0x0030)
 struct AddFriendReq {
-    std::string target_uid;   // 目标用户 uid
-    std::string remark;       // 验证消息（可选，最长 200 字符）
+    std::string target_uid;  // 目标用户 uid
+    std::string remark;      // 验证消息（可选，最长 200 字符）
 };
 
 // S→C  Cmd::kAddFriendAck (0x0031)
 struct AddFriendAck {
     int32_t code = 0;
     std::string msg;
-    int64_t request_id = 0;   // 好友申请 ID
+    int64_t request_id = 0;  // 好友申请 ID
 };
 
 // C→S  Cmd::kHandleFriendReq (0x0032)
 struct HandleFriendReqReq {
     int64_t request_id = 0;
-    int32_t action     = 0;   // 1=accept, 2=reject
+    int32_t action     = 0;  // 1=accept, 2=reject
 };
 
 // S→C  Cmd::kHandleFriendReqAck (0x0033)
 struct HandleFriendReqAck {
-    int32_t code            = 0;
+    int32_t code = 0;
     std::string msg;
     int64_t conversation_id = 0;  // 同意时返回私聊会话 ID
 };
 
 // C→S  Cmd::kDeleteFriend (0x0034)
-struct DeleteFriendReq  { std::string target_uid; };
+struct DeleteFriendReq {
+    std::string target_uid;
+};
 // S→C  Cmd::kDeleteFriendAck (0x0035)
-struct DeleteFriendAck  { int32_t code = 0; std::string msg; };
+struct DeleteFriendAck {
+    int32_t code = 0;
+    std::string msg;
+};
 
 // C→S  Cmd::kBlockFriend (0x0036)
-struct BlockFriendReq   { std::string target_uid; };
+struct BlockFriendReq {
+    std::string target_uid;
+};
 // S→C  Cmd::kBlockFriendAck (0x0037)
-struct BlockFriendAck   { int32_t code = 0; std::string msg; };
+struct BlockFriendAck {
+    int32_t code = 0;
+    std::string msg;
+};
 
 // C→S  Cmd::kUnblockFriend (0x0038)
-struct UnblockFriendReq { std::string target_uid; };
+struct UnblockFriendReq {
+    std::string target_uid;
+};
 // S→C  Cmd::kUnblockFriendAck (0x0039)
-struct UnblockFriendAck { int32_t code = 0; std::string msg; };
+struct UnblockFriendAck {
+    int32_t code = 0;
+    std::string msg;
+};
 
 // 好友列表条目
 struct FriendItem {
@@ -330,7 +348,7 @@ struct GetFriendRequestsAck {
 // S→C  Cmd::kFriendNotify (0x003E)
 // notify_type: 1=新申请, 2=已同意, 3=已拒绝, 4=已删除
 struct FriendNotifyMsg {
-    int32_t notify_type     = 0;
+    int32_t notify_type = 0;
     std::string from_uid;
     std::string from_nickname;
     std::string from_avatar;
@@ -360,13 +378,13 @@ struct LastMsgBrief {
 // 会话列表条目
 struct ConvItem {
     int64_t conversation_id = 0;
-    int32_t type            = 0;    // 1=私聊，2=群聊
-    std::string name;               // 私聊=对方昵称，群聊=群名
-    std::string avatar;             // 私聊=对方头像，群聊=群头像
-    int64_t unread_count    = 0;
+    int32_t type            = 0;  // 1=私聊，2=群聊
+    std::string name;             // 私聊=对方昵称，群聊=群名
+    std::string avatar;           // 私聊=对方头像，群聊=群头像
+    int64_t unread_count = 0;
     LastMsgBrief last_msg;
-    int32_t mute            = 0;    // 0=正常，1=免打扰
-    int32_t pinned          = 0;    // 0=不置顶，1=置顶
+    int32_t mute   = 0;  // 0=正常，1=免打扰
+    int32_t pinned = 0;  // 0=不置顶，1=置顶
     std::string updated_at;
 };
 
@@ -417,7 +435,7 @@ struct PinConvAck {
 struct ConvUpdateMsg {
     int64_t conversation_id = 0;
     int32_t update_type     = 0;
-    std::string data;               // JSON 附加数据
+    std::string data;  // JSON 附加数据
 };
 
 // ============================================================
@@ -433,7 +451,7 @@ struct CreateGroupReq {
 
 // S→C  Cmd::kCreateGroupAck (0x0501)
 struct CreateGroupAck {
-    int32_t code            = 0;
+    int32_t code = 0;
     std::string msg;
     int64_t conversation_id = 0;
     int64_t group_id        = 0;
@@ -489,23 +507,23 @@ struct GetGroupInfoReq {
 
 // S→C  Cmd::kGetGroupInfoAck (0x050D)
 struct GetGroupInfoAck {
-    int32_t code            = 0;
+    int32_t code = 0;
     std::string msg;
     int64_t conversation_id = 0;
     std::string name;
     std::string avatar;
-    int64_t owner_id        = 0;
+    int64_t owner_id = 0;
     std::string notice;
-    int32_t member_count    = 0;
+    int32_t member_count = 0;
     std::string created_at;
 };
 
 // C→S  Cmd::kUpdateGroup (0x050E)
 struct UpdateGroupReq {
     int64_t conversation_id = 0;
-    std::string name;       // 空=不修改
-    std::string avatar;     // 空=不修改
-    std::string notice;     // 空=不修改, 特殊值 "\0" 表示清空
+    std::string name;    // 空=不修改
+    std::string avatar;  // 空=不修改
+    std::string notice;  // 空=不修改, 特殊值 "\0" 表示清空
 };
 
 // S→C  Cmd::kUpdateGroupAck (0x050F)
@@ -517,7 +535,7 @@ struct GroupMemberItem {
     std::string uid;
     std::string nickname;
     std::string avatar;
-    int32_t role    = 0;  // 0=成员, 1=管理员, 2=群主
+    int32_t role = 0;  // 0=成员, 1=管理员, 2=群主
     std::string joined_at;
 };
 
@@ -580,17 +598,17 @@ struct GroupNotifyMsg {
 // C→S  Cmd::kUploadReq (0x0600)
 struct UploadReq {
     std::string file_name;
-    int64_t file_size   = 0;
+    int64_t file_size = 0;
     std::string mime_type;
-    std::string file_hash;   // SHA-256, 秒传去重
-    std::string file_type;   // avatar/image/voice/video/file
+    std::string file_hash;  // SHA-256, 秒传去重
+    std::string file_type;  // avatar/image/voice/video/file
 };
 
 // S→C  Cmd::kUploadAck (0x0601)
 struct UploadAckMsg {
-    int32_t code         = 0;
+    int32_t code = 0;
     std::string msg;
-    int64_t file_id      = 0;
+    int64_t file_id = 0;
     std::string upload_url;
     int32_t already_exists = 0;  // 1=秒传命中
 };

@@ -65,6 +65,15 @@ void UserService::HandleRegister(ConnectionPtr conn, Packet& pkt) {
     // 2. 校验 email（必填，最长 255 字符，格式校验，不区分大小写）
     TrimInPlace(req->email);
     EmailToLower(req->email);
+
+    // 2.5 注册频率限制
+    if (!req->email.empty() && !register_limiter_.Allow(req->email)) {
+        NOVA_NLOG_WARN(kLogTag, "register rate limited for email={}", req->email);
+        SendPacket(conn, Cmd::kRegisterAck, seq, 0,
+                   proto::RegisterAck{ec::user::kRateLimited.code, ec::user::kRateLimited.msg});
+        return;
+    }
+
     if (req->email.empty()) {
         SendPacket(conn, Cmd::kRegisterAck, seq, 0,
                    proto::RegisterAck{ec::user::kEmailRequired.code, ec::user::kEmailRequired.msg});
@@ -83,6 +92,7 @@ void UserService::HandleRegister(ConnectionPtr conn, Packet& pkt) {
 
     // 3. 检查邮箱是否已注册
     if (ctx_.dao().User().FindByEmail(req->email)) {
+        register_limiter_.RecordFailure(req->email);
         SendPacket(conn, Cmd::kRegisterAck, seq, 0,
                    proto::RegisterAck{ec::user::kEmailAlreadyExists.code, ec::user::kEmailAlreadyExists.msg});
         return;
@@ -171,6 +181,7 @@ void UserService::HandleLogin(ConnectionPtr conn, Packet& pkt) {
         conn->set_user_id(0);
         conn->set_uid("");
         conn->set_device_id("");
+        conn->set_device_type("");
     }
 
     // 1. 反序列化 body → LoginReq
@@ -255,19 +266,49 @@ void UserService::HandleLogin(ConnectionPtr conn, Packet& pkt) {
     // 登录成功，重置频率限制计数
     login_limiter_.Reset(req->email);
 
-    // 6. 设置连接状态
+    if (req->device_id.size() > 128) req->device_id.resize(128);
+    if (req->device_type.size() > 64) req->device_type.resize(64);
+    std::erase_if(req->device_id, [](unsigned char c) { return c < 0x20 || c == 0x7F; });
+    std::erase_if(req->device_type, [](unsigned char c) { return c < 0x20 || c == 0x7F; });
+
+    // 6. 同一账号 + 同一 device_id → 拒绝重复登录
+    if (!req->device_id.empty()) {
+        auto existing = ctx_.conn_manager().GetConn(user.id, req->device_id);
+        if (existing) {
+            NOVA_NLOG_WARN(kLogTag, "user {} already logged in on device_id={}", user.uid, req->device_id);
+            SendPacket(conn, Cmd::kLoginAck, seq, 0,
+                       proto::LoginAck{ec::user::kAlreadyLoggedIn.code, ec::user::kAlreadyLoggedIn.msg});
+            conn->Close();
+            return;
+        }
+    }
+
+    // 6.5 同一账号 + 同一设备类型 → 踢掉旧连接，以最新登录为准
+    if (!req->device_type.empty()) {
+        auto old_conns = ctx_.conn_manager().GetConns(user.id);
+        for (auto& old : old_conns) {
+            if (old->device_type() == req->device_type) {
+                NOVA_NLOG_INFO(kLogTag, "kicking uid={} old session on device_type={} (re-login)",
+                               user.uid, req->device_type);
+                SendPacket(old, Cmd::kKickNotify, 0, 0,
+                           proto::KickNotify{ec::kick::kSameDeviceTypeRelogin.code,
+                                             ec::kick::kSameDeviceTypeRelogin.msg});
+                ctx_.conn_manager().Remove(user.id, old.get());
+                old->Close();
+            }
+        }
+    }
+
+    // 7. 设置连接状态
     conn->set_user_id(user.id);
     conn->set_uid(user.uid);
-    if (!req->device_id.empty()) {
-        if (req->device_id.size() > 128) req->device_id.resize(128);
-        conn->set_device_id(req->device_id);
-    }
-    if (req->device_type.size() > 64) req->device_type.resize(64);
+    conn->set_device_id(req->device_id);
+    conn->set_device_type(req->device_type);
 
-    // 7. 注册到连接管理器（ConnManager 自动维护在线计数）
+    // 8. 注册到连接管理器（ConnManager 自动维护在线计数）
     ctx_.conn_manager().Add(user.id, conn);
 
-    // 8. 持久化设备信息（upsert user_devices 表，供 Admin 查询）
+    // 9. 持久化设备信息（upsert user_devices 表，供 Admin 查询）
     if (!req->device_id.empty()) {
         ctx_.dao().User().UpsertDevice(user.uid, req->device_id, req->device_type);
     }
@@ -275,7 +316,7 @@ void UserService::HandleLogin(ConnectionPtr conn, Packet& pkt) {
     NOVA_NLOG_INFO(kLogTag, "user {} (uid={}) logged in, device={} type={}", req->email, user.uid, req->device_id,
                    req->device_type);
 
-    // 9. 返回 LoginAck
+    // 10. 返回 LoginAck
     SendPacket(conn, Cmd::kLoginAck, seq, 0,
                proto::LoginAck{ec::kOk.code, ec::kOk.msg, user.uid, user.nickname, user.avatar});
 }
@@ -288,6 +329,7 @@ void UserService::HandleLogout(ConnectionPtr conn, Packet& pkt) {
         conn->set_user_id(0);
         conn->set_uid("");
         conn->set_device_id("");
+        conn->set_device_type("");
         NOVA_NLOG_INFO(kLogTag, "user id={} uid={} logged out", user_id, uid);
     }
 

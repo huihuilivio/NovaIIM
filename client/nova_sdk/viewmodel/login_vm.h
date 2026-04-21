@@ -6,6 +6,7 @@
 #include <viewmodel/types.h>
 
 #include <functional>
+#include <memory>
 #include <string>
 
 namespace nova::client {
@@ -36,6 +37,7 @@ private:
     AuthService& auth_;
     Observable<bool> logged_in_{false};
     Observable<std::string> uid_;
+    std::shared_ptr<bool> alive_ = std::make_shared<bool>(true);
 };
 
 }  // namespace nova::client

@@ -14,6 +14,7 @@
 #include "../dao/rbac_dao.h"
 
 #include <nova/protocol.h>
+#include <nova/errors.h>
 #include <hv/json.hpp>
 
 #include <mbedtls/sha256.h>
@@ -632,10 +633,7 @@ int AdminServer::HandleDeleteUser(HttpRequest* req, HttpResponse* resp) {
     }
     int64_t id = *id_opt;
 
-    // 踢下线
-    auto conns = ctx_.conn_manager().GetConns(id);
-    for (auto& c : conns)
-        c->Close();
+    KickAllConns(id);
 
     int64_t admin_id = GetCurrentAdminId(req);
     WriteAuditLog(admin_id, "user.delete", "user", id, "{}", GetClientIp(req));
@@ -717,10 +715,7 @@ int AdminServer::HandleBanUser(HttpRequest* req, HttpResponse* resp) {
     }
     int64_t id = *id_opt;
 
-    // 踢下线
-    auto conns = ctx_.conn_manager().GetConns(id);
-    for (auto& c : conns)
-        c->Close();
+    KickAllConns(id);
 
     int64_t admin_id = GetCurrentAdminId(req);
     WriteAuditLog(admin_id, "user.ban", "user", id, nlohmann::json({{"reason", reason}}).dump(), GetClientIp(req));
@@ -750,6 +745,21 @@ int AdminServer::HandleUnbanUser(HttpRequest* req, HttpResponse* resp) {
     return JsonOk(resp);
 }
 
+int AdminServer::KickAllConns(int64_t user_id) {
+    auto conns = ctx_.conn_manager().GetConns(user_id);
+    for (auto& c : conns) {
+        Packet pkt;
+        pkt.cmd  = static_cast<uint16_t>(Cmd::kKickNotify);
+        pkt.seq  = 0;
+        pkt.uid  = 0;
+        pkt.body = proto::Serialize(proto::KickNotify{errc::kick::kAdminKick.code, errc::kick::kAdminKick.msg});
+        c->Send(pkt);
+        ctx_.conn_manager().Remove(user_id, c.get());
+        c->Close();
+    }
+    return static_cast<int>(conns.size());
+}
+
 int AdminServer::HandleKickUser(HttpRequest* req, HttpResponse* resp) {
     auto session = ctx_.dao().Session();
     int rc = RequirePermission(req, resp, "user.ban");
@@ -767,19 +777,16 @@ int AdminServer::HandleKickUser(HttpRequest* req, HttpResponse* resp) {
     }
     int64_t id = user_opt->id;
 
-    auto conns = ctx_.conn_manager().GetConns(id);
-    if (conns.empty()) {
+    int kicked = KickAllConns(id);
+    if (kicked == 0) {
         return JsonError(resp, api_err::kUserNotOnline);
     }
-
-    for (auto& c : conns)
-        c->Close();
 
     int64_t admin_id = GetCurrentAdminId(req);
     WriteAuditLog(admin_id, "user.kick", "user", id, "{}", GetClientIp(req));
 
-    NOVA_NLOG_INFO(kLogTag, "kicked user {} ({} connections)", id, conns.size());
-    return JsonOk(resp, {{"kicked", static_cast<int>(conns.size())}});
+    NOVA_NLOG_INFO(kLogTag, "kicked user {} ({} connections)", id, kicked);
+    return JsonOk(resp, {{"kicked_devices", kicked}});
 }
 
 // ============================================================

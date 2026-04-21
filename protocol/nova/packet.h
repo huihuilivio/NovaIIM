@@ -158,6 +158,7 @@ enum class Cmd : uint16_t {
     kLogout      = 0x0003,
     kRegister    = 0x0004,
     kRegisterAck = 0x0005,
+    kKickNotify  = 0x0006,  // S→C 被踢下线通知
 
     // 心跳
     kHeartbeat    = 0x0010,

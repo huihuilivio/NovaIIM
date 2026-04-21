@@ -432,7 +432,8 @@ void MsgService::BroadcastEncoded(int64_t sender_id, const std::string& exclude_
         auto conns = ctx_.conn_manager().GetConns(member.user_id);
         for (auto& c : conns) {
             // 发送方排除当前设备，其他成员全推
-            if (member.user_id == sender_id && c->device_id() == exclude_device) {
+            if (member.user_id == sender_id &&
+                !exclude_device.empty() && c->device_id() == exclude_device) {
                 continue;
             }
             c->SendEncoded(encoded);

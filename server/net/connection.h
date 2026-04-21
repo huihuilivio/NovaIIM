@@ -44,6 +44,15 @@ public:
         device_id_ = did;
     }
 
+    std::string device_type() const {
+        std::lock_guard<std::mutex> lock(device_mutex_);
+        return device_type_;
+    }
+    void set_device_type(const std::string& dt) {
+        std::lock_guard<std::mutex> lock(device_mutex_);
+        device_type_ = dt;
+    }
+
     bool is_authenticated() const { return user_id() != 0; }
 
     // 发送数据包
@@ -61,6 +70,7 @@ private:
     std::string uid_;                   // Snowflake uid，对外暴露的用户标识
     mutable std::mutex device_mutex_;
     std::string device_id_;
+    std::string device_type_;
 };
 
 using ConnectionPtr = std::shared_ptr<Connection>;

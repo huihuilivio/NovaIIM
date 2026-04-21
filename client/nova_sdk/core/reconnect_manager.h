@@ -35,6 +35,7 @@ public:
     /// 启用/禁用自动重连
     void SetEnabled(bool enabled) { enabled_ = enabled; }
     bool IsEnabled() const { return enabled_; }
+    bool IsStopped() const { return stopped_; }
 
     /// 重置退避计数器（连接成功时调用）
     void Reset();

@@ -65,8 +65,14 @@ public:
 
     // ---- 登录状态 ----
     void SetAuthenticated(const std::string& uid);
-    const std::string& Uid() const { return uid_; }
-    bool IsLoggedIn() const { return !uid_.empty(); }
+    std::string Uid() const {
+        std::lock_guard lock(uid_mutex_);
+        return uid_;
+    }
+    bool IsLoggedIn() const {
+        std::lock_guard lock(uid_mutex_);
+        return !uid_.empty();
+    }
 
 private:
     void SetState(ClientState s);
@@ -88,6 +94,7 @@ private:
     Timer timer_;
     Timer::TimerID heartbeat_timer_id_ = 0;
     Timer::TimerID timeout_checker_id_ = 0;
+    mutable std::mutex uid_mutex_;
     std::string uid_;
 };
 

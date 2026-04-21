@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { bridge } from '@/bridge'
 import { useConnectionStore } from './connection'
+import router from '@/router'
 
 export interface LoginResult {
   success: boolean
@@ -78,6 +79,14 @@ export const useAuthStore = defineStore('auth', () => {
     nickname.value = ''
     isLoggedIn.value = false
   }
+
+  // 监听被踢下线事件
+  bridge.on<{ reason: number; msg: string }>('kicked', (data) => {
+    uid.value = ''
+    nickname.value = ''
+    isLoggedIn.value = false
+    router.push({ name: 'login', query: { kicked: data.msg || 'You have been kicked offline' } })
+  })
 
   return { uid, nickname, isLoggedIn, login, register, logout }
 })

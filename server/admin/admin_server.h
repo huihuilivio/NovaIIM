@@ -56,6 +56,9 @@ private:
     int HandleUnbanUser(HttpRequest* req, HttpResponse* resp);
     int HandleKickUser(HttpRequest* req, HttpResponse* resp);
 
+    // 踢下线：发送 KickNotify + Remove + Close
+    int KickAllConns(int64_t user_id);
+
     // --- messages ---
     int HandleListMessages(HttpRequest* req, HttpResponse* resp);
     int HandleRecallMessage(HttpRequest* req, HttpResponse* resp);
