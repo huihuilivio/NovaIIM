@@ -2,12 +2,15 @@
 import { ref, computed, nextTick, onMounted, watch, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { useChatStore, type Conversation } from '@/stores/chat'
+import { useChatStore, type Conversation, type ChatMessage } from '@/stores/chat'
 import { useConnectionStore } from '@/stores/connection'
 import { useContactsStore } from '@/stores/contacts'
 import { useGroupsStore } from '@/stores/groups'
 import ContactsView from './ContactsView.vue'
 import GroupsView from './GroupsView.vue'
+import EmojiPicker from '@/components/EmojiPicker.vue'
+import Toast from '@/components/Toast.vue'
+import UserProfileModal from '@/components/UserProfileModal.vue'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -18,8 +21,15 @@ const groups = useGroupsStore()
 
 const chatInput = ref('')
 const messagesEl = ref<HTMLDivElement>()
+const toastRef = ref<InstanceType<typeof Toast>>()
 const activeNav = ref<'chat' | 'contacts' | 'groups' | 'settings'>('chat')
 const searchKeyword = ref('')
+
+// Emoji picker
+const showEmoji = ref(false)
+
+// 文件发送
+const fileInputRef = ref<HTMLInputElement>()
 
 // 会话右键菜单
 const convMenu = ref<{ show: boolean; x: number; y: number; conv: Conversation | null }>({
@@ -41,6 +51,19 @@ const selectedFriendUid = ref('')
 // 选中的群组 (点击群组列表后右面板展示)
 const selectedGroupConvId = ref(0)
 
+// 群组编辑
+const editGroupName = ref('')
+const editGroupNotice = ref('')
+const showGroupEdit = ref(false)
+
+// 设置项
+const notifyEnabled = ref(true)
+const notifySound = ref(true)
+
+// 用户资料弹窗
+const profileModalUser = ref<{ uid: string; nickname: string; avatar: string; email: string; status: number; createdAt: string } | null>(null)
+const profileModalIsFriend = ref(false)
+
 const userInitial = computed(() => (auth.nickname || 'U').charAt(0))
 const statusClass = computed(() => 'status-dot ' + conn.state.toLowerCase())
 const totalUnread = computed(() =>
@@ -53,6 +76,37 @@ const filteredConversations = computed(() => {
   return chat.conversations.filter((c) => c.name.toLowerCase().includes(kw))
 })
 
+// 时间分割线：判断两条消息间是否需要显示时间
+function shouldShowTimeDivider(msgs: ChatMessage[], index: number): boolean {
+  if (index === 0) return true
+  const prev = msgs[index - 1]
+  const curr = msgs[index]
+  const prevTime = prev.serverTime || 0
+  const currTime = curr.serverTime || 0
+  if (!prevTime || !currTime) return false
+  return currTime - prevTime > 5 * 60 * 1000 // 5分钟间隔
+}
+
+function formatMsgTime(epochMs: number): string {
+  if (!epochMs) return ''
+  const d = new Date(epochMs)
+  const now = new Date()
+  const hm = `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`
+  if (d.toDateString() === now.toDateString()) return hm
+  const yesterday = new Date(now)
+  yesterday.setDate(yesterday.getDate() - 1)
+  if (d.toDateString() === yesterday.toDateString()) return `昨天 ${hm}`
+  return `${d.getMonth() + 1}/${d.getDate()} ${hm}`
+}
+
+// 消息发送状态文字
+function sendStatusText(msg: ChatMessage): string {
+  if (!msg.self) return ''
+  if (msg.sendStatus === 'sending') return '发送中...'
+  if (msg.sendStatus === 'failed') return '发送失败'
+  return ''
+}
+
 function selectConv(conv: Conversation) {
   chat.selectConversation(conv)
 }
@@ -62,8 +116,27 @@ async function doSend() {
   if (!text || !chat.activeConv) return
   chat.sendMessage(text)
   chatInput.value = ''
+  showEmoji.value = false
   await nextTick()
   scrollToBottom()
+}
+
+function onEmojiSelect(emoji: string) {
+  chatInput.value += emoji
+}
+
+function triggerFilePicker() {
+  fileInputRef.value?.click()
+}
+
+function onFileSelected(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  // 发送文件名消息（简单实现 — 完整版需要文件上传服务）
+  chat.sendMessage(`[文件] ${file.name}`)
+  input.value = ''
+  toastRef.value?.show(`文件 "${file.name}" 已发送`, 'info')
 }
 
 function scrollToBottom() {
@@ -146,12 +219,14 @@ function msgMenuRecall() {
 function msgMenuCopy(content: string) {
   navigator.clipboard.writeText(content).catch(() => {})
   msgMenu.value.show = false
+  toastRef.value?.show('已复制', 'success', 1500)
 }
 
 // 关闭所有上下文菜单
 function closeMenus() {
   convMenu.value.show = false
   msgMenu.value.show = false
+  showEmoji.value = false
 }
 
 // 个人资料
@@ -165,11 +240,10 @@ async function saveProfile() {
   const r = await contacts.updateProfile(profileNickname.value.trim(), '')
   if (r.success) {
     auth.nickname = profileNickname.value.trim()
-    profileMsg.value = '保存成功'
+    toastRef.value?.show('保存成功', 'success')
   } else {
-    profileMsg.value = r.msg || '保存失败'
+    toastRef.value?.show(r.msg || '保存失败', 'error')
   }
-  setTimeout(() => { profileMsg.value = '' }, 3000)
 }
 
 // 选择好友，展示详情
@@ -183,12 +257,46 @@ function selectGroup(convId: number) {
   selectedGroupConvId.value = convId
   groups.getGroupInfo(convId)
   groups.getGroupMembers(convId)
+  showGroupEdit.value = false
 }
 
 const currentGroupRole = computed(() => {
   const g = groups.groups.find((g) => g.conversationId === selectedGroupConvId.value)
   return g?.myRole ?? 0
 })
+
+// 群组编辑
+function startGroupEdit() {
+  if (!groups.currentGroupInfo) return
+  editGroupName.value = groups.currentGroupInfo.name
+  editGroupNotice.value = groups.currentGroupInfo.notice || ''
+  showGroupEdit.value = true
+}
+
+async function saveGroupEdit() {
+  if (!selectedGroupConvId.value) return
+  const r = await groups.updateGroup(selectedGroupConvId.value, editGroupName.value.trim(), editGroupNotice.value.trim())
+  if (r.success) {
+    showGroupEdit.value = false
+    toastRef.value?.show('群组信息已更新', 'success')
+  } else {
+    toastRef.value?.show(r.msg || '更新失败', 'error')
+  }
+}
+
+// 用户资料弹窗
+function showUserProfile(uid: string) {
+  const isFriend = contacts.friends.some((f) => f.uid === uid)
+  contacts.getUserProfile(uid)
+  profileModalIsFriend.value = isFriend
+  // 等待 profile 加载后显示弹窗
+  const unwatch = watch(() => contacts.selectedProfile, (p) => {
+    if (p && p.uid === uid) {
+      profileModalUser.value = p
+      unwatch()
+    }
+  }, { immediate: true })
+}
 
 watch(() => chat.messages.length, async () => {
   await nextTick()
@@ -211,8 +319,18 @@ onMounted(() => {
   contacts.loadFriendRequests()
   groups.loadGroups()
 
+  // 加载设置
+  try {
+    notifyEnabled.value = localStorage.getItem('nova_notify') !== 'false'
+    notifySound.value = localStorage.getItem('nova_sound') !== 'false'
+  } catch { /* ignore */ }
+
   document.addEventListener('click', onDocClick)
 })
+
+function saveSetting(key: string, value: boolean) {
+  try { localStorage.setItem(key, String(value)) } catch { /* ignore */ }
+}
 
 onUnmounted(() => {
   document.removeEventListener('click', onDocClick)
@@ -256,7 +374,7 @@ onUnmounted(() => {
             @click="selectConv(conv)"
             @contextmenu="onConvContextMenu($event, conv)"
           >
-            <div class="conv-avatar">
+            <div class="conv-avatar" :class="{ 'group-conv-avatar': conv.type === 2 }">
               {{ conv.name.charAt(0) }}
               <span v-if="conv.unreadCount > 0" class="unread-badge">
                 {{ conv.unreadCount > 99 ? '99+' : conv.unreadCount }}
@@ -281,29 +399,52 @@ onUnmounted(() => {
         <template v-if="chat.activeConv">
           <div class="chat-header">
             <span>{{ escapeHtml(chat.activeConv.name) }}</span>
+            <span v-if="chat.activeConv.type === 2" class="chat-member-count">(群聊)</span>
           </div>
           <div ref="messagesEl" class="chat-messages" @scroll="handleScroll">
             <div v-if="chat.loadingHistory" class="loading-tip">加载中...</div>
             <div v-if="!chat.hasMore && chat.messages.length > 0" class="loading-tip">没有更多消息</div>
-            <div
-              v-for="(msg, i) in chat.messages"
-              :key="i"
-              class="chat-msg"
-              :class="{ self: msg.self, recalled: msg.status === 1 }"
-              @contextmenu="onMsgContextMenu($event, msg.serverSeq, msg.self)"
-            >
-              <template v-if="msg.status === 1">
-                <div class="recall-tip">消息已撤回</div>
-              </template>
-              <template v-else>
-                <div class="msg-avatar">{{ msg.self ? userInitial : (msg.sender || '?').charAt(0) }}</div>
-                <div class="msg-bubble">{{ escapeHtml(msg.content) }}</div>
-              </template>
-            </div>
+            <template v-for="(msg, i) in chat.messages" :key="i">
+              <!-- 时间分割线 -->
+              <div v-if="shouldShowTimeDivider(chat.messages, i)" class="time-divider">
+                <span>{{ formatMsgTime(msg.serverTime) }}</span>
+              </div>
+              <div
+                class="chat-msg"
+                :class="{ self: msg.self, recalled: msg.status === 1 }"
+                @contextmenu="onMsgContextMenu($event, msg.serverSeq, msg.self)"
+              >
+                <template v-if="msg.status === 1">
+                  <div class="recall-tip">消息已撤回</div>
+                </template>
+                <template v-else>
+                  <div class="msg-avatar" @click="showUserProfile(msg.sender)" style="cursor:pointer">
+                    {{ msg.self ? userInitial : (msg.sender || '?').charAt(0) }}
+                  </div>
+                  <div class="msg-content-wrap">
+                    <div class="msg-bubble">{{ escapeHtml(msg.content) }}</div>
+                    <div v-if="sendStatusText(msg)" class="msg-status" :class="{ 'msg-status-failed': msg.sendStatus === 'failed' }">
+                      {{ sendStatusText(msg) }}
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </template>
           </div>
           <div class="chat-input-area">
-            <input v-model="chatInput" type="text" placeholder="输入消息..." @keydown.enter="doSend" />
-            <button @click="doSend">发送</button>
+            <div class="chat-toolbar">
+              <button class="toolbar-btn" title="表情" @click.stop="showEmoji = !showEmoji">😊</button>
+              <button class="toolbar-btn" title="文件" @click="triggerFilePicker">📎</button>
+              <input ref="fileInputRef" type="file" style="display:none" @change="onFileSelected" />
+            </div>
+            <div class="chat-input-row">
+              <input v-model="chatInput" type="text" placeholder="输入消息..." @keydown.enter="doSend" />
+              <button @click="doSend">发送</button>
+            </div>
+            <!-- Emoji Picker -->
+            <div v-if="showEmoji" class="emoji-picker-anchor" @click.stop>
+              <EmojiPicker @select="onEmojiSelect" />
+            </div>
           </div>
         </template>
         <div v-else class="chat-placeholder">选择一个会话开始聊天</div>
@@ -319,7 +460,9 @@ onUnmounted(() => {
         <!-- 好友详情面板 -->
         <div v-if="selectedFriendUid && contacts.selectedProfile" class="detail-panel">
           <div class="detail-header">
-            <div class="detail-avatar">{{ (contacts.selectedProfile.nickname || contacts.selectedProfile.uid).charAt(0) }}</div>
+            <div class="detail-avatar" @click="showUserProfile(selectedFriendUid)" style="cursor:pointer">
+              {{ (contacts.selectedProfile.nickname || contacts.selectedProfile.uid).charAt(0) }}
+            </div>
             <div class="detail-info">
               <div class="detail-name">{{ escapeHtml(contacts.selectedProfile.nickname) }}</div>
               <div class="detail-uid">UID: {{ contacts.selectedProfile.uid }}</div>
@@ -327,8 +470,8 @@ onUnmounted(() => {
             </div>
           </div>
           <div class="detail-actions">
-            <button class="btn-action" @click="contacts.blockFriend(selectedFriendUid)">拉黑</button>
-            <button class="btn-action btn-danger-outline" @click="contacts.deleteFriend(selectedFriendUid).then(() => { selectedFriendUid = '' })">删除好友</button>
+            <button class="btn-action" @click="contacts.blockFriend(selectedFriendUid).then(r => toastRef?.show(r.success ? '已拉黑' : (r.msg || '操作失败'), r.success ? 'success' : 'error'))">拉黑</button>
+            <button class="btn-action btn-danger-outline" @click="contacts.deleteFriend(selectedFriendUid).then(() => { selectedFriendUid = ''; toastRef?.show('已删除', 'success') })">删除好友</button>
           </div>
         </div>
         <div v-else class="chat-placeholder">选择好友查看详情</div>
@@ -346,10 +489,33 @@ onUnmounted(() => {
           <div class="detail-header">
             <div class="detail-avatar group-avatar">{{ (groups.currentGroupInfo.name || '群').charAt(0) }}</div>
             <div class="detail-info">
-              <div class="detail-name">{{ escapeHtml(groups.currentGroupInfo.name) }}</div>
-              <div class="detail-uid">{{ groups.currentGroupInfo.memberCount }} 人</div>
-              <div class="detail-uid" v-if="groups.currentGroupInfo.notice">公告: {{ escapeHtml(groups.currentGroupInfo.notice) }}</div>
+              <template v-if="!showGroupEdit">
+                <div class="detail-name">{{ escapeHtml(groups.currentGroupInfo.name) }}</div>
+                <div class="detail-uid">{{ groups.currentGroupInfo.memberCount }} 人</div>
+                <div class="detail-uid" v-if="groups.currentGroupInfo.notice">公告: {{ escapeHtml(groups.currentGroupInfo.notice) }}</div>
+              </template>
+              <template v-else>
+                <div class="edit-field">
+                  <label>群名</label>
+                  <input v-model="editGroupName" type="text" placeholder="群组名称" />
+                </div>
+                <div class="edit-field">
+                  <label>公告</label>
+                  <textarea v-model="editGroupNotice" placeholder="群公告" rows="3"></textarea>
+                </div>
+              </template>
             </div>
+          </div>
+
+          <!-- 编辑按钮 -->
+          <div class="detail-actions" v-if="currentGroupRole >= 1">
+            <template v-if="!showGroupEdit">
+              <button class="btn-action" @click="startGroupEdit">编辑群信息</button>
+            </template>
+            <template v-else>
+              <button class="btn-action" @click="saveGroupEdit">保存</button>
+              <button class="btn-action" @click="showGroupEdit = false">取消</button>
+            </template>
           </div>
 
           <!-- 成员列表 -->
@@ -357,14 +523,16 @@ onUnmounted(() => {
             <div class="detail-section-title">成员列表</div>
             <div class="member-list">
               <div v-for="m in groups.currentMembers" :key="m.userId" class="member-item">
-                <div class="member-avatar">{{ (m.nickname || m.uid).charAt(0) }}</div>
+                <div class="member-avatar" @click="showUserProfile(m.uid)" style="cursor:pointer">
+                  {{ (m.nickname || m.uid).charAt(0) }}
+                </div>
                 <div class="member-info">
                   <span class="member-name">{{ escapeHtml(m.nickname || m.uid) }}</span>
                   <span v-if="m.role === 2" class="role-tag owner">群主</span>
                   <span v-else-if="m.role === 1" class="role-tag admin">管理员</span>
                 </div>
                 <div class="member-actions" v-if="currentGroupRole >= 1 && m.role < currentGroupRole">
-                  <button class="btn-xs" @click="groups.kickMember(selectedGroupConvId, m.uid)" title="踢出">✕</button>
+                  <button class="btn-xs" @click="groups.kickMember(selectedGroupConvId, m.uid).then(r => toastRef?.show(r.success ? '已踢出' : (r.msg || '操作失败'), r.success ? 'success' : 'error'))" title="踢出">✕</button>
                   <button v-if="currentGroupRole === 2" class="btn-xs" @click="groups.setMemberRole(selectedGroupConvId, m.uid, m.role === 1 ? 0 : 1)" :title="m.role === 1 ? '取消管理' : '设为管理'">
                     {{ m.role === 1 ? '↓' : '↑' }}
                   </button>
@@ -376,10 +544,10 @@ onUnmounted(() => {
           <!-- 群组操作 -->
           <div class="detail-actions">
             <template v-if="currentGroupRole === 2">
-              <button class="btn-action btn-danger-outline" @click="groups.dismissGroup(selectedGroupConvId).then(() => { selectedGroupConvId = 0 })">解散群组</button>
+              <button class="btn-action btn-danger-outline" @click="groups.dismissGroup(selectedGroupConvId).then(() => { selectedGroupConvId = 0; toastRef?.show('群组已解散', 'success') })">解散群组</button>
             </template>
             <template v-else>
-              <button class="btn-action btn-danger-outline" @click="groups.leaveGroup(selectedGroupConvId).then(() => { selectedGroupConvId = 0 })">退出群组</button>
+              <button class="btn-action btn-danger-outline" @click="groups.leaveGroup(selectedGroupConvId).then(() => { selectedGroupConvId = 0; toastRef?.show('已退出群组', 'success') })">退出群组</button>
             </template>
           </div>
         </div>
@@ -403,7 +571,32 @@ onUnmounted(() => {
             </div>
             <div class="settings-item">
               <button class="btn-action" @click="saveProfile">保存</button>
-              <span v-if="profileMsg" class="tip-msg" style="margin-left:8px">{{ profileMsg }}</span>
+            </div>
+          </div>
+
+          <div class="detail-section-title" style="padding: 16px 16px 8px">通知设置</div>
+          <div class="settings-form">
+            <div class="settings-item">
+              <label>通知</label>
+              <label class="toggle">
+                <input type="checkbox" v-model="notifyEnabled" @change="saveSetting('nova_notify', notifyEnabled)" />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div class="settings-item">
+              <label>声音</label>
+              <label class="toggle">
+                <input type="checkbox" v-model="notifySound" @change="saveSetting('nova_sound', notifySound)" />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+
+          <div class="detail-section-title" style="padding: 16px 16px 8px">关于</div>
+          <div class="settings-form">
+            <div class="settings-item">
+              <label>版本</label>
+              <div class="settings-value">NovaIIM v1.0.0</div>
             </div>
           </div>
         </div>
@@ -439,4 +632,15 @@ onUnmounted(() => {
     <span :class="statusClass"></span>
     <span>{{ conn.label }}</span>
   </div>
+
+  <!-- Toast 通知 -->
+  <Toast ref="toastRef" />
+
+  <!-- 用户资料弹窗 -->
+  <UserProfileModal
+    v-if="profileModalUser"
+    :profile="profileModalUser"
+    :is-friend="profileModalIsFriend"
+    @close="profileModalUser = null"
+  />
 </template>

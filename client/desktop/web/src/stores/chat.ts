@@ -30,6 +30,8 @@ export interface ChatMessage {
   serverTime: number
   msgType: number
   status: number // 0=normal, 1=recalled
+  sendStatus?: 'sending' | 'sent' | 'failed' // 客户端发送状态
+  localId?: number // 本地消息ID用于匹配sendResult
 }
 
 export interface ReceivedMessage {
@@ -65,6 +67,7 @@ export const useChatStore = defineStore('chat', () => {
   const hasMore = ref(false)
   const currentUid = ref('')
   let initialized = false
+  let localIdCounter = 0
 
   function init(uid: string) {
     if (initialized) return
@@ -127,8 +130,16 @@ export const useChatStore = defineStore('chat', () => {
     bridge.on<{ success: boolean; msg?: string; serverSeq?: number; serverTime?: number }>(
       'sendMsgResult',
       (data) => {
-        if (!data.success) {
-          console.warn('Send failed:', data.msg)
+        // 找到最近的 sending 状态消息并更新
+        const pending = messages.value.find((m) => m.self && m.sendStatus === 'sending')
+        if (pending) {
+          if (data.success) {
+            pending.sendStatus = 'sent'
+            if (data.serverSeq) pending.serverSeq = data.serverSeq
+            if (data.serverTime) pending.serverTime = data.serverTime
+          } else {
+            pending.sendStatus = 'failed'
+          }
         }
       },
     )
@@ -223,6 +234,7 @@ export const useChatStore = defineStore('chat', () => {
 
   function sendMessage(content: string) {
     if (!activeConv.value) return
+    const lid = ++localIdCounter
 
     bridge.send('sendMessage', {
       to: String(activeConv.value.conversationId),
@@ -238,6 +250,8 @@ export const useChatStore = defineStore('chat', () => {
       serverTime: Date.now(),
       msgType: 0,
       status: 0,
+      sendStatus: 'sending',
+      localId: lid,
     })
   }
 
