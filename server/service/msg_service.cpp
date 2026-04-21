@@ -122,6 +122,13 @@ void MsgService::HandleSendMsg(ConnectionPtr conn, Packet& pkt) {
         return;
     }
 
+    // client_msg_id 长度限制（防止巨大 key 耗尽去重缓存内存）
+    if (req->client_msg_id.size() > 256) {
+        SendPacket(conn, Cmd::kSendMsgAck, seq, 0,
+                   proto::SendMsgAck{ec::kInvalidBody.code, ec::kInvalidBody.msg});
+        return;
+    }
+
     // 幂等去重：如果 client_msg_id 已处理过，直接返回缓存的 Ack
     // 若正在处理中（in-flight），视为重复提交并丢弃，客户端会超时重试并命中缓存
     if (!req->client_msg_id.empty()) {

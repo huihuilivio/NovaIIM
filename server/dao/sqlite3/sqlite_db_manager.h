@@ -1,5 +1,6 @@
 #pragma once
 
+#include <mutex>
 #include <string>
 
 #include <dbng.hpp>
@@ -24,8 +25,12 @@ public:
 
     ormpp::dbng<ormpp::sqlite>& DB() { return db_; }
 
+    /// 全局互斥锁：SQLite 单连接，多线程需串行访问
+    std::recursive_mutex& Mutex() { return mu_; }
+
 private:
     ormpp::dbng<ormpp::sqlite> db_;
+    std::recursive_mutex       mu_;
 };
 
 }  // namespace nova

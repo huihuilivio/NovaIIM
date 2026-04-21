@@ -42,6 +42,16 @@ void FileService::HandleUpload(ConnectionPtr conn, Packet& pkt) {
                    proto::UploadAckMsg{ec::file::kFileNameRequired.code, ec::file::kFileNameRequired.msg});
         return;
     }
+    if (req->file_name.size() > 512) {
+        SendPacket(conn, Cmd::kUploadAck, seq, 0,
+                   proto::UploadAckMsg{ec::kInvalidBody.code, "file_name too long"});
+        return;
+    }
+    if (req->file_hash.size() > 256) {
+        SendPacket(conn, Cmd::kUploadAck, seq, 0,
+                   proto::UploadAckMsg{ec::kInvalidBody.code, "file_hash too long"});
+        return;
+    }
     if (req->file_size <= 0) {
         SendPacket(conn, Cmd::kUploadAck, seq, 0,
                    proto::UploadAckMsg{ec::file::kFileSizeInvalid.code, ec::file::kFileSizeInvalid.msg});
@@ -55,6 +65,11 @@ void FileService::HandleUpload(ConnectionPtr conn, Packet& pkt) {
     if (req->mime_type.empty()) {
         SendPacket(conn, Cmd::kUploadAck, seq, 0,
                    proto::UploadAckMsg{ec::file::kMimeTypeRequired.code, ec::file::kMimeTypeRequired.msg});
+        return;
+    }
+    if (req->mime_type.size() > 128) {
+        SendPacket(conn, Cmd::kUploadAck, seq, 0,
+                   proto::UploadAckMsg{ec::kInvalidBody.code, "mime_type too long"});
         return;
     }
 

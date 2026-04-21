@@ -8,6 +8,15 @@ using namespace detail;
 AuthService::AuthService(ClientContext& ctx) : ctx_(ctx) {}
 
 void AuthService::Login(const std::string& email, const std::string& password, LoginCallback cb) {
+    if (email.empty() || email.size() > 255) {
+        if (cb) cb({.success = false, .msg = "invalid email"});
+        return;
+    }
+    if (password.empty() || password.size() > 128) {
+        if (cb) cb({.success = false, .msg = "invalid password"});
+        return;
+    }
+
     nova::proto::LoginReq req;
     req.email       = email;
     req.password    = password;
@@ -40,6 +49,19 @@ void AuthService::Login(const std::string& email, const std::string& password, L
 
 void AuthService::Register(const std::string& email, const std::string& nickname,
                       const std::string& password, RegisterCallback cb) {
+    if (email.empty() || email.size() > 255) {
+        if (cb) cb({.success = false, .msg = "invalid email"});
+        return;
+    }
+    if (nickname.empty() || nickname.size() > 64) {
+        if (cb) cb({.success = false, .msg = "invalid nickname"});
+        return;
+    }
+    if (password.empty() || password.size() > 128) {
+        if (cb) cb({.success = false, .msg = "invalid password"});
+        return;
+    }
+
     nova::proto::RegisterReq req;
     req.email    = email;
     req.nickname = nickname;
@@ -76,7 +98,7 @@ bool AuthService::IsLoggedIn() const {
     return ctx_.IsLoggedIn();
 }
 
-const std::string& AuthService::Uid() const {
+std::string AuthService::Uid() const {
     return ctx_.Uid();
 }
 

@@ -46,7 +46,12 @@ void GroupVM::GetGroupMembers(int64_t conversation_id, GroupMembersCallback cb) 
 }
 
 void GroupVM::GetMyGroups(MyGroupsCallback cb) {
-    group_.GetMyGroups(std::move(cb));
+    group_.GetMyGroups([this, cb = std::move(cb)](const MyGroupsResult& r) {
+        if (r.success) {
+            groups_.Set(r.groups);
+        }
+        if (cb) cb(r);
+    });
 }
 
 void GroupVM::SetMemberRole(int64_t conversation_id, int64_t target_user_id,

@@ -104,7 +104,7 @@ struct Packet {
         p += 4;
         if (body_len > kMaxBodySize)
             return false;
-        if (len < kHeaderSize + body_len)
+        if (len - kHeaderSize < body_len)
             return false;
         pkt.body.assign(p, body_len);
         return true;
@@ -138,6 +138,9 @@ struct Packet {
         pkt.uid = j.value("uid", uint64_t{0});
         if (j.contains("body") && j["body"].is_string()) {
             auto b64 = j["body"].get<std::string>();
+            // 先验证 base64 长度，避免解码巨大数据后再丢弃
+            if (b64.size() > kMaxBodySize * 4 / 3 + 4)
+                return false;
             auto decoded = hv::Base64Decode(b64.c_str(),
                 static_cast<unsigned int>(b64.size()));
             pkt.body = std::move(decoded);

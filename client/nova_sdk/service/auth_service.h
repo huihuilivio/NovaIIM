@@ -22,7 +22,7 @@ public:
                   const std::string& password, RegisterCallback cb);
     void Logout();
     bool IsLoggedIn() const;
-    const std::string& Uid() const;
+    std::string Uid() const;
 
 private:
     ClientContext& ctx_;

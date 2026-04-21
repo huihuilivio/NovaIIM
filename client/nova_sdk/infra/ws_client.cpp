@@ -83,14 +83,16 @@ void WsClient::Disconnect() {
 bool WsClient::Send(const std::string& msg) {
     std::lock_guard lock(impl_->send_mutex);
     if (!impl_->client || impl_->state != ConnectionState::kConnected) return false;
-    return impl_->client->send(msg) == static_cast<int>(msg.size());
+    int result = impl_->client->send(msg);
+    return result >= 0 && static_cast<size_t>(result) == msg.size();
 }
 
 bool WsClient::SendBinary(const void* data, size_t len) {
     std::lock_guard lock(impl_->send_mutex);
     if (!impl_->client || impl_->state != ConnectionState::kConnected) return false;
-    return impl_->client->send(static_cast<const char*>(data), len,
-                               WS_OPCODE_BINARY) == static_cast<int>(len);
+    int result = impl_->client->send(static_cast<const char*>(data), len,
+                                     WS_OPCODE_BINARY);
+    return result >= 0 && static_cast<size_t>(result) == len;
 }
 
 ConnectionState WsClient::GetState() const {

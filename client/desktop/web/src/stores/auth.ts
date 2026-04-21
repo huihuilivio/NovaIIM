@@ -73,8 +73,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   function logout() {
-    const conn = useConnectionStore()
-    conn.disconnect()
+    bridge.send('logout')
     uid.value = ''
     nickname.value = ''
     isLoggedIn.value = false

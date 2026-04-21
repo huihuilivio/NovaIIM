@@ -1,9 +1,23 @@
 #include "message_service.h"
 #include "service_helpers.h"
 
+#include <chrono>
+#include <random>
+
 namespace nova::client {
 
 using namespace detail;
+
+// 生成唯一 client_msg_id: 时间戳(ms) + 随机数
+static std::string GenerateClientMsgId() {
+    static thread_local std::mt19937 rng(std::random_device{}());
+    auto now = std::chrono::system_clock::now().time_since_epoch();
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now).count();
+    auto rand = std::uniform_int_distribution<uint32_t>(0, 0xFFFFFF)(rng);
+    char buf[32];
+    std::snprintf(buf, sizeof(buf), "%llx-%06x", static_cast<unsigned long long>(ms), rand);
+    return buf;
+}
 
 MessageService::MessageService(ClientContext& ctx) : ctx_(ctx) {}
 
@@ -13,6 +27,7 @@ void MessageService::SendTextMessage(int64_t conversation_id, const std::string&
     req.conversation_id = conversation_id;
     req.content         = content;
     req.msg_type        = nova::proto::MsgType::kText;
+    req.client_msg_id   = GenerateClientMsgId();
 
     auto pkt = MakePacket(nova::proto::Cmd::kSendMsg, ctx_.NextSeq(), req);
     if (pkt.body.empty()) {

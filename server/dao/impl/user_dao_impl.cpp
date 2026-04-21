@@ -173,6 +173,10 @@ std::optional<int64_t> UserDaoImplT<DbMgr>::SoftDelete(const std::string& uid) {
 
 template <typename DbMgr>
 std::vector<User> UserDaoImplT<DbMgr>::SearchByNickname(const std::string& keyword, int limit) {
+    // 限制搜索关键词长度，防止过大的 LIKE 查询
+    if (keyword.size() > 128)
+        return {};
+
     std::string escaped;
     escaped.reserve(keyword.size());
     for (char c : keyword) {
@@ -182,7 +186,7 @@ std::vector<User> UserDaoImplT<DbMgr>::SearchByNickname(const std::string& keywo
     }
     std::string like = "%" + escaped + "%";
     // 注意：ormpp 遇到条件中含 "limit" 会移除 WHERE，因此不使用 SQL LIMIT，而在代码中截断
-    auto results = db_.DB().query_s<User>("nickname LIKE ? ESCAPE '\\' AND status<>3", like);
+    auto results = db_.DB().template query_s<User>("nickname LIKE ? ESCAPE '\\' AND status<>3", like);
     if (static_cast<int>(results.size()) > limit) {
         results.resize(static_cast<size_t>(limit));
     }

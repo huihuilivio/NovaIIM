@@ -32,7 +32,12 @@ void ContactVM::UnblockFriend(const std::string& target_uid, ResultCallback cb) 
 }
 
 void ContactVM::GetFriendList(FriendListCallback cb) {
-    friend_.GetFriendList(std::move(cb));
+    friend_.GetFriendList([this, cb = std::move(cb)](const FriendListResult& r) {
+        if (r.success) {
+            friends_.Set(r.friends);
+        }
+        if (cb) cb(r);
+    });
 }
 
 void ContactVM::GetFriendRequests(int page, int page_size, FriendRequestsCallback cb) {

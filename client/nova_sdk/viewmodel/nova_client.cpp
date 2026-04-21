@@ -112,10 +112,15 @@ void NovaClient::Init() {
     impl_->ctx->Init();
     impl_->CreateVMs();
 
-    // 登录成功后自动打开本地缓存
+    // 登录成功后自动打开本地缓存 + 同步数据
     impl_->ctx->OnStateChanged([this](ClientState state) {
         if (state == ClientState::kAuthenticated) {
             impl_->OpenCache(impl_->ctx->Uid());
+
+            // 自动同步：会话列表、好友列表、未读计数
+            impl_->conv_vm->GetConversationList(nullptr);
+            impl_->contact_vm->GetFriendList(nullptr);
+            impl_->chat_vm->SyncUnread(nullptr);
         }
     });
 }

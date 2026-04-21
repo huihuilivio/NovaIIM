@@ -456,3 +456,595 @@ body {
 .status-dot.connecting,
 .status-dot.reconnecting  { background: var(--warning); }
 .status-dot.disconnected   { background: var(--danger); }
+
+/* ============================================================
+   Nav Badges
+   ============================================================ */
+
+.nav-btn {
+    position: relative;
+}
+
+.nav-badge {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 16px;
+    text-align: center;
+    color: #fff;
+    background: var(--danger);
+    border-radius: 8px;
+}
+
+/* Unread badge on conv-avatar */
+.conv-avatar {
+    position: relative;
+}
+
+.unread-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 18px;
+    text-align: center;
+    color: #fff;
+    background: var(--danger);
+    border-radius: 10px;
+}
+
+.pin-icon, .mute-icon {
+    font-size: 11px;
+    margin-right: 2px;
+}
+
+/* ============================================================
+   Side Panel (contacts / groups)
+   ============================================================ */
+
+.side-panel {
+    width: 320px;
+    min-width: 320px;
+    height: 100%;
+    background: var(--bg-primary);
+    border-right: 1px solid var(--border-light);
+    overflow-y: auto;
+}
+
+.contacts-panel, .groups-panel {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.panel-search {
+    padding: var(--spacing-sm);
+    border-bottom: 1px solid var(--border-light);
+}
+
+.panel-search input {
+    width: 100%;
+    padding: 8px 12px;
+    font-size: var(--font-base);
+    border: 1px solid var(--border-base);
+    border-radius: var(--radius-sm);
+    outline: none;
+}
+
+.panel-search input:focus {
+    border-color: var(--primary);
+}
+
+.panel-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.panel-tabs button {
+    flex: 1;
+    padding: 10px 0;
+    font-size: var(--font-base);
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    color: var(--text-regular);
+    transition: all 0.15s;
+    position: relative;
+}
+
+.panel-tabs button:hover {
+    color: var(--primary);
+}
+
+.panel-tabs button.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+    font-weight: 500;
+}
+
+.panel-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--spacing-sm) 0;
+}
+
+.contact-item {
+    display: flex;
+    align-items: center;
+    padding: 10px 12px;
+    gap: var(--spacing-sm);
+    transition: background 0.1s;
+}
+
+.contact-item:hover {
+    background: var(--bg-secondary);
+}
+
+.contact-avatar {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.contact-avatar.group-avatar {
+    border-radius: var(--radius-sm);
+    background: var(--success);
+}
+
+.contact-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.contact-name {
+    font-size: var(--font-base);
+    color: var(--text-primary);
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.contact-uid {
+    font-size: var(--font-sm);
+    color: var(--text-secondary);
+    margin-top: 2px;
+}
+
+.request-actions {
+    display: flex;
+    gap: 4px;
+}
+
+.request-status {
+    font-size: var(--font-sm);
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+}
+
+.request-status.accepted {
+    color: var(--success);
+}
+
+.request-status.rejected {
+    color: var(--danger);
+}
+
+/* Small buttons */
+
+.btn-sm {
+    padding: 4px 10px;
+    font-size: var(--font-sm);
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: opacity 0.15s;
+}
+
+.btn-sm:hover {
+    opacity: 0.85;
+}
+
+.btn-primary-sm {
+    color: #fff;
+    background: var(--primary);
+}
+
+.btn-accept {
+    color: #fff;
+    background: var(--success);
+}
+
+.btn-reject {
+    color: #fff;
+    background: var(--info);
+}
+
+.btn-danger {
+    color: #fff;
+    background: var(--danger);
+}
+
+/* Create group */
+
+.btn-create {
+    width: 100%;
+    padding: 8px;
+    font-size: var(--font-base);
+    color: var(--primary);
+    background: none;
+    border: 1px dashed var(--primary);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.btn-create:hover {
+    background: rgba(64, 158, 255, 0.06);
+}
+
+.create-form {
+    padding: var(--spacing-sm) 12px;
+    display: flex;
+    gap: var(--spacing-sm);
+    align-items: center;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.create-form input {
+    flex: 1;
+    padding: 6px 10px;
+    font-size: var(--font-base);
+    border: 1px solid var(--border-base);
+    border-radius: var(--radius-sm);
+    outline: none;
+}
+
+.create-form input:focus {
+    border-color: var(--primary);
+}
+
+/* Misc */
+
+.empty-tip {
+    text-align: center;
+    padding: var(--spacing-lg);
+    color: var(--text-placeholder);
+    font-size: var(--font-base);
+}
+
+.tip-msg {
+    text-align: center;
+    padding: var(--spacing-sm);
+    color: var(--success);
+    font-size: var(--font-sm);
+}
+
+.badge {
+    display: inline-block;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 16px;
+    text-align: center;
+    color: #fff;
+    background: var(--danger);
+    border-radius: 8px;
+    margin-left: 4px;
+    vertical-align: middle;
+}
+
+.loading-tip {
+    text-align: center;
+    padding: var(--spacing-sm);
+    color: var(--text-secondary);
+    font-size: var(--font-sm);
+}
+
+.recall-tip {
+    text-align: center;
+    padding: var(--spacing-sm);
+    color: var(--text-secondary);
+    font-size: var(--font-sm);
+    font-style: italic;
+    width: 100%;
+}
+
+.chat-member-count {
+    font-size: var(--font-sm);
+    color: var(--text-secondary);
+    margin-left: var(--spacing-sm);
+}
+
+/* ============================================================
+   Context Menu
+   ============================================================ */
+
+.context-menu {
+    position: fixed;
+    z-index: 1000;
+    min-width: 120px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    padding: 4px 0;
+}
+
+.ctx-item {
+    padding: 8px 16px;
+    font-size: var(--font-base);
+    cursor: pointer;
+    transition: background 0.1s;
+    white-space: nowrap;
+}
+
+.ctx-item:hover {
+    background: var(--bg-secondary);
+}
+
+.ctx-danger {
+    color: var(--danger);
+}
+
+/* ============================================================
+   Detail Panel
+   ============================================================ */
+
+.detail-panel {
+    padding: var(--spacing-base);
+    overflow-y: auto;
+    height: 100%;
+}
+
+.detail-header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-base);
+    padding-bottom: var(--spacing-base);
+    border-bottom: 1px solid var(--border-light);
+}
+
+.detail-avatar {
+    width: 56px;
+    height: 56px;
+    min-width: 56px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    font-weight: 600;
+}
+
+.detail-avatar.group-avatar {
+    border-radius: var(--radius-base);
+    background: var(--success);
+}
+
+.detail-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.detail-name {
+    font-size: var(--font-lg);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.detail-uid {
+    font-size: var(--font-sm);
+    color: var(--text-secondary);
+    margin-top: 4px;
+}
+
+.detail-actions {
+    display: flex;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-base) 0;
+    flex-wrap: wrap;
+}
+
+.btn-action {
+    padding: 8px 20px;
+    font-size: var(--font-base);
+    border: 1px solid var(--primary);
+    color: var(--primary);
+    background: transparent;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.btn-action:hover {
+    background: var(--primary);
+    color: #fff;
+}
+
+.btn-danger-outline {
+    border-color: var(--danger);
+    color: var(--danger);
+}
+
+.btn-danger-outline:hover {
+    background: var(--danger);
+    color: #fff;
+}
+
+.detail-section {
+    padding: var(--spacing-base) 0;
+}
+
+.detail-section-title {
+    font-size: var(--font-base);
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-sm);
+}
+
+/* ============================================================
+   Member List
+   ============================================================ */
+
+.member-list {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.member-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: 6px 0;
+}
+
+.member-avatar {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+}
+
+.member-info {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+
+.member-name {
+    font-size: var(--font-base);
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.role-tag {
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 3px;
+    white-space: nowrap;
+}
+
+.role-tag.owner {
+    background: #FFF4E0;
+    color: var(--warning);
+}
+
+.role-tag.admin {
+    background: #E6F7FF;
+    color: var(--primary);
+}
+
+.member-actions {
+    display: flex;
+    gap: 4px;
+}
+
+.btn-xs {
+    width: 24px;
+    height: 24px;
+    border: 1px solid var(--border-base);
+    border-radius: var(--radius-sm);
+    background: var(--bg-primary);
+    cursor: pointer;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+}
+
+.btn-xs:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+/* ============================================================
+   Settings Panel
+   ============================================================ */
+
+.settings-panel {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.settings-form {
+    padding: 0 var(--spacing-base);
+}
+
+.settings-item {
+    margin-bottom: var(--spacing-base);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.settings-item label {
+    width: 48px;
+    font-size: var(--font-base);
+    color: var(--text-regular);
+    flex-shrink: 0;
+}
+
+.settings-item input {
+    flex: 1;
+    padding: 8px 10px;
+    font-size: var(--font-base);
+    border: 1px solid var(--border-base);
+    border-radius: var(--radius-sm);
+    outline: none;
+}
+
+.settings-item input:focus {
+    border-color: var(--primary);
+}
+
+.settings-value {
+    font-size: var(--font-base);
+    color: var(--text-primary);
+}
+
+/* ============================================================
+   Misc additions
+   ============================================================ */
+
+.clickable {
+    cursor: pointer;
+}
+
+.conv-item.pinned {
+    background: rgba(64, 158, 255, 0.04);
+}

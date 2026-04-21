@@ -7,7 +7,12 @@ ConversationVM::ConversationVM(ConversationService& conv) : conv_(conv) {}
 ConversationVM::~ConversationVM() = default;
 
 void ConversationVM::GetConversationList(ConvListCallback cb) {
-    conv_.GetConversationList(std::move(cb));
+    conv_.GetConversationList([this, cb = std::move(cb)](const ConvListResult& r) {
+        if (r.success) {
+            conversations_.Set(r.conversations);
+        }
+        if (cb) cb(r);
+    });
 }
 
 void ConversationVM::DeleteConversation(int64_t conversation_id, ResultCallback cb) {

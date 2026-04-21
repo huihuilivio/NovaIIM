@@ -54,6 +54,10 @@ bool LoadConfig(AppConfig& cfg, const std::string& path) {
             std::fprintf(stderr, "admin.port must be in range 1-65535, got %d\n", cfg.admin.port);
             return false;
         }
+        if (cfg.admin.port == cfg.server.port) {
+            std::fprintf(stderr, "admin.port must differ from server.port\n");
+            return false;
+        }
         if (cfg.admin.jwt_secret.empty()) {
             std::fprintf(stderr, "admin.enabled but jwt_secret is empty\n");
             return false;

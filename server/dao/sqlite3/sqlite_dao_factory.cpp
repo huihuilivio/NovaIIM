@@ -13,9 +13,17 @@
 #include "../seed.h"
 
 #include "../../core/logger.h"
+#include <mutex>
 #include <stdexcept>
 
 namespace nova {
+
+/// SQLite 会话：持有递归互斥锁，保证同一时刻只有一个线程操作 DB
+struct SqliteScopedConn : public DaoScopedConn {
+    explicit SqliteScopedConn(std::recursive_mutex& mu) : lock_(mu) {}
+private:
+    std::unique_lock<std::recursive_mutex> lock_;
+};
 
 struct SqliteDaoFactory::Impl {
     SqliteDbManager db;
@@ -78,6 +86,10 @@ FriendDao& SqliteDaoFactory::Friend() {
 }
 GroupDao& SqliteDaoFactory::Group() {
     return impl_->group;
+}
+
+std::unique_ptr<DaoScopedConn> SqliteDaoFactory::Session() {
+    return std::make_unique<SqliteScopedConn>(impl_->db.Mutex());
 }
 
 bool SqliteDaoFactory::BeginTransaction() {
