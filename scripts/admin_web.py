@@ -7,16 +7,14 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
-from common import project_root, run
+from common import project_root, run, ensure_npm, WEB_PROJECTS
 
 
-ADMIN_WEB_DIR = project_root() / "server" / "web"
+ADMIN_WEB_DIR = WEB_PROJECTS["admin-web"]
 
 
 def ensure_node_modules():
-    if not (ADMIN_WEB_DIR / "node_modules").exists():
-        print("node_modules not found, running npm install...")
-        run(["npm", "install"], cwd=ADMIN_WEB_DIR)
+    ensure_npm(ADMIN_WEB_DIR)
 
 
 def cmd_install(_args):

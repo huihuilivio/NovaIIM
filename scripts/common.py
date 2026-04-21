@@ -113,3 +113,56 @@ def run(command, cwd=None, env=None, check=True):
     if check and result.returncode != 0:
         raise SystemExit(result.returncode)
     return result
+
+
+# ============================================================
+#  子项目定义
+# ============================================================
+
+# CMake 构建目标名称
+CMAKE_TARGETS: dict[str, str] = {
+    "server":  "im_server",
+    "desktop": "nova_desktop",
+    "sdk":     "nova_sdk",
+}
+
+# 前端子项目目录
+WEB_PROJECTS: dict[str, Path] = {
+    "admin-web":   PROJECT_ROOT / "server" / "web",
+    "desktop-web": PROJECT_ROOT / "client" / "desktop" / "web",
+}
+
+# 可执行文件名称
+EXECUTABLES: dict[str, str] = {
+    "server":  "im_server.exe" if os.name == "nt" else "im_server",
+    "desktop": "nova_desktop.exe" if os.name == "nt" else "nova_desktop",
+}
+
+ALL_TARGETS = sorted(set(CMAKE_TARGETS.keys()) | set(WEB_PROJECTS.keys()))
+
+
+def resolve_targets(names: list[str] | None) -> list[str]:
+    """Resolve target names; 'all' or empty → all targets."""
+    if not names or "all" in names:
+        return ALL_TARGETS
+    unknown = set(names) - set(ALL_TARGETS)
+    if unknown:
+        print(f"Error: unknown target(s): {', '.join(sorted(unknown))}")
+        print(f"Available: all, {', '.join(ALL_TARGETS)}")
+        raise SystemExit(1)
+    return list(dict.fromkeys(names))
+
+
+def build_dir() -> Path:
+    return PROJECT_ROOT / "build"
+
+
+def output_bin() -> Path:
+    return build_dir() / "output" / "bin"
+
+
+def ensure_npm(web_dir: Path) -> None:
+    """Run npm install if node_modules is missing."""
+    if not (web_dir / "node_modules").exists():
+        print(f"node_modules not found in {web_dir.name}, running npm install...")
+        run(["npm", "install"], cwd=web_dir)
