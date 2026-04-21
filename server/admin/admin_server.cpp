@@ -21,9 +21,18 @@
 
 #include <algorithm>
 #include <cctype>
+#include <chrono>
 #include <functional>
 #include <optional>
 #include <unordered_map>
+
+#ifdef _WIN32
+#include <windows.h>
+#include <psapi.h>
+#pragma comment(lib, "psapi.lib")
+#else
+#include <fstream>
+#endif
 
 namespace nova {
 
@@ -71,6 +80,30 @@ static std::string Sha256Hex(std::string_view data) {
         std::snprintf(hex + i * 2, 3, "%02x", hash[i]);
     }
     return std::string(hex, 64);
+}
+
+// 获取当前进程内存使用量 (MB)
+static double GetProcessMemoryMB() {
+#ifdef _WIN32
+    PROCESS_MEMORY_COUNTERS pmc{};
+    pmc.cb = sizeof(pmc);
+    if (GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc))) {
+        return static_cast<double>(pmc.WorkingSetSize) / (1024.0 * 1024.0);
+    }
+    return 0;
+#else
+    // Linux: 读 /proc/self/status 的 VmRSS
+    std::ifstream f("/proc/self/status");
+    std::string line;
+    while (std::getline(f, line)) {
+        if (line.substr(0, 6) == "VmRSS:") {
+            long long kb = 0;
+            std::sscanf(line.c_str(), "VmRSS: %lld kB", &kb);
+            return static_cast<double>(kb) / 1024.0;
+        }
+    }
+    return 0;
+#endif
 }
 
 // 解析 JSON Body（统一入口，防止重复代码）
@@ -165,6 +198,26 @@ void AdminServer::RegisterRoutes(const Options& opts) {
 
     // 审计日志
     service_.GET("/api/v1/audit-logs", [this](auto* req, auto* resp) { return HandleListAuditLogs(req, resp); });
+
+    // 管理员管理
+    service_.GET("/api/v1/admins", [this](auto* req, auto* resp) { return HandleListAdmins(req, resp); });
+    service_.POST("/api/v1/admins", [this](auto* req, auto* resp) { return HandleCreateAdmin(req, resp); });
+    service_.Delete("/api/v1/admins/:id", [this](auto* req, auto* resp) { return HandleDeleteAdmin(req, resp); });
+    service_.POST("/api/v1/admins/:id/reset-password",
+                  [this](auto* req, auto* resp) { return HandleResetAdminPassword(req, resp); });
+    service_.POST("/api/v1/admins/:id/enable",
+                  [this](auto* req, auto* resp) { return HandleEnableAdmin(req, resp); });
+    service_.POST("/api/v1/admins/:id/disable",
+                  [this](auto* req, auto* resp) { return HandleDisableAdmin(req, resp); });
+    service_.PUT("/api/v1/admins/:id/roles",
+                 [this](auto* req, auto* resp) { return HandleSetAdminRoles(req, resp); });
+
+    // 角色管理
+    service_.GET("/api/v1/roles", [this](auto* req, auto* resp) { return HandleListRoles(req, resp); });
+    service_.POST("/api/v1/roles", [this](auto* req, auto* resp) { return HandleCreateRole(req, resp); });
+    service_.PUT("/api/v1/roles/:id", [this](auto* req, auto* resp) { return HandleUpdateRole(req, resp); });
+    service_.Delete("/api/v1/roles/:id", [this](auto* req, auto* resp) { return HandleDeleteRole(req, resp); });
+    service_.GET("/api/v1/permissions", [this](auto* req, auto* resp) { return HandleListPermissions(req, resp); });
 }
 
 // ============================================================
@@ -443,10 +496,19 @@ int AdminServer::HandleStats(HttpRequest* req, HttpResponse* resp) {
     nlohmann::json data;
     data["connections"]    = ctx_.connection_count();
     data["online_users"]   = ctx_.online_user_count();
-    data["messages_in"]    = ctx_.total_messages_in();
-    data["messages_out"]   = ctx_.total_messages_out();
+    data["messages_today"] = ctx_.total_messages_in();  // 近似：使用入站计数
     data["bad_packets"]    = ctx_.bad_packets();
     data["uptime_seconds"] = ctx_.uptime_seconds();
+    data["cpu_percent"]    = 0;  // 暂不采集 CPU（需要双次采样）
+    data["memory_mb"]      = static_cast<int>(GetProcessMemoryMB());
+
+    // ISO 8601 时间戳
+    auto now   = std::chrono::system_clock::now();
+    auto now_t = std::chrono::system_clock::to_time_t(now);
+    char ts_buf[32];
+    std::strftime(ts_buf, sizeof(ts_buf), "%Y-%m-%dT%H:%M:%S", std::localtime(&now_t));
+    data["timestamp"] = ts_buf;
+
     return JsonOk(resp, data);
 }
 
@@ -475,6 +537,7 @@ int AdminServer::HandleListUsers(HttpRequest* req, HttpResponse* resp) {
     nlohmann::json items = nlohmann::json::array();
     for (auto& u : result.items) {
         items.push_back({
+            {"id", u.id},
             {"uid", u.uid},
             {"email", u.email},
             {"nickname", u.nickname},
@@ -597,6 +660,7 @@ int AdminServer::HandleGetUser(HttpRequest* req, HttpResponse* resp) {
     }
 
     nlohmann::json data;
+    data["id"]         = user->id;
     data["uid"]        = user->uid;
     data["email"]      = user->email;
     data["nickname"]   = user->nickname;
@@ -791,7 +855,7 @@ int AdminServer::HandleKickUser(HttpRequest* req, HttpResponse* resp) {
 
 int AdminServer::HandleListMessages(HttpRequest* req, HttpResponse* resp) {
     auto session = ctx_.dao().Session();
-    int rc       = RequirePermission(req, resp, "msg.delete_all");
+    int rc       = RequirePermission(req, resp, "msg.view");
     if (rc != 0)
         return rc;
 
@@ -841,7 +905,7 @@ int AdminServer::HandleListMessages(HttpRequest* req, HttpResponse* resp) {
 
 int AdminServer::HandleRecallMessage(HttpRequest* req, HttpResponse* resp) {
     auto session = ctx_.dao().Session();
-    int rc       = RequirePermission(req, resp, "msg.delete_all");
+    int rc       = RequirePermission(req, resp, "msg.recall");
     if (rc != 0)
         return rc;
 
@@ -934,6 +998,433 @@ int AdminServer::HandleListAuditLogs(HttpRequest* req, HttpResponse* resp) {
     }
 
     return JsonOk(resp, PaginatedResult(items, result.total, pg));
+}
+
+// ============================================================
+// 管理员管理
+// ============================================================
+
+int AdminServer::HandleListAdmins(HttpRequest* req, HttpResponse* resp) {
+    auto session = ctx_.dao().Session();
+    int rc       = RequirePermission(req, resp, "admin.manage");
+    if (rc != 0)
+        return rc;
+
+    auto pg             = ParsePagination(req);
+    std::string keyword = req->GetParam("keyword");
+
+    auto result = ctx_.dao().AdminAccount().ListAdmins(keyword, pg.page, pg.page_size);
+
+    nlohmann::json items = nlohmann::json::array();
+    for (auto& a : result.items) {
+        auto roles = ctx_.dao().Rbac().GetAdminRoles(a.id);
+        nlohmann::json role_arr = nlohmann::json::array();
+        for (auto& r : roles)
+            role_arr.push_back(r);
+
+        items.push_back({
+            {"id", a.id},
+            {"uid", a.uid},
+            {"nickname", a.nickname},
+            {"status", a.status},
+            {"roles", role_arr},
+            {"created_at", a.created_at},
+            {"updated_at", a.updated_at},
+        });
+    }
+
+    return JsonOk(resp, PaginatedResult(items, result.total, pg));
+}
+
+int AdminServer::HandleCreateAdmin(HttpRequest* req, HttpResponse* resp) {
+    auto session = ctx_.dao().Session();
+    int rc       = RequirePermission(req, resp, "admin.manage");
+    if (rc != 0)
+        return rc;
+
+    auto body_opt = ParseJsonBody(req);
+    if (!body_opt || !body_opt->contains("uid") || !body_opt->contains("password")) {
+        return JsonError(resp, api_err::kUidPasswordRequired);
+    }
+    auto& body = *body_opt;
+
+    std::string uid      = body.value("uid", "");
+    std::string password = body.value("password", "");
+    std::string nickname = body.value("nickname", "");
+
+    TrimInPlace(uid);
+    TrimInPlace(nickname);
+
+    if (uid.empty() || password.size() < 6) {
+        return JsonError(resp, api_err::kInvalidParam);
+    }
+
+    // 检查是否已存在
+    auto existing = ctx_.dao().AdminAccount().FindByUid(uid);
+    if (existing) {
+        return JsonError(resp, api_err::kUidAlreadyExists);
+    }
+
+    Admin admin;
+    admin.uid           = uid;
+    admin.password_hash = PasswordUtils::Hash(password);
+    admin.nickname      = nickname.empty() ? uid : nickname;
+    admin.status        = static_cast<int>(AccountStatus::Normal);
+
+    // 安全：清除明文密码
+    {
+        volatile char* p = reinterpret_cast<volatile char*>(password.data());
+        for (size_t i = 0; i < password.size(); ++i)
+            p[i] = 0;
+        password.clear();
+    }
+
+    if (!ctx_.dao().AdminAccount().Insert(admin)) {
+        return JsonError(resp, api_err::kDatabaseError);
+    }
+
+    int64_t admin_id = GetCurrentAdminId(req);
+    WriteAuditLog(admin_id, "admin.create", "admin", admin.id,
+                  nlohmann::json({{"uid", uid}}).dump(), GetClientIp(req));
+
+    return JsonOk(resp, nlohmann::json({{"id", admin.id}}));
+}
+
+int AdminServer::HandleDeleteAdmin(HttpRequest* req, HttpResponse* resp) {
+    auto session = ctx_.dao().Session();
+    int rc       = RequirePermission(req, resp, "admin.manage");
+    if (rc != 0)
+        return rc;
+
+    auto id_str = req->GetParam("id");
+    int64_t id  = std::atoll(id_str.c_str());
+    if (id <= 0) {
+        return JsonError(resp, api_err::kInvalidParam);
+    }
+
+    // 禁止删除 super admin (id=1) 或自己
+    int64_t admin_id = GetCurrentAdminId(req);
+    if (id == 1 || id == admin_id) {
+        return JsonError(resp, api_err::kPermissionDenied);
+    }
+
+    if (!ctx_.dao().AdminAccount().SoftDelete(id)) {
+        return JsonError(resp, api_err::kAdminNotFound);
+    }
+
+    WriteAuditLog(admin_id, "admin.delete", "admin", id, "{}", GetClientIp(req));
+
+    return JsonOk(resp);
+}
+
+int AdminServer::HandleResetAdminPassword(HttpRequest* req, HttpResponse* resp) {
+    auto session = ctx_.dao().Session();
+    int rc       = RequirePermission(req, resp, "admin.manage");
+    if (rc != 0)
+        return rc;
+
+    auto id_str = req->GetParam("id");
+    int64_t id  = std::atoll(id_str.c_str());
+    if (id <= 0) {
+        return JsonError(resp, api_err::kInvalidParam);
+    }
+
+    auto body_opt = ParseJsonBody(req);
+    if (!body_opt || !body_opt->contains("new_password")) {
+        return JsonError(resp, api_err::kNewPasswordRequired);
+    }
+    if (!(*body_opt)["new_password"].is_string()) {
+        return JsonError(resp, api_err::kNewPasswordString);
+    }
+
+    std::string new_password = (*body_opt)["new_password"].get<std::string>();
+    if (new_password.size() < 6) {
+        return JsonError(resp, api_err::kPasswordTooShort);
+    }
+    if (new_password.size() > 128) {
+        return JsonError(resp, api_err::kPasswordTooLong);
+    }
+
+    auto hash = PasswordUtils::Hash(new_password);
+    {
+        volatile char* p = reinterpret_cast<volatile char*>(new_password.data());
+        for (size_t i = 0; i < new_password.size(); ++i)
+            p[i] = 0;
+        new_password.clear();
+    }
+    if (hash.empty()) {
+        return JsonError(resp, api_err::kHashFailed);
+    }
+
+    if (!ctx_.dao().AdminAccount().UpdatePassword(id, hash)) {
+        return JsonError(resp, api_err::kAdminNotFound);
+    }
+
+    int64_t admin_id = GetCurrentAdminId(req);
+    WriteAuditLog(admin_id, "admin.reset_password", "admin", id, "{}", GetClientIp(req));
+
+    return JsonOk(resp);
+}
+
+int AdminServer::HandleEnableAdmin(HttpRequest* req, HttpResponse* resp) {
+    auto session = ctx_.dao().Session();
+    int rc       = RequirePermission(req, resp, "admin.manage");
+    if (rc != 0)
+        return rc;
+
+    auto id_str = req->GetParam("id");
+    int64_t id  = std::atoll(id_str.c_str());
+    if (id <= 0) {
+        return JsonError(resp, api_err::kInvalidParam);
+    }
+
+    if (!ctx_.dao().AdminAccount().UpdateStatus(id, static_cast<int>(AccountStatus::Normal))) {
+        return JsonError(resp, api_err::kAdminNotFound);
+    }
+
+    int64_t admin_id = GetCurrentAdminId(req);
+    WriteAuditLog(admin_id, "admin.enable", "admin", id, "{}", GetClientIp(req));
+
+    return JsonOk(resp);
+}
+
+int AdminServer::HandleDisableAdmin(HttpRequest* req, HttpResponse* resp) {
+    auto session = ctx_.dao().Session();
+    int rc       = RequirePermission(req, resp, "admin.manage");
+    if (rc != 0)
+        return rc;
+
+    auto id_str = req->GetParam("id");
+    int64_t id  = std::atoll(id_str.c_str());
+    if (id <= 0) {
+        return JsonError(resp, api_err::kInvalidParam);
+    }
+
+    // 禁止禁用自己
+    int64_t admin_id = GetCurrentAdminId(req);
+    if (id == admin_id) {
+        return JsonError(resp, api_err::kPermissionDenied);
+    }
+
+    // 禁止禁用 super admin (id=1)
+    if (id == 1) {
+        return JsonError(resp, api_err::kPermissionDenied);
+    }
+
+    if (!ctx_.dao().AdminAccount().UpdateStatus(id, static_cast<int>(AccountStatus::Banned))) {
+        return JsonError(resp, api_err::kAdminNotFound);
+    }
+
+    WriteAuditLog(admin_id, "admin.disable", "admin", id, "{}", GetClientIp(req));
+
+    return JsonOk(resp);
+}
+
+int AdminServer::HandleSetAdminRoles(HttpRequest* req, HttpResponse* resp) {
+    auto session = ctx_.dao().Session();
+    int rc       = RequirePermission(req, resp, "admin.manage");
+    if (rc != 0)
+        return rc;
+
+    auto id_str = req->GetParam("id");
+    int64_t id  = std::atoll(id_str.c_str());
+    if (id <= 0) {
+        return JsonError(resp, api_err::kInvalidParam);
+    }
+
+    auto body_opt = ParseJsonBody(req);
+    if (!body_opt || !body_opt->contains("role_ids") || !(*body_opt)["role_ids"].is_array()) {
+        return JsonError(resp, api_err::kInvalidParam);
+    }
+
+    // 验证管理员存在
+    auto target_admin = ctx_.dao().AdminAccount().FindById(id);
+    if (!target_admin) {
+        return JsonError(resp, api_err::kAdminNotFound);
+    }
+
+    // 获取所有角色以建立 name→id 映射
+    auto all_roles = ctx_.dao().Rbac().ListRoles();
+    std::unordered_map<int64_t, std::string> id_to_name;
+    for (auto& r : all_roles) {
+        id_to_name[r.id] = r.name;
+    }
+
+    // 先移除所有现有角色
+    for (auto& r : all_roles) {
+        ctx_.dao().Rbac().RemoveAdminRole(id, r.id);
+    }
+
+    // 添加新角色
+    std::vector<std::string> new_role_names;
+    for (auto& rid : (*body_opt)["role_ids"]) {
+        if (rid.is_number_integer()) {
+            int64_t role_id = rid.get<int64_t>();
+            ctx_.dao().Rbac().AssignAdminRole(id, role_id);
+            auto it = id_to_name.find(role_id);
+            if (it != id_to_name.end())
+                new_role_names.push_back(it->second);
+        }
+    }
+
+    int64_t admin_id = GetCurrentAdminId(req);
+    nlohmann::json detail_json;
+    detail_json["role_ids"] = (*body_opt)["role_ids"];
+    detail_json["role_names"] = new_role_names;
+    WriteAuditLog(admin_id, "admin.set_roles", "admin", id, detail_json.dump(), GetClientIp(req));
+
+    return JsonOk(resp);
+}
+
+// ============================================================
+// 角色管理
+// ============================================================
+
+int AdminServer::HandleListRoles(HttpRequest* req, HttpResponse* resp) {
+    auto session = ctx_.dao().Session();
+    int rc       = RequirePermission(req, resp, "admin.manage");
+    if (rc != 0)
+        return rc;
+
+    auto roles = ctx_.dao().Rbac().ListRoles();
+
+    nlohmann::json data = nlohmann::json::array();
+    for (auto& r : roles) {
+        nlohmann::json perm_arr = nlohmann::json::array();
+        for (auto& p : r.permissions)
+            perm_arr.push_back(p);
+
+        data.push_back({
+            {"id", r.id},
+            {"name", r.name},
+            {"description", r.description},
+            {"permissions", perm_arr},
+            {"created_at", r.created_at},
+        });
+    }
+
+    return JsonOk(resp, data);
+}
+
+int AdminServer::HandleCreateRole(HttpRequest* req, HttpResponse* resp) {
+    auto session = ctx_.dao().Session();
+    int rc       = RequirePermission(req, resp, "admin.manage");
+    if (rc != 0)
+        return rc;
+
+    auto body_opt = ParseJsonBody(req);
+    if (!body_opt || !body_opt->contains("name")) {
+        return JsonError(resp, api_err::kInvalidParam);
+    }
+    auto& body = *body_opt;
+
+    std::string name        = body.value("name", "");
+    std::string description = body.value("description", "");
+    TrimInPlace(name);
+
+    if (name.empty()) {
+        return JsonError(resp, api_err::kInvalidParam);
+    }
+
+    if (!ctx_.dao().Rbac().CreateRole(name, description)) {
+        return JsonError(resp, api_err::kDatabaseError);
+    }
+
+    // 查找刚创建的角色 ID
+    auto roles = ctx_.dao().Rbac().ListRoles();
+    int64_t new_role_id = 0;
+    for (auto& r : roles) {
+        if (r.name == name) {
+            new_role_id = r.id;
+            break;
+        }
+    }
+
+    // 如果指定了权限，同时设置
+    if (new_role_id > 0 && body.contains("permissions") && body["permissions"].is_array()) {
+        std::vector<std::string> perms;
+        for (auto& p : body["permissions"]) {
+            if (p.is_string()) perms.push_back(p.get<std::string>());
+        }
+        ctx_.dao().Rbac().SetRolePermissions(new_role_id, perms);
+    }
+
+    int64_t admin_id = GetCurrentAdminId(req);
+    WriteAuditLog(admin_id, "role.create", "role", new_role_id,
+                  nlohmann::json({{"name", name}}).dump(), GetClientIp(req));
+
+    return JsonOk(resp, nlohmann::json({{"id", new_role_id}}));
+}
+
+int AdminServer::HandleUpdateRole(HttpRequest* req, HttpResponse* resp) {
+    auto session = ctx_.dao().Session();
+    int rc       = RequirePermission(req, resp, "admin.manage");
+    if (rc != 0)
+        return rc;
+
+    auto id_str = req->GetParam("id");
+    int64_t id  = std::atoll(id_str.c_str());
+    if (id <= 0) {
+        return JsonError(resp, api_err::kInvalidParam);
+    }
+
+    auto body_opt = ParseJsonBody(req);
+    if (!body_opt) {
+        return JsonError(resp, api_err::kInvalidParam);
+    }
+    auto& body = *body_opt;
+
+    if (body.contains("description") && body["description"].is_string()) {
+        ctx_.dao().Rbac().UpdateRole(id, body["description"].get<std::string>());
+    }
+
+    if (body.contains("permissions") && body["permissions"].is_array()) {
+        std::vector<std::string> perms;
+        for (auto& p : body["permissions"]) {
+            if (p.is_string()) perms.push_back(p.get<std::string>());
+        }
+        ctx_.dao().Rbac().SetRolePermissions(id, perms);
+    }
+
+    int64_t admin_id = GetCurrentAdminId(req);
+    WriteAuditLog(admin_id, "role.update", "role", id, "{}", GetClientIp(req));
+
+    return JsonOk(resp);
+}
+
+int AdminServer::HandleDeleteRole(HttpRequest* req, HttpResponse* resp) {
+    auto session = ctx_.dao().Session();
+    int rc       = RequirePermission(req, resp, "admin.manage");
+    if (rc != 0)
+        return rc;
+
+    auto id_str = req->GetParam("id");
+    int64_t id  = std::atoll(id_str.c_str());
+    if (id <= 0) {
+        return JsonError(resp, api_err::kInvalidParam);
+    }
+
+    ctx_.dao().Rbac().DeleteRole(id);
+
+    int64_t admin_id = GetCurrentAdminId(req);
+    WriteAuditLog(admin_id, "role.delete", "role", id, "{}", GetClientIp(req));
+
+    return JsonOk(resp);
+}
+
+int AdminServer::HandleListPermissions(HttpRequest* req, HttpResponse* resp) {
+    auto session = ctx_.dao().Session();
+    int rc       = RequirePermission(req, resp, "admin.manage");
+    if (rc != 0)
+        return rc;
+
+    auto perms          = ctx_.dao().Rbac().ListPermissions();
+    nlohmann::json data = nlohmann::json::array();
+    for (auto& p : perms) {
+        data.push_back(p);
+    }
+
+    return JsonOk(resp, data);
 }
 
 }  // namespace nova

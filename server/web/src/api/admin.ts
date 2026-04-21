@@ -30,6 +30,22 @@ export function deleteAdmin(id: number) {
   return http.delete<ApiResponse<object>>(`/admins/${id}`)
 }
 
+export function resetAdminPassword(id: number, new_password: string) {
+  return http.post<ApiResponse<object>>(`/admins/${id}/reset-password`, { new_password })
+}
+
+export function enableAdmin(id: number) {
+  return http.post<ApiResponse<object>>(`/admins/${id}/enable`)
+}
+
+export function disableAdmin(id: number) {
+  return http.post<ApiResponse<object>>(`/admins/${id}/disable`)
+}
+
+export function setAdminRoles(id: number, role_ids: number[]) {
+  return http.put<ApiResponse<object>>(`/admins/${id}/roles`, { role_ids })
+}
+
 // ── 角色 ──
 export interface Role {
   id: number
@@ -61,6 +77,7 @@ export const ALL_PERMISSIONS = [
   'admin.dashboard',
   'admin.audit',
   'admin.manage',
+  'admin.config',
   'user.view',
   'user.create',
   'user.edit',
@@ -68,4 +85,5 @@ export const ALL_PERMISSIONS = [
   'user.ban',
   'msg.view',
   'msg.recall',
+  'msg.delete_all',
 ] as const

@@ -66,6 +66,22 @@ private:
     // --- audit ---
     int HandleListAuditLogs(HttpRequest* req, HttpResponse* resp);
 
+    // --- admin management ---
+    int HandleListAdmins(HttpRequest* req, HttpResponse* resp);
+    int HandleCreateAdmin(HttpRequest* req, HttpResponse* resp);
+    int HandleDeleteAdmin(HttpRequest* req, HttpResponse* resp);
+    int HandleResetAdminPassword(HttpRequest* req, HttpResponse* resp);
+    int HandleEnableAdmin(HttpRequest* req, HttpResponse* resp);
+    int HandleDisableAdmin(HttpRequest* req, HttpResponse* resp);
+    int HandleSetAdminRoles(HttpRequest* req, HttpResponse* resp);
+
+    // --- role management ---
+    int HandleListRoles(HttpRequest* req, HttpResponse* resp);
+    int HandleCreateRole(HttpRequest* req, HttpResponse* resp);
+    int HandleUpdateRole(HttpRequest* req, HttpResponse* resp);
+    int HandleDeleteRole(HttpRequest* req, HttpResponse* resp);
+    int HandleListPermissions(HttpRequest* req, HttpResponse* resp);
+
     // 审计日志写入助手
     void WriteAuditLog(int64_t admin_id, const std::string& action, const std::string& target_type, int64_t target_id,
                        const std::string& detail, const std::string& ip);

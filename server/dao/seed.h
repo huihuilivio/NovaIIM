@@ -47,10 +47,11 @@ void SeedSuperAdmin(DbMgr& db) {
         const char* code;
     };
     static constexpr PermDef kPerms[] = {
-        {"管理员登录", "admin.login"}, {"仪表盘查看", "admin.dashboard"}, {"审计日志查看", "admin.audit"},
-        {"用户查看", "user.view"},     {"用户创建", "user.create"},       {"用户编辑", "user.edit"},
-        {"用户删除", "user.delete"},   {"用户封禁", "user.ban"},          {"消息管理", "msg.delete_all"},
-        {"系统配置", "admin.config"},
+        {"管理员登录", "admin.login"},  {"仪表盘查看", "admin.dashboard"}, {"审计日志查看", "admin.audit"},
+        {"管理员管理", "admin.manage"}, {"系统配置", "admin.config"},      {"用户查看", "user.view"},
+        {"用户创建", "user.create"},    {"用户编辑", "user.edit"},         {"用户删除", "user.delete"},
+        {"用户封禁", "user.ban"},       {"消息查看", "msg.view"},          {"消息撤回", "msg.recall"},
+        {"消息管理", "msg.delete_all"},
     };
 
     for (auto& [name, code] : kPerms) {

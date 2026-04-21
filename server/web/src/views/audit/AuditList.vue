@@ -16,6 +16,15 @@
             <el-option label="msg.recall" value="msg.recall" />
             <el-option label="admin.login" value="admin.login" />
             <el-option label="admin.logout" value="admin.logout" />
+            <el-option label="admin.create" value="admin.create" />
+            <el-option label="admin.delete" value="admin.delete" />
+            <el-option label="admin.reset_password" value="admin.reset_password" />
+            <el-option label="admin.enable" value="admin.enable" />
+            <el-option label="admin.disable" value="admin.disable" />
+            <el-option label="admin.set_roles" value="admin.set_roles" />
+            <el-option label="role.create" value="role.create" />
+            <el-option label="role.update" value="role.update" />
+            <el-option label="role.delete" value="role.delete" />
           </el-select>
         </el-form-item>
         <el-form-item label="时间范围">
@@ -39,11 +48,15 @@
     <el-card shadow="never" style="margin-top: 16px">
       <el-table :data="tableData" v-loading="loading" stripe>
         <el-table-column prop="id" label="ID" width="80" />
-        <el-table-column prop="admin_uid" label="操作者" width="120" />
+        <el-table-column prop="operator_uid" label="操作者" width="120" />
         <el-table-column prop="action" label="操作" width="160" />
         <el-table-column prop="target_type" label="目标类型" width="100" />
         <el-table-column prop="target_id" label="目标ID" width="100" />
-        <el-table-column prop="detail" label="详情" show-overflow-tooltip />
+        <el-table-column prop="detail" label="详情" show-overflow-tooltip>
+          <template #default="{ row }">
+            {{ typeof row.detail === 'object' ? JSON.stringify(row.detail) : row.detail }}
+          </template>
+        </el-table-column>
         <el-table-column prop="ip" label="IP" width="140" />
         <el-table-column prop="created_at" label="时间" width="180" />
       </el-table>

@@ -15,6 +15,9 @@ public:
     std::optional<Admin> FindById(int64_t id) override;
     bool Insert(Admin& admin) override;
     bool UpdatePassword(int64_t id, const std::string& password_hash) override;
+    PaginatedAdmins ListAdmins(const std::string& keyword, int page, int page_size) override;
+    bool SoftDelete(int64_t id) override;
+    bool UpdateStatus(int64_t id, int status) override;
 
 private:
     DbMgr& db_;

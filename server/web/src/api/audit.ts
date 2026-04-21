@@ -4,7 +4,7 @@ import type { ApiResponse, PaginatedData } from '@/utils/http'
 export interface AuditLog {
   id: number
   admin_id: number
-  admin_uid: string
+  operator_uid: string
   action: string
   target_type: string
   target_id: number

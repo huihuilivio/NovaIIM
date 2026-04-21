@@ -42,7 +42,7 @@
         <el-table-column prop="created_at" label="创建时间" width="180" />
         <el-table-column label="操作" width="260" fixed="right">
           <template #default="{ row }">
-            <el-button size="small" @click="viewDetail(row.id)">详情</el-button>
+            <el-button size="small" @click="viewDetail(row.uid)">详情</el-button>
             <el-dropdown trigger="click" @command="(cmd: string) => handleAction(cmd, row)">
               <el-button size="small">更多<el-icon class="el-icon--right"><ArrowDown /></el-icon></el-button>
               <template #dropdown>
@@ -203,8 +203,8 @@ async function handleCreate() {
   }
 }
 
-async function viewDetail(id: number) {
-  const res = await getUserDetail(id)
+async function viewDetail(uid: string) {
+  const res = await getUserDetail(uid)
   if (res.data.code === 0) {
     detail.value = res.data.data
     showDetail.value = true
@@ -217,31 +217,31 @@ async function handleAction(cmd: string, row: User) {
       inputPattern: /^.{6,}$/,
       inputErrorMessage: '密码至少 6 位',
     })
-    const res = await resetPassword(row.id, value)
+    const res = await resetPassword(row.uid, value)
     if (res.data.code === 0) ElMessage.success('密码已重置')
     else ElMessage.error(res.data.msg)
   } else if (cmd === 'kick') {
-    const res = await kickUser(row.id)
+    const res = await kickUser(row.uid)
     if (res.data.code === 0) {
       ElMessage.success(`已踢出 ${res.data.data.kicked_devices} 个设备`)
       fetchData()
     }
   } else if (cmd === 'ban') {
     const { value } = await ElMessageBox.prompt('请输入封禁原因', '封禁用户')
-    const res = await banUser(row.id, value)
+    const res = await banUser(row.uid, value)
     if (res.data.code === 0) {
       ElMessage.success('已封禁')
       fetchData()
     }
   } else if (cmd === 'unban') {
-    const res = await unbanUser(row.id)
+    const res = await unbanUser(row.uid)
     if (res.data.code === 0) {
       ElMessage.success('已解禁')
       fetchData()
     }
   } else if (cmd === 'delete') {
     await ElMessageBox.confirm('确定删除该用户？此操作不可恢复。', '删除用户', { type: 'warning' })
-    const res = await deleteUser(row.id)
+    const res = await deleteUser(row.uid)
     if (res.data.code === 0) {
       ElMessage.success('已删除')
       fetchData()

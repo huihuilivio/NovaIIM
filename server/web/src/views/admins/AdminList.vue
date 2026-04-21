@@ -7,6 +7,7 @@
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch">查询</el-button>
+          <el-button @click="handleReset">重置</el-button>
           <el-button type="success" @click="showCreate = true">添加管理员</el-button>
         </el-form-item>
       </el-form>
@@ -16,10 +17,10 @@
       <el-table :data="tableData" v-loading="loading" stripe>
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="uid" label="账号" width="160" />
-        <el-table-column prop="nickname" label="昵称" />
+        <el-table-column prop="nickname" label="昵称" width="140" />
         <el-table-column label="角色">
           <template #default="{ row }">
-            <el-tag v-for="r in row.roles" :key="r" size="small" style="margin-right: 4px">{{ r }}</el-tag>
+            <el-tag v-for="r in row.roles" :key="r" size="small" style="margin: 2px">{{ r }}</el-tag>
             <span v-if="!row.roles?.length" style="color: #909399">无角色</span>
           </template>
         </el-table-column>
@@ -31,11 +32,20 @@
           </template>
         </el-table-column>
         <el-table-column prop="created_at" label="创建时间" width="180" />
-        <el-table-column label="操作" width="120" fixed="right">
+        <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
-            <el-button size="small" type="danger" @click="handleDelete(row)" :disabled="row.id === 1">
-              删除
-            </el-button>
+            <el-button size="small" @click="openRoleDialog(row)">角色</el-button>
+            <el-dropdown trigger="click" @command="(cmd: string) => handleAction(cmd, row)">
+              <el-button size="small">更多<el-icon class="el-icon--right"><ArrowDown /></el-icon></el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item command="resetPwd">重置密码</el-dropdown-item>
+                  <el-dropdown-item v-if="row.status === 2" command="enable">启用</el-dropdown-item>
+                  <el-dropdown-item v-if="row.status === 1 && row.id !== 1" command="disable">禁用</el-dropdown-item>
+                  <el-dropdown-item command="delete" divided :disabled="row.id === 1" style="color: #f56c6c">删除</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
           </template>
         </el-table-column>
       </el-table>
@@ -45,7 +55,9 @@
         v-model:current-page="query.page"
         v-model:page-size="query.page_size"
         :total="total"
-        layout="total, prev, pager, next"
+        :page-sizes="[20, 50, 100]"
+        layout="total, sizes, prev, pager, next"
+        @size-change="fetchData"
         @current-change="fetchData"
       />
     </el-card>
@@ -68,13 +80,32 @@
         <el-button type="primary" :loading="creating" @click="handleCreate">确定</el-button>
       </template>
     </el-dialog>
+
+    <!-- 角色分配对话框 -->
+    <el-dialog v-model="showRoleDialog" title="分配角色" width="460px">
+      <p style="margin-bottom: 12px; color: #606266">管理员: <strong>{{ roleTarget?.uid }}</strong></p>
+      <el-checkbox-group v-model="selectedRoleIds">
+        <el-checkbox v-for="r in allRoles" :key="r.id" :label="r.id" :value="r.id" style="display: block; margin-bottom: 8px">
+          {{ r.name }}
+          <span v-if="r.description" style="color: #909399; font-size: 12px; margin-left: 8px">{{ r.description }}</span>
+        </el-checkbox>
+      </el-checkbox-group>
+      <template #footer>
+        <el-button @click="showRoleDialog = false">取消</el-button>
+        <el-button type="primary" :loading="savingRoles" @click="handleSaveRoles">确定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
-import { getAdmins, createAdmin, deleteAdmin } from '@/api/admin'
-import type { Admin } from '@/api/admin'
+import {
+  getAdmins, createAdmin, deleteAdmin,
+  resetAdminPassword, enableAdmin, disableAdmin,
+  getRoles, setAdminRoles,
+} from '@/api/admin'
+import type { Admin, Role } from '@/api/admin'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 
@@ -83,6 +114,7 @@ const tableData = ref<Admin[]>([])
 const total = ref(0)
 const query = reactive({ page: 1, page_size: 20, keyword: '' })
 
+// 创建
 const showCreate = ref(false)
 const creating = ref(false)
 const formRef = ref<FormInstance>()
@@ -94,6 +126,13 @@ const rules: FormRules = {
     { min: 6, message: '密码至少 6 位', trigger: 'blur' },
   ],
 }
+
+// 角色分配
+const showRoleDialog = ref(false)
+const savingRoles = ref(false)
+const roleTarget = ref<Admin | null>(null)
+const selectedRoleIds = ref<number[]>([])
+const allRoles = ref<Role[]>([])
 
 async function fetchData() {
   loading.value = true
@@ -109,6 +148,12 @@ async function fetchData() {
 }
 
 function handleSearch() {
+  query.page = 1
+  fetchData()
+}
+
+function handleReset() {
+  query.keyword = ''
   query.page = 1
   fetchData()
 }
@@ -134,12 +179,72 @@ async function handleCreate() {
   }
 }
 
-async function handleDelete(row: Admin) {
-  await ElMessageBox.confirm(`确定删除管理员 "${row.uid}"？`, '删除确认', { type: 'warning' })
-  const res = await deleteAdmin(row.id)
+async function openRoleDialog(row: Admin) {
+  roleTarget.value = row
+  // 加载所有角色
+  const res = await getRoles()
   if (res.data.code === 0) {
-    ElMessage.success('已删除')
-    fetchData()
+    allRoles.value = res.data.data
+    // 根据 row.roles (name[]) 匹配 role id
+    selectedRoleIds.value = allRoles.value
+      .filter(r => row.roles?.includes(r.name))
+      .map(r => r.id)
+    showRoleDialog.value = true
+  }
+}
+
+async function handleSaveRoles() {
+  if (!roleTarget.value) return
+  savingRoles.value = true
+  try {
+    const res = await setAdminRoles(roleTarget.value.id, selectedRoleIds.value)
+    if (res.data.code === 0) {
+      ElMessage.success('角色已更新')
+      showRoleDialog.value = false
+      fetchData()
+    } else {
+      ElMessage.error(res.data.msg)
+    }
+  } finally {
+    savingRoles.value = false
+  }
+}
+
+async function handleAction(cmd: string, row: Admin) {
+  if (cmd === 'resetPwd') {
+    const { value } = await ElMessageBox.prompt('请输入新密码（至少6位）', '重置密码', {
+      inputPattern: /^.{6,}$/,
+      inputErrorMessage: '密码至少 6 位',
+    })
+    const res = await resetAdminPassword(row.id, value)
+    if (res.data.code === 0) ElMessage.success('密码已重置')
+    else ElMessage.error(res.data.msg)
+  } else if (cmd === 'enable') {
+    const res = await enableAdmin(row.id)
+    if (res.data.code === 0) {
+      ElMessage.success('已启用')
+      fetchData()
+    } else {
+      ElMessage.error(res.data.msg)
+    }
+  } else if (cmd === 'disable') {
+    await ElMessageBox.confirm(`确定禁用管理员 "${row.uid}"？禁用后该管理员将无法登录。`, '禁用确认', { type: 'warning' })
+    const res = await disableAdmin(row.id)
+    if (res.data.code === 0) {
+      ElMessage.success('已禁用')
+      fetchData()
+    } else {
+      ElMessage.error(res.data.msg)
+    }
+  } else if (cmd === 'delete') {
+    await ElMessageBox.confirm(`确定删除管理员 "${row.uid}"？此操作不可恢复。`, '删除确认', { type: 'warning' })
+    const res = await deleteAdmin(row.id)
+    if (res.data.code === 0) {
+      ElMessage.success('已删除')
+      fetchData()
+    } else {
+      ElMessage.error(res.data.msg)
+    }
   }
 }
 

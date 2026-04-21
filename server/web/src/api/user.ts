@@ -33,30 +33,30 @@ export function getUsers(params: UserQuery) {
   return http.get<ApiResponse<PaginatedData<User>>>('/users', { params })
 }
 
-export function getUserDetail(id: number) {
-  return http.get<ApiResponse<UserDetail>>(`/users/${id}`)
+export function getUserDetail(uid: string) {
+  return http.get<ApiResponse<UserDetail>>(`/users/${uid}`)
 }
 
 export function createUser(data: CreateUserReq) {
   return http.post<ApiResponse<{ id: number; email: string }>>('/users', data)
 }
 
-export function deleteUser(id: number) {
-  return http.delete<ApiResponse<object>>(`/users/${id}`)
+export function deleteUser(uid: string) {
+  return http.delete<ApiResponse<object>>(`/users/${uid}`)
 }
 
-export function resetPassword(id: number, new_password: string) {
-  return http.post<ApiResponse<object>>(`/users/${id}/reset-password`, { new_password })
+export function resetPassword(uid: string, new_password: string) {
+  return http.post<ApiResponse<object>>(`/users/${uid}/reset-password`, { new_password })
 }
 
-export function banUser(id: number, reason: string) {
-  return http.post<ApiResponse<object>>(`/users/${id}/ban`, { reason })
+export function banUser(uid: string, reason: string) {
+  return http.post<ApiResponse<object>>(`/users/${uid}/ban`, { reason })
 }
 
-export function unbanUser(id: number) {
-  return http.post<ApiResponse<object>>(`/users/${id}/unban`)
+export function unbanUser(uid: string) {
+  return http.post<ApiResponse<object>>(`/users/${uid}/unban`)
 }
 
-export function kickUser(id: number) {
-  return http.post<ApiResponse<{ kicked_devices: number }>>(`/users/${id}/kick`)
+export function kickUser(uid: string) {
+  return http.post<ApiResponse<{ kicked_devices: number }>>(`/users/${uid}/kick`)
 }
