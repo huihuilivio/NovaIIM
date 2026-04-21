@@ -2,6 +2,31 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { bridge } from '@/bridge'
 
+// ---- 通知声音 (Web Audio API，无需外部音频文件) ----
+let audioCtx: AudioContext | null = null
+
+function playNotificationSound() {
+  try {
+    if (localStorage.getItem('nova_sound') === 'false') return
+    if (localStorage.getItem('nova_notify') === 'false') return
+  } catch { /* ignore */ }
+
+  try {
+    if (!audioCtx) audioCtx = new AudioContext()
+    const osc = audioCtx.createOscillator()
+    const gain = audioCtx.createGain()
+    osc.connect(gain)
+    gain.connect(audioCtx.destination)
+    osc.type = 'sine'
+    osc.frequency.setValueAtTime(880, audioCtx.currentTime)     // A5
+    osc.frequency.setValueAtTime(1047, audioCtx.currentTime + 0.1) // C6
+    gain.gain.setValueAtTime(0.3, audioCtx.currentTime)
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3)
+    osc.start(audioCtx.currentTime)
+    osc.stop(audioCtx.currentTime + 0.3)
+  } catch { /* AudioContext not available */ }
+}
+
 export interface LastMsg {
   senderUid: string
   senderNickname: string
@@ -103,6 +128,10 @@ export const useChatStore = defineStore('chat', () => {
         }
         if (activeConv.value?.conversationId !== data.conversationId) {
           conv.unreadCount++
+        }
+        // 非自己发的消息 → 播放通知声音
+        if (data.senderUid !== currentUid.value) {
+          playNotificationSound()
         }
         // 将会话置顶排序
         const idx = conversations.value.indexOf(conv)
@@ -232,7 +261,7 @@ export const useChatStore = defineStore('chat', () => {
     })
   }
 
-  function sendMessage(content: string) {
+  function sendMessage(content: string, msgType: number = 0) {
     if (!activeConv.value) return
     const lid = ++localIdCounter
 
@@ -248,11 +277,80 @@ export const useChatStore = defineStore('chat', () => {
       self: true,
       serverSeq: 0,
       serverTime: Date.now(),
-      msgType: 0,
+      msgType,
       status: 0,
       sendStatus: 'sending',
       localId: lid,
     })
+  }
+
+  /**
+   * 文件消息发送流程:
+   * 1. requestUpload → 获取 fileId + uploadUrl
+   * 2. 上传文件到 uploadUrl (由 C++ 层 / 用户手动完成)
+   * 3. uploadComplete → 确认上传完成
+   * 4. 发送 file 类型消息
+   */
+  function sendFileMessage(fileName: string, fileSize: number, mimeType: string) {
+    if (!activeConv.value) return
+    const convId = activeConv.value.conversationId
+
+    // 乐观展示
+    const lid = ++localIdCounter
+    const fileContent = JSON.stringify({ file_id: 0, file_name: fileName, file_size: fileSize })
+    messages.value.push({
+      sender: currentUid.value,
+      content: fileContent,
+      self: true,
+      serverSeq: 0,
+      serverTime: Date.now(),
+      msgType: 5, // FILE
+      status: 0,
+      sendStatus: 'sending',
+      localId: lid,
+    })
+
+    // 请求上传
+    bridge.send('requestUpload', {
+      fileName,
+      fileSize,
+      mimeType,
+      fileHash: '',
+      fileType: 'chat',
+    })
+
+    bridge.on<{ success: boolean; msg?: string; fileId?: number; uploadUrl?: string; alreadyExists?: boolean }>(
+      'requestUploadResult',
+      (data) => {
+        bridge.off('requestUploadResult')
+        const pending = messages.value.find((m) => m.localId === lid)
+
+        if (!data.success) {
+          if (pending) pending.sendStatus = 'failed'
+          return
+        }
+
+        // 确认上传完成 (简化 — 实际需要通过 uploadUrl PUT 文件后再调用)
+        if (data.fileId) {
+          bridge.send('uploadComplete', { fileId: data.fileId })
+        }
+
+        // 发送文件消息
+        const content = JSON.stringify({
+          file_id: data.fileId || 0,
+          file_name: fileName,
+          file_size: fileSize,
+        })
+        bridge.send('sendMessage', {
+          to: String(convId),
+          content,
+        })
+
+        if (pending) {
+          pending.content = content
+        }
+      },
+    )
   }
 
   function recallMessage(serverSeq: number) {
@@ -296,6 +394,7 @@ export const useChatStore = defineStore('chat', () => {
     selectConversation,
     loadMoreHistory,
     sendMessage,
+    sendFileMessage,
     recallMessage,
     deleteConversation,
     muteConversation,

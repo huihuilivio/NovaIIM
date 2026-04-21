@@ -107,6 +107,45 @@ function sendStatusText(msg: ChatMessage): string {
   return ''
 }
 
+// 消息类型常量 (与 protocol/proto_types.h MsgType 一致)
+const MSG_TYPE = {
+  TEXT: 1,     // 纯文本 (0 也当作文本，兼容旧消息)
+  IMAGE: 2,    // 图片 — content: {"file_id","width","height","thumb"}
+  VOICE: 3,    // 语音 — content: {"file_id","duration"}
+  VIDEO: 4,    // 视频 — content: {"file_id","duration","width","height","thumb"}
+  FILE: 5,     // 文件 — content: {"file_id","file_name","file_size"}
+  LOCATION: 6, // 位置 — content: {"lat","lng","name","addr"}
+  EMOJI: 7,    // 表情 — content: "emoji:xxx" / "sticker:xxx"
+  CARD: 8,     // 名片 — content: {"uid","nickname","avatar"}
+  SYSTEM: 9,   // 系统消息
+  CUSTOM: 10,  // 自定义
+} as const
+
+// 解析 JSON content，失败返回 null
+function tryParseJson(content: string): Record<string, unknown> | null {
+  try {
+    const o = JSON.parse(content)
+    return typeof o === 'object' && o !== null ? o : null
+  } catch {
+    return null
+  }
+}
+
+// 格式化文件大小
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return bytes + ' B'
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+  if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
+  return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB'
+}
+
+// 格式化语音时长
+function formatDuration(seconds: number): string {
+  const m = Math.floor(seconds / 60)
+  const s = seconds % 60
+  return m > 0 ? `${m}:${s.toString().padStart(2, '0')}` : `0:${s.toString().padStart(2, '0')}`
+}
+
 function selectConv(conv: Conversation) {
   chat.selectConversation(conv)
 }
@@ -133,10 +172,10 @@ function onFileSelected(e: Event) {
   const input = e.target as HTMLInputElement
   const file = input.files?.[0]
   if (!file) return
-  // 发送文件名消息（简单实现 — 完整版需要文件上传服务）
-  chat.sendMessage(`[文件] ${file.name}`)
+  // 通过文件上传流程发送
+  chat.sendFileMessage(file.name, file.size, file.type || 'application/octet-stream')
   input.value = ''
-  toastRef.value?.show(`文件 "${file.name}" 已发送`, 'info')
+  toastRef.value?.show(`正在发送文件 "${file.name}"`, 'info')
 }
 
 function scrollToBottom() {
@@ -170,6 +209,19 @@ function formatLastMsg(conv: Conversation): string {
   const prefix = conv.type === 2 && conv.lastMsg.senderNickname
     ? conv.lastMsg.senderNickname + ': '
     : ''
+  // 根据消息类型显示简短预览
+  const t = conv.lastMsg.msgType
+  if (t === MSG_TYPE.IMAGE) return prefix + '[图片]'
+  if (t === MSG_TYPE.VOICE) return prefix + '[语音]'
+  if (t === MSG_TYPE.VIDEO) return prefix + '[视频]'
+  if (t === MSG_TYPE.FILE) {
+    const j = tryParseJson(conv.lastMsg.content)
+    return prefix + '[文件] ' + ((j as any)?.file_name || '')
+  }
+  if (t === MSG_TYPE.LOCATION) return prefix + '[位置]'
+  if (t === MSG_TYPE.EMOJI) return prefix + conv.lastMsg.content
+  if (t === MSG_TYPE.CARD) return prefix + '[名片]'
+  if (t === MSG_TYPE.SYSTEM) return conv.lastMsg.content
   return prefix + conv.lastMsg.content
 }
 
@@ -422,7 +474,94 @@ onUnmounted(() => {
                     {{ msg.self ? userInitial : (msg.sender || '?').charAt(0) }}
                   </div>
                   <div class="msg-content-wrap">
-                    <div class="msg-bubble">{{ escapeHtml(msg.content) }}</div>
+                    <!-- 文本消息 (type 0 或 1) -->
+                    <div v-if="!msg.msgType || msg.msgType === MSG_TYPE.TEXT" class="msg-bubble">{{ escapeHtml(msg.content) }}</div>
+
+                    <!-- 图片消息 -->
+                    <div v-else-if="msg.msgType === MSG_TYPE.IMAGE" class="msg-bubble msg-image">
+                      <template v-if="tryParseJson(msg.content)">
+                        <img
+                          :src="(tryParseJson(msg.content) as any).thumb ? 'data:image/jpeg;base64,' + (tryParseJson(msg.content) as any).thumb : ''"
+                          :alt="'图片'"
+                          class="msg-img"
+                          @click="showUserProfile('')"
+                        />
+                        <div class="msg-img-size">{{ (tryParseJson(msg.content) as any).width }}×{{ (tryParseJson(msg.content) as any).height }}</div>
+                      </template>
+                      <template v-else>
+                        <span class="msg-file-icon">🖼️</span> [图片]
+                      </template>
+                    </div>
+
+                    <!-- 语音消息 -->
+                    <div v-else-if="msg.msgType === MSG_TYPE.VOICE" class="msg-bubble msg-voice">
+                      <span class="msg-file-icon">🎤</span>
+                      <span>语音消息</span>
+                      <span v-if="tryParseJson(msg.content)" class="msg-voice-dur">{{ formatDuration((tryParseJson(msg.content) as any).duration || 0) }}</span>
+                    </div>
+
+                    <!-- 视频消息 -->
+                    <div v-else-if="msg.msgType === MSG_TYPE.VIDEO" class="msg-bubble msg-video">
+                      <span class="msg-file-icon">🎬</span>
+                      <span>视频</span>
+                      <span v-if="tryParseJson(msg.content)" class="msg-voice-dur">{{ formatDuration((tryParseJson(msg.content) as any).duration || 0) }}</span>
+                    </div>
+
+                    <!-- 文件消息 -->
+                    <div v-else-if="msg.msgType === MSG_TYPE.FILE" class="msg-bubble msg-file-bubble">
+                      <template v-if="tryParseJson(msg.content)">
+                        <span class="msg-file-icon">📄</span>
+                        <div class="msg-file-info">
+                          <div class="msg-file-name">{{ escapeHtml((tryParseJson(msg.content) as any).file_name || '未知文件') }}</div>
+                          <div class="msg-file-size">{{ formatFileSize((tryParseJson(msg.content) as any).file_size || 0) }}</div>
+                        </div>
+                      </template>
+                      <template v-else>
+                        <span class="msg-file-icon">📄</span> [文件]
+                      </template>
+                    </div>
+
+                    <!-- 位置消息 -->
+                    <div v-else-if="msg.msgType === MSG_TYPE.LOCATION" class="msg-bubble msg-location">
+                      <span class="msg-file-icon">📍</span>
+                      <template v-if="tryParseJson(msg.content)">
+                        <div class="msg-file-info">
+                          <div class="msg-file-name">{{ escapeHtml((tryParseJson(msg.content) as any).name || '位置') }}</div>
+                          <div class="msg-file-size">{{ escapeHtml((tryParseJson(msg.content) as any).addr || '') }}</div>
+                        </div>
+                      </template>
+                      <template v-else>
+                        [位置]
+                      </template>
+                    </div>
+
+                    <!-- Emoji 消息 -->
+                    <div v-else-if="msg.msgType === MSG_TYPE.EMOJI" class="msg-bubble msg-emoji-large">
+                      {{ msg.content }}
+                    </div>
+
+                    <!-- 名片消息 -->
+                    <div v-else-if="msg.msgType === MSG_TYPE.CARD" class="msg-bubble msg-card" @click="tryParseJson(msg.content) && showUserProfile((tryParseJson(msg.content) as any).uid || '')">
+                      <template v-if="tryParseJson(msg.content)">
+                        <div class="msg-card-avatar">{{ ((tryParseJson(msg.content) as any).nickname || '?').charAt(0) }}</div>
+                        <div class="msg-file-info">
+                          <div class="msg-file-name">{{ escapeHtml((tryParseJson(msg.content) as any).nickname || '') }}</div>
+                          <div class="msg-file-size">个人名片</div>
+                        </div>
+                      </template>
+                      <template v-else>
+                        <span class="msg-file-icon">👤</span> [名片]
+                      </template>
+                    </div>
+
+                    <!-- 系统消息 -->
+                    <div v-else-if="msg.msgType === MSG_TYPE.SYSTEM" class="msg-system-text">
+                      {{ escapeHtml(msg.content) }}
+                    </div>
+
+                    <!-- 未知类型 fallback -->
+                    <div v-else class="msg-bubble">{{ escapeHtml(msg.content) }}</div>
+
                     <div v-if="sendStatusText(msg)" class="msg-status" :class="{ 'msg-status-failed': msg.sendStatus === 'failed' }">
                       {{ sendStatusText(msg) }}
                     </div>
