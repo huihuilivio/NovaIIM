@@ -356,7 +356,7 @@ struct LastMsgBrief {
     std::string sender_uid;
     std::string sender_nickname;
     std::string content;
-    int32_t msg_type    = 0;
+    MsgType msg_type    = MsgType::kText;
     int64_t server_time = 0;
 };
 

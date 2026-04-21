@@ -428,14 +428,16 @@ TEST_F(UserServiceTest, LoginUpdatesExistingDevice) {
 
     // 第一次登录
     DoLogin(reg.email, "pass123", "phone-001", "mobile");
-    // 第二次同设备登录（更新 device_type）
-    DoLogin(reg.email, "pass123", "phone-001", "tablet");
+    // 第二次同 device_id 登录 → 应被拒绝（kAlreadyLoggedIn）
+    auto [conn2, ack2] = DoLogin(reg.email, "pass123", "phone-001", "tablet");
+    EXPECT_EQ(ack2.code, 1023);  // kAlreadyLoggedIn
+    EXPECT_TRUE(conn2->closed);
 
     auto session = ctx_->dao().Session();
     auto devices = ctx_->dao().User().ListDevicesByUser(
         ctx_->dao().User().FindByEmail(reg.email)->uid);
     ASSERT_EQ(devices.size(), 1u);  // 同一 device_id 只有 1 条记录
-    EXPECT_EQ(devices[0].device_type, "tablet");
+    EXPECT_EQ(devices[0].device_type, "mobile");  // 保持第一次登录的类型
 }
 
 TEST_F(UserServiceTest, LoginMultipleDevices) {
@@ -453,20 +455,20 @@ TEST_F(UserServiceTest, LoginMultipleDevices) {
 //  多端踢下线
 // ============================================================
 
-TEST_F(UserServiceTest, SameDeviceKicksOldConnection) {
+TEST_F(UserServiceTest, SameDeviceRejectsNewLogin) {
     auto reg = RegisterUser("alice@example.com", "alice", "pass123");
 
     auto [conn1, ack1] = DoLogin(reg.email, "pass123", "pc-001", "pc");
     ASSERT_EQ(ack1.code, 0);
     EXPECT_FALSE(conn1->closed);
 
-    // 同一 device_id 再次登录
+    // 同一 device_id 再次登录 → 拒绝新连接
     auto [conn2, ack2] = DoLogin(reg.email, "pass123", "pc-001", "pc");
-    ASSERT_EQ(ack2.code, 0);
+    EXPECT_EQ(ack2.code, 1023);  // kAlreadyLoggedIn
 
-    // 旧连接应被踢下线
-    EXPECT_TRUE(conn1->closed);
-    EXPECT_FALSE(conn2->closed);
+    // 旧连接保持不变，新连接被关闭
+    EXPECT_FALSE(conn1->closed);
+    EXPECT_TRUE(conn2->closed);
 }
 
 TEST_F(UserServiceTest, DifferentDeviceKeepsBoth) {

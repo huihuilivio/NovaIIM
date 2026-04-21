@@ -116,6 +116,12 @@ void MsgService::HandleSendMsg(ConnectionPtr conn, Packet& pkt) {
         return;
     }
 
+    if (!proto::IsValidMsgType(static_cast<int32_t>(req->msg_type))) {
+        SendPacket(conn, Cmd::kSendMsgAck, seq, 0,
+                   proto::SendMsgAck{ec::msg::kInvalidMsgType.code, ec::msg::kInvalidMsgType.msg});
+        return;
+    }
+
     if (req->conversation_id <= 0) {
         SendPacket(conn, Cmd::kSendMsgAck, seq, 0,
                    proto::SendMsgAck{ec::msg::kInvalidConversation.code, ec::msg::kInvalidConversation.msg});

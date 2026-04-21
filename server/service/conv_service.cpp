@@ -192,7 +192,7 @@ void ConvService::HandleGetConvList(ConnectionPtr conn, Packet& pkt) {
             item.last_msg.sender_uid      = uit != user_cache.end() ? uit->second->uid : "";
             item.last_msg.sender_nickname = uit != user_cache.end() ? uit->second->nickname : "";
             item.last_msg.content         = TruncateUtf8(msg->content, 100);
-            item.last_msg.msg_type        = msg->msg_type;
+            item.last_msg.msg_type        = static_cast<proto::MsgType>(msg->msg_type);
             // server_time: 使用 created_at 的 epoch ms（简化处理，返回 0 让客户端用时间字符串）
             item.last_msg.server_time     = 0;
         }

@@ -29,7 +29,7 @@ void ConversationService::GetConversationList(ConvListCallback cb) {
                             .sender_uid      = c.last_msg.sender_uid,
                             .sender_nickname = c.last_msg.sender_nickname,
                             .content         = c.last_msg.content,
-                            .msg_type        = c.last_msg.msg_type,
+                            .msg_type        = static_cast<int>(c.last_msg.msg_type),
                             .server_time     = c.last_msg.server_time,
                         },
                         .mute       = c.mute,

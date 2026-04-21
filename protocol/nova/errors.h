@@ -87,6 +87,7 @@ inline constexpr Error kMsgNotFound             {2006, "message not found"};
 inline constexpr Error kRecallTimeout           {2007, "recall time limit exceeded"};
 inline constexpr Error kRecallNoPermission      {2008, "no permission to recall this message"};
 inline constexpr Error kRecallAlready           {2009, "message already recalled"};
+inline constexpr Error kInvalidMsgType          {2010, "invalid message type"};
 // clang-format on
 
 }  // namespace msg
