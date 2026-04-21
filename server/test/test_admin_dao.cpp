@@ -10,7 +10,7 @@
 #include "dao/admin_account_dao.h"
 #include "dao/admin_session_dao.h"
 #include "dao/rbac_dao.h"
-#include "admin/password_utils.h"
+#include "core/password_utils.h"
 #include "core/app_config.h"
 
 namespace nova {

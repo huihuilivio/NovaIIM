@@ -28,6 +28,7 @@ if(SERVER_SOURCES)
         ylt
         ormpp
         l8w8jwt
+        msgbus
     )
 
     add_executable(im_server main.cpp)

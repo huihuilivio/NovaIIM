@@ -1,13 +1,12 @@
 #include "admin_server.h"
 #include "http_helper.h"
 #include "jwt_utils.h"
-#include "password_utils.h"
+#include "../core/password_utils.h"
 #include "../core/server_context.h"
 #include "../core/logger.h"
 #include "../dao/dao_factory.h"
 #include "../dao/user_dao.h"
 #include "../dao/message_dao.h"
-#include "../dao/conversation_dao.h"
 #include "../dao/audit_log_dao.h"
 #include "../dao/admin_session_dao.h"
 #include "../dao/admin_account_dao.h"
@@ -16,6 +15,7 @@
 #include <nova/protocol.h>
 #include <nova/errors.h>
 #include <hv/json.hpp>
+#include "../core/events.h"
 
 #include <mbedtls/sha256.h>
 
@@ -749,18 +749,11 @@ int AdminServer::HandleUnbanUser(HttpRequest* req, HttpResponse* resp) {
 }
 
 int AdminServer::KickAllConns(int64_t user_id) {
-    auto conns = ctx_.conn_manager().GetConns(user_id);
-    for (auto& c : conns) {
-        Packet pkt;
-        pkt.cmd  = static_cast<uint16_t>(Cmd::kKickNotify);
-        pkt.seq  = 0;
-        pkt.uid  = 0;
-        pkt.body = proto::Serialize(proto::KickNotify{errc::kick::kAdminKick.code, errc::kick::kAdminKick.msg});
-        c->Send(pkt);
-        ctx_.conn_manager().Remove(user_id, c.get());
-        c->Close();
+    int count = static_cast<int>(ctx_.conn_manager().GetConns(user_id).size());
+    if (count > 0) {
+        ctx_.bus().publish(event::topic::kAdminKickUser, event::AdminKickUser{user_id});
     }
-    return static_cast<int>(conns.size());
+    return count;
 }
 
 int AdminServer::HandleKickUser(HttpRequest* req, HttpResponse* resp) {
@@ -870,30 +863,9 @@ int AdminServer::HandleRecallMessage(HttpRequest* req, HttpResponse* resp) {
         return JsonError(resp, api_err::kRecallFailed);
     }
 
-    // Push RecallNotify to all online conversation members so the recall
-    // takes effect immediately (not only after the next sync)
-    {
-        proto::RecallNotify notify;
-        notify.conversation_id = msg->conversation_id;
-        notify.server_seq      = msg->seq;
-        notify.operator_uid    = "";  // admin recall — no IM user uid
-
-        Packet npkt;
-        npkt.cmd  = static_cast<uint16_t>(Cmd::kRecallNotify);
-        npkt.seq  = 0;
-        npkt.uid  = 0;
-        npkt.body = proto::Serialize(notify);
-
-        std::string encoded = npkt.Encode();
-        auto members = ctx_.dao().Conversation().GetMembersByConversation(msg->conversation_id);
-        for (const auto& m : members) {
-            auto conns = ctx_.conn_manager().GetConns(m.user_id);
-            for (auto& c : conns) {
-                c->SendEncoded(encoded);
-                ctx_.incr_messages_out();
-            }
-        }
-    }
+    // 通过消息总线通知 IM 侧广播撤回通知
+    ctx_.bus().publish(event::topic::kAdminRecallMsg,
+                       event::AdminRecallMsg{id, msg->conversation_id, msg->seq});
 
     int64_t admin_id = GetCurrentAdminId(req);
     WriteAuditLog(admin_id, "msg.recall", "message", id,

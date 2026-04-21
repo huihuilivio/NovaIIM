@@ -14,7 +14,7 @@
 #include <nova/protocol.h>
 #include "net/connection.h"
 #include "service/user_service.h"
-#include "admin/password_utils.h"
+#include "core/password_utils.h"
 
 namespace nova {
 namespace {

@@ -9,6 +9,8 @@
 #include "../dao/dao_factory.h"
 #include "../net/conn_manager.h"
 
+#include <msgbus/message_bus.h>
+
 namespace nova {
 
 // 服务上下文 —— 线程安全的运行时状态中心
@@ -37,6 +39,9 @@ public:
     // --- 连接管理器（显式依赖注入，避免各模块直接使用单例）---
     ConnManager& conn_manager() { return conn_manager_; }
     const ConnManager& conn_manager() const { return conn_manager_; }
+
+    // --- 消息总线（Admin ↔ IM 解耦）---
+    msgbus::MessageBus& bus() { return bus_; }
 
     // --- 连接指标 ---
     int connection_count() const { return conn_count_.load(std::memory_order_relaxed); }
@@ -68,6 +73,7 @@ private:
     Snowflake snowflake_;
     std::unique_ptr<DaoFactory> dao_;
     ConnManager conn_manager_;
+    msgbus::MessageBus bus_{4096, 1};
     std::chrono::steady_clock::time_point start_time_;
 
     std::atomic<int> conn_count_{0};

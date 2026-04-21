@@ -17,7 +17,9 @@
 #include <nova/errors.h>
 #include "../admin/admin_server.h"
 #include "../dao/dao_factory.h"
+#include "../dao/conversation_dao.h"
 #include <nova/packet.h>
+#include "../core/events.h"
 
 #include <atomic>
 #include <chrono>
@@ -175,6 +177,51 @@ int Application::Run(const AppConfig& cfg) {
     Router router;
     detail::RegisterRoutes(router, user_svc, msg_svc, sync_svc, friend_svc, conv_svc, group_svc, file_svc);
 
+    // 4.5 消息总线：Admin → IM 事件订阅
+    ctx.bus().subscribe<event::AdminKickUser>(event::topic::kAdminKickUser,
+        [&ctx](const event::AdminKickUser& e) {
+            auto conns = ctx.conn_manager().GetConns(e.user_id);
+            for (auto& c : conns) {
+                Packet pkt;
+                pkt.cmd  = static_cast<uint16_t>(Cmd::kKickNotify);
+                pkt.seq  = 0;
+                pkt.uid  = 0;
+                pkt.body = proto::Serialize(
+                    proto::KickNotify{errc::kick::kAdminKick.code, errc::kick::kAdminKick.msg});
+                c->Send(pkt);
+                ctx.conn_manager().Remove(e.user_id, c.get());
+                c->Close();
+            }
+        });
+
+    ctx.bus().subscribe<event::AdminRecallMsg>(event::topic::kAdminRecallMsg,
+        [&ctx](const event::AdminRecallMsg& e) {
+            auto session = ctx.dao().Session();
+
+            proto::RecallNotify notify;
+            notify.conversation_id = e.conversation_id;
+            notify.server_seq      = e.server_seq;
+            notify.operator_uid    = "";  // admin recall — no IM user uid
+
+            Packet npkt;
+            npkt.cmd  = static_cast<uint16_t>(Cmd::kRecallNotify);
+            npkt.seq  = 0;
+            npkt.uid  = 0;
+            npkt.body = proto::Serialize(notify);
+
+            std::string encoded = npkt.Encode();
+            auto members = ctx.dao().Conversation().GetMembersByConversation(e.conversation_id);
+            for (const auto& m : members) {
+                auto conns = ctx.conn_manager().GetConns(m.user_id);
+                for (auto& c : conns) {
+                    c->SendEncoded(encoded);
+                    ctx.incr_messages_out();
+                }
+            }
+        });
+
+    ctx.bus().start();
+
     // 5. 信号处理
     g_running.store(true, std::memory_order_relaxed);
     std::signal(SIGINT, SignalHandler);
@@ -231,12 +278,13 @@ int Application::Run(const AppConfig& cfg) {
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
     }
 
-    // 11. 有序关闭：Admin → WsGateway → Gateway → ThreadPool
+    // 11. 有序关闭：Admin → WsGateway → Gateway → ThreadPool → MsgBus
     NOVA_NLOG_INFO(kLogTag, "Received signal {}, shutting down...", g_signal.load());
     if (admin) admin->Stop();
     if (ws_gateway) ws_gateway->Stop();
     gateway.Stop();
     worker_pool.Stop();
+    ctx.bus().stop();
     NOVA_NLOG_INFO(kLogTag, "NovaIIM Server stopped");
     return 0;
 }

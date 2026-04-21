@@ -4,7 +4,7 @@
 #include <gtest/gtest.h>
 #include <string>
 
-#include "admin/password_utils.h"
+#include "core/password_utils.h"
 
 namespace nova {
 namespace {

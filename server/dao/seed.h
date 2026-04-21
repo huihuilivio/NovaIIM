@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../admin/password_utils.h"
+#include "../core/password_utils.h"
 #include "../core/defer.h"
 #include "../model/types.h"
 

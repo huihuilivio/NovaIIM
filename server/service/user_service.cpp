@@ -2,7 +2,7 @@
 #include "errors/user_errors.h"
 #include "../core/logger.h"
 #include "../core/defer.h"
-#include "../admin/password_utils.h"
+#include "../core/password_utils.h"
 #include "../dao/user_dao.h"
 #include "../dao/file_dao.h"
 
