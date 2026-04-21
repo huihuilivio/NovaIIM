@@ -7,6 +7,7 @@ export interface LoginResult {
   success: boolean
   uid?: string
   nickname?: string
+  avatar?: string
   msg?: string
 }
 

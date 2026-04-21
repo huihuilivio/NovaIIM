@@ -4,6 +4,7 @@
 
 #include <infra/logger.h>
 
+#include <ShlObj.h>
 #include <wrl/event.h>
 
 using namespace Microsoft::WRL;
@@ -110,8 +111,13 @@ LRESULT WebView2App::HandleMessage(UINT msg, WPARAM wp, LPARAM lp) {
 // ---- WebView2 初始化 ----
 
 void WebView2App::InitWebView2() {
+    // 使用 %LOCALAPPDATA%\NovaIIM\WebView2Data 持久化 localStorage 等数据
+    wchar_t app_data[MAX_PATH] = {};
+    SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, nullptr, 0, app_data);
+    std::wstring user_data_folder = std::wstring(app_data) + L"\\NovaIIM\\WebView2Data";
+
     auto hr = CreateCoreWebView2EnvironmentWithOptions(
-        nullptr, nullptr, nullptr,
+        nullptr, user_data_folder.c_str(), nullptr,
         Callback<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>(
             [this](HRESULT result, ICoreWebView2Environment* env) -> HRESULT {
                 if (FAILED(result)) {

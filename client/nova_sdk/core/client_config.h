@@ -15,8 +15,8 @@ struct ClientConfig {
     std::string device_id;    // 设备唯一标识
     std::string device_type;  // "pc", "mobile", "web"
 
-    // 心跳
-    uint32_t heartbeat_interval_ms = 30000;  // 30 秒
+    // 心跳（应小于服务端超时的 1/2）
+    uint32_t heartbeat_interval_ms = 10000;  // 10 秒
 
     // 重连
     uint32_t reconnect_initial_ms  = 1000;   // 初始重连间隔 1s

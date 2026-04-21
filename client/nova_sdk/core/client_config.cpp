@@ -21,7 +21,8 @@ static void AutoFillDeviceInfo(ClientConfig& cfg) {
 bool LoadClientConfig(ClientConfig& cfg, const std::string& path) {
     std::ifstream ifs(path);
     if (!ifs.is_open()) {
-        std::fprintf(stderr, "[nova] Failed to open config file: %s\n", path.c_str());
+        std::fprintf(stderr, "[nova] Config file not found: %s (using defaults)\n", path.c_str());
+        AutoFillDeviceInfo(cfg);
         return false;
     }
 
@@ -32,6 +33,7 @@ bool LoadClientConfig(ClientConfig& cfg, const std::string& path) {
     struct_yaml::from_yaml(cfg, content, ec);
     if (ec) {
         std::fprintf(stderr, "[nova] Failed to parse config: %s\n", ec.message().c_str());
+        AutoFillDeviceInfo(cfg);
         return false;
     }
 

@@ -23,17 +23,45 @@ namespace nova::client {
 //  DetectDeviceType
 // ================================================================
 
+#if defined(__linux__) && !defined(__ANDROID__)
+static std::string DetectLinuxDistro() {
+    // 解析 /etc/os-release 中的 ID 字段
+    std::ifstream ifs("/etc/os-release");
+    if (ifs.is_open()) {
+        std::string line;
+        while (std::getline(ifs, line)) {
+            // 匹配 ID=xxx（不含 ID_LIKE）
+            if (line.size() > 3 && line[0] == 'I' && line[1] == 'D' && line[2] == '=') {
+                auto val = line.substr(3);
+                // 去除引号
+                if (val.size() >= 2 && val.front() == '"' && val.back() == '"') {
+                    val = val.substr(1, val.size() - 2);
+                }
+                if (!val.empty()) return val;  // ubuntu, centos, debian, fedora, arch ...
+            }
+        }
+    }
+    return "linux";
+}
+#endif
+
 std::string DetectDeviceType() {
 #if defined(__ANDROID__)
-    return "mobile";
+    return "android";
 #elif defined(__APPLE__)
-  #if TARGET_OS_IOS || TARGET_OS_TV || TARGET_OS_WATCH
-    return "mobile";
+  #if TARGET_OS_IOS
+    return "ios";
+  #elif TARGET_OS_TV
+    return "tvos";
+  #elif TARGET_OS_WATCH
+    return "watchos";
   #else
-    return "pc";
+    return "macos";
   #endif
-#elif defined(_WIN32) || defined(__linux__)
-    return "pc";
+#elif defined(_WIN32)
+    return "windows";
+#elif defined(__linux__)
+    return DetectLinuxDistro();
 #elif defined(__EMSCRIPTEN__)
     return "web";
 #else
@@ -114,21 +142,11 @@ static std::string PlatformDeviceId() {
 
 #endif
 
-/// FNV-1a 64-bit — 跨平台确定性哈希
-static uint64_t Fnv1a64(const std::string& s) {
-    uint64_t hash = 0xcbf29ce484222325ULL;
-    for (auto c : s) {
-        hash ^= static_cast<uint64_t>(static_cast<unsigned char>(c));
-        hash *= 0x100000001b3ULL;
-    }
-    return hash;
-}
-
 std::string GenerateDeviceId() {
     auto raw = PlatformDeviceId();
 
-    // 用 FNV-1a 生成固定长度的 hex 字符串，避免暴露原始信息
-    auto h = Fnv1a64(raw);
+    // 用 hash 生成固定长度的 hex 字符串，避免暴露原始信息
+    auto h = std::hash<std::string>{}(raw);
     std::ostringstream oss;
     oss << DetectDeviceType() << "-" << std::hex << h;
     return oss.str();
