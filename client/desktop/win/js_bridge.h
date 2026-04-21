@@ -27,9 +27,11 @@ class GroupVM;
 
 namespace nova::desktop {
 
+class WebView2App;
+
 class JsBridge {
 public:
-    JsBridge(ICoreWebView2* webview, nova::client::NovaClient* client);
+    JsBridge(ICoreWebView2* webview, nova::client::NovaClient* client, WebView2App* app);
     ~JsBridge();
 
     /// 注册 WebMessage 监听 + MsgBus 订阅
@@ -103,6 +105,7 @@ private:
 
     ICoreWebView2* webview_ = nullptr;
     nova::client::NovaClient* client_ = nullptr;
+    WebView2App* app_ = nullptr;
     EventRegistrationToken msg_token_ = {};
 
     // PostEvent / Observer lambda 的生命周期守卫

@@ -41,6 +41,8 @@ add_executable(nova_desktop WIN32
     win32_ui_dispatcher.cpp
     js_bridge.h
     js_bridge.cpp
+    tray_icon.h
+    tray_icon.cpp
     app.rc
 )
 

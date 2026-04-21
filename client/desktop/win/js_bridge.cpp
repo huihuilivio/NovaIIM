@@ -1,4 +1,5 @@
 #include "js_bridge.h"
+#include "webview2_app.h"
 
 #include <viewmodel/nova_client.h>
 #include <viewmodel/ui_dispatcher.h>
@@ -40,8 +41,8 @@ static std::string WideToUtf8(const std::wstring& ws) {
 
 // ---- 构造 / 析构 ----
 
-JsBridge::JsBridge(ICoreWebView2* webview, nova::client::NovaClient* client)
-    : webview_(webview), client_(client) {}
+JsBridge::JsBridge(ICoreWebView2* webview, nova::client::NovaClient* client, WebView2App* app)
+    : webview_(webview), client_(client), app_(app) {}
 
 JsBridge::~JsBridge() {
     // 标记已销毁，防止异步 lambda 访问悬挂 this
@@ -722,6 +723,13 @@ void JsBridge::SubscribeEvents() {
         data["serverTime"]     = msg.server_time;
         data["msgType"]        = msg.msg_type;
         PostEvent("newMessage", data.dump());
+
+        // 窗口不可见时弹出托盘通知 + 闪烁任务栏
+        if (app_ && !IsWindowVisible(app_->GetHwnd())) {
+            auto content_w = Utf8ToWide(msg.content);
+            app_->ShowTrayBalloon(L"新消息", content_w);
+            app_->FlashTaskbar();
+        }
     });
 
     chat_vm_->OnMessageRecalled([this](const nova::client::RecallNotification& n) {
@@ -750,6 +758,13 @@ void JsBridge::SubscribeEvents() {
         data["requestId"]       = n.request_id;
         data["conversationId"]  = n.conversation_id;
         PostEvent("friendNotify", data.dump());
+
+        // 好友请求通知
+        if (app_ && !IsWindowVisible(app_->GetHwnd())) {
+            auto nick_w = Utf8ToWide(n.from_nickname);
+            app_->ShowTrayBalloon(L"好友通知", nick_w + L" 发来好友请求");
+            app_->FlashTaskbar();
+        }
     });
 
     // 会话更新通知

@@ -473,7 +473,7 @@
 - [x] 群管理面板 (成员列表 + 角色标签 + 踢出/设管理 + 群信息编辑)
 - [x] 设置页面 (账号昵称 / 通知开关 / 声音开关 / 版本信息)
 - [x] 全局 Toast 通知组件 (success/error/warning/info + 自动消失)
-- [ ] 系统托盘 + 消息通知 (Windows/macOS/Linux — 需 C++ Win32 实现)
+- [x] 系统托盘 + 消息通知 (Windows — Win32 Shell_NotifyIcon + 气泡通知 + 任务栏闪烁)
 
 ---
 

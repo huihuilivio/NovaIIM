@@ -14,6 +14,7 @@ namespace nova::client { class NovaClient; }
 namespace nova::desktop {
 
 class JsBridge;
+class TrayIcon;
 
 class WebView2App {
 public:
@@ -30,6 +31,12 @@ public:
     int Run();
 
     HWND GetHwnd() const { return hwnd_; }
+
+    /// 显示托盘气泡通知
+    void ShowTrayBalloon(const std::wstring& title, const std::wstring& message);
+
+    /// 闪烁任务栏
+    void FlashTaskbar();
 
 private:
     static LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
@@ -49,6 +56,7 @@ private:
     Microsoft::WRL::ComPtr<ICoreWebView2> webview_;
 
     std::unique_ptr<JsBridge> bridge_;
+    std::unique_ptr<TrayIcon> tray_;
 };
 
 }  // namespace nova::desktop

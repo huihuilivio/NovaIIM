@@ -1,6 +1,9 @@
 #include "webview2_app.h"
 #include "js_bridge.h"
+#include "tray_icon.h"
 #include "win32_ui_dispatcher.h"
+
+#include <viewmodel/nova_client.h>
 
 #include <infra/logger.h>
 
@@ -16,12 +19,13 @@ static WebView2App* g_app = nullptr;
 // ---- 构造 / 析构 ----
 
 WebView2App::WebView2App(HINSTANCE hInstance, nova::client::NovaClient* client)
-    : hinstance_(hInstance), client_(client) {
+    : hinstance_(hInstance), client_(client), tray_(std::make_unique<TrayIcon>()) {
     g_app = this;
 }
 
 WebView2App::~WebView2App() {
-    if (bridge_) bridge_.reset();  // 可能已在 WM_DESTROY 中释放
+    if (bridge_) bridge_.reset();
+    if (tray_) tray_->Destroy();
     g_app = nullptr;
 }
 
@@ -83,12 +87,23 @@ LRESULT CALLBACK WebView2App::WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
 LRESULT WebView2App::HandleMessage(UINT msg, WPARAM wp, LPARAM lp) {
     switch (msg) {
     case WM_SIZE:
+        if (wp == SIZE_MINIMIZED) {
+            // 最小化时隐藏窗口到托盘
+            ShowWindow(hwnd_, SW_HIDE);
+            return 0;
+        }
         Resize();
+        return 0;
+
+    case WM_CLOSE:
+        // 关闭按钮最小化到托盘而不是退出
+        ShowWindow(hwnd_, SW_HIDE);
         return 0;
 
     case WM_DESTROY:
         // 销毁 bridge 先于 client.Shutdown()，防止悬挂回调
         bridge_.reset();
+        tray_->Destroy();
         Win32UIDispatcher::SetHwnd(nullptr);
         PostQuitMessage(0);
         return 0;
@@ -102,6 +117,11 @@ LRESULT WebView2App::HandleMessage(UINT msg, WPARAM wp, LPARAM lp) {
         }
         return 0;
     }
+
+    case WM_TRAYICON:
+        // 托盘图标消息
+        if (tray_ && tray_->HandleMessage(hwnd_, lp)) return 0;
+        break;
 
     default:
         return DefWindowProcW(hwnd_, msg, wp, lp);
@@ -168,7 +188,7 @@ void WebView2App::OnWebViewReady() {
 #endif
 
     // 建立 JS Bridge
-    bridge_ = std::make_unique<JsBridge>(webview_.Get(), client_);
+    bridge_ = std::make_unique<JsBridge>(webview_.Get(), client_, this);
     bridge_->Init();
 
     // 将本地 web/ 目录映射为虚拟主机
@@ -187,6 +207,12 @@ void WebView2App::OnWebViewReady() {
 
     // 填充窗口
     Resize();
+
+    // 创建托盘图标
+    tray_->Create(hwnd_, hinstance_);
+    tray_->SetQuitCallback([this]() {
+        if (client_) client_->Shutdown();
+    });
 
     NOVA_LOG_INFO("WebView2 initialized successfully");
 }
@@ -209,6 +235,16 @@ std::wstring WebView2App::GetWebDir() {
         dir = dir.substr(0, pos);
     }
     return dir + L"\\web";
+}
+
+// ---- 托盘通知 ----
+
+void WebView2App::ShowTrayBalloon(const std::wstring& title, const std::wstring& message) {
+    if (tray_) tray_->ShowBalloon(title, message);
+}
+
+void WebView2App::FlashTaskbar() {
+    if (tray_ && hwnd_) tray_->FlashTaskbar(hwnd_);
 }
 
 }  // namespace nova::desktop
