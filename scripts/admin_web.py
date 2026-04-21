@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""admin-web 前端开发脚本 — 统一管理 dev / build / test / lint 命令"""
+"""server/web 管理后台前端脚本 — 统一管理 dev / build / test / lint 命令"""
 
 import argparse
 import sys
@@ -10,7 +10,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 from common import project_root, run
 
 
-ADMIN_WEB_DIR = project_root() / "admin-web"
+ADMIN_WEB_DIR = project_root() / "server" / "web"
 
 
 def ensure_node_modules():

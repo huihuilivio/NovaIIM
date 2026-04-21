@@ -329,6 +329,16 @@ NovaIIM/
         ├── test_conv_service.cpp
         ├── test_group_service.cpp
         └── test_file_service.cpp
+│   ├── web/                       # Admin 管理后台 (Vue 3 + TS)
+│   │   ├── src/
+│   │   │   ├── api/               # REST 接口层
+│   │   │   ├── layout/            # 主布局（侧边栏 + 顶栏）
+│   │   │   ├── router/            # 路由 + 守卫
+│   │   │   ├── stores/            # Pinia 状态管理
+│   │   │   ├── utils/             # Axios 封装 + Token
+│   │   │   └── views/             # 7 个页面视图
+│   │   ├── vite.config.ts         # Vite 配置（proxy → :9091）
+│   │   └── vitest.config.ts       # 测试配置
 │
 ├── client/                        # 客户端
 │   ├── nova_sdk/                  # C++ 共享库 (nova_sdk.dll/.so)
@@ -352,17 +362,6 @@ NovaIIM/
 │   │   ├── ios/                   # Objective-C++ (NovaClient.h/.mm)
 │   │   └── android/               # JNI (nova_jni.cpp + NovaClient.kt)
 │   └── test/                      # SDK 测试（公共 API 级别）
-│
-├── admin-web/                     # Admin 管理后台 (Vue 3 + TS)
-│   ├── src/
-│   │   ├── api/                   # REST 接口层
-│   │   ├── layout/                # 主布局（侧边栏 + 顶栏）
-│   │   ├── router/                # 路由 + 守卫
-│   │   ├── stores/                # Pinia 状态管理
-│   │   ├── utils/                 # Axios 封装 + Token
-│   │   └── views/                 # 7 个页面视图
-│   ├── vite.config.ts             # Vite 配置（proxy → :9091）
-│   └── vitest.config.ts           # 测试配置
 │
 ├── build/                         # 构建输出
 │   ├── output/
@@ -430,7 +429,7 @@ ls -la build/output/bin/NovaIIM
 ctest --output-on-failure
 
 # 运行前端单元测试 (8 个用例)
-cd admin-web && npm run test
+cd server/web && npm run test
 ```
 
 ### 配置文件 (configs/server.yaml)

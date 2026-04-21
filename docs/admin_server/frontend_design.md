@@ -8,7 +8,7 @@
 ## 1. 架构概览
 
 ```
-admin-web/
+server/web/
 ├── src/
 │   ├── api/              # API 接口层 — 与后端 REST 端点一一对应
 │   │   ├── auth.ts       # POST /auth/login, /logout, GET /auth/me
@@ -147,7 +147,7 @@ python scripts/admin_web.py test        # 运行单元测试
 python scripts/admin_web.py typecheck   # 仅类型检查
 python scripts/admin_web.py preview     # 预览生产构建
 
-# 或直接使用 npm（在 admin-web/ 目录下）
+# 或直接使用 npm（在 server/web/ 目录下）
 npm run dev          # 开发服务器
 npm run build        # vue-tsc + vite build
 npm run test         # vitest run
@@ -160,6 +160,6 @@ npm run test:coverage  # 带覆盖率
 ## 8. 与后端的对接
 
 - **开发环境：** Vite proxy `/api` → `http://127.0.0.1:9091` (后端 Admin HTTP)
-- **生产部署：** Nginx 反向代理，静态文件 `admin-web/dist/` + API 转发
+- **生产部署：** Nginx 反向代理，静态文件 `server/web/dist/` + API 转发
 - **API 格式：** 统一 `{ code: 0, msg: "success", data: {...} }`
 - **分页约定：** `?page=1&page_size=20`，响应 `{ items, total, page, page_size }`

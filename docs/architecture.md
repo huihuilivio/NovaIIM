@@ -113,7 +113,7 @@ server/
 ## Admin 前端架构
 
 ```
-admin-web/                    ← Vue 3 + TypeScript
+server/web/                   ← Vue 3 + TypeScript (Admin 前端)
 ├── src/
 │   ├── api/                  ← Axios 封装, 各模块 API 调用
 │   ├── views/                ← 页面组件 (Login / Dashboard / Users / Messages / AuditLogs)

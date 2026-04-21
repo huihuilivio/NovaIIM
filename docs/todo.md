@@ -283,7 +283,7 @@
 ## ✅ M1 — Admin 前端脚手架 (框架搭建) ✅
 
 ### 1.1 项目初始化
-- [x] Vite + Vue 3 + TypeScript 项目创建 (`admin-web/`)
+- [x] Vite + Vue 3 + TypeScript 项目创建 (server/web/)
 - [ ] ESLint + Prettier 配置
 - [x] Element Plus 集成 (按需导入 + unplugin-auto-import)
 - [x] 目录结构搭建 (`api/` `views/` `layout/` `router/` `stores/` `utils/`)

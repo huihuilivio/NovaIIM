@@ -109,7 +109,7 @@ npm run build
 ```nginx
 server {
     listen 80;
-    root /path/to/admin-web/dist;
+    root /path/to/server/web/dist;
 
     location / {
         try_files $uri $uri/ /index.html;
