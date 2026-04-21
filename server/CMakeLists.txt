@@ -2,8 +2,9 @@
 
 nova_collect_sources(${CMAKE_CURRENT_SOURCE_DIR} SERVER_SOURCES)
 
-# 排除测试文件，测试在 test/CMakeLists.txt 中单独构建
+# 排除测试文件和 web 前端目录
 list(FILTER SERVER_SOURCES EXCLUDE REGEX ".*/test/.*")
+list(FILTER SERVER_SOURCES EXCLUDE REGEX ".*/web/.*")
 
 if(SERVER_SOURCES)
     # 分离 main.cpp，其余构建为静态库供测试复用
@@ -33,6 +34,14 @@ if(SERVER_SOURCES)
     nova_set_compiler_options(im_server)
     nova_set_output_dirs(im_server)
     target_link_libraries(im_server PRIVATE im_server_lib CLI11::CLI11)
+
+    # ---- 构建 Admin Web 前端 ----
+    nova_add_web_frontend(
+        NAME       admin_web_build
+        SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/web"
+        OUTPUT_DIR admin
+        DEPENDS    im_server
+    )
 else()
     message(STATUS "[NovaIIM] Server sources not yet added, skipping im_server target")
 endif()

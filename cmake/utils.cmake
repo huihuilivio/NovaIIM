@@ -59,3 +59,55 @@ function(nova_print_config)
     message(STATUS "  Tests:        ${NOVA_BUILD_TESTS}")
     message(STATUS "===================================")
 endfunction()
+
+# 构建 Web 前端 (Vue + Vite) 并部署到 target 输出目录
+#
+# 自动执行 npm install（首次）+ npm run build，构建后复制 dist/ 到输出目录。
+# NOVA_NPM 由 cmake/environment.cmake 提供。
+#
+# 用法:
+#   nova_add_web_frontend(
+#       NAME       admin_web        # 自定义 target 名（唯一）
+#       SOURCE_DIR ${dir}/web       # 前端源码目录（含 package.json）
+#       OUTPUT_DIR admin            # 部署到 <exe>/admin/
+#       DEPENDS    im_server        # 依赖的可执行 target
+#   )
+#
+function(nova_add_web_frontend)
+    cmake_parse_arguments(WEB "" "NAME;SOURCE_DIR;OUTPUT_DIR;DEPENDS" "" ${ARGN})
+
+    if(NOT WEB_NAME OR NOT WEB_SOURCE_DIR OR NOT WEB_OUTPUT_DIR OR NOT WEB_DEPENDS)
+        message(FATAL_ERROR "nova_add_web_frontend: NAME, SOURCE_DIR, OUTPUT_DIR, DEPENDS are required")
+    endif()
+
+    set(_dist_dir "${WEB_SOURCE_DIR}/dist")
+
+    # npm install（仅当 node_modules 不存在时）
+    if(NOT EXISTS "${WEB_SOURCE_DIR}/node_modules")
+        message(STATUS "Running npm install in ${WEB_SOURCE_DIR}...")
+        execute_process(
+            COMMAND ${NOVA_NPM} install
+            WORKING_DIRECTORY "${WEB_SOURCE_DIR}"
+            RESULT_VARIABLE _npm_result
+        )
+        if(NOT _npm_result EQUAL 0)
+            message(FATAL_ERROR "npm install failed in ${WEB_SOURCE_DIR}")
+        endif()
+    endif()
+
+    # npm run build — 每次构建前执行
+    add_custom_target(${WEB_NAME} ALL
+        COMMAND ${NOVA_NPM} run build
+        WORKING_DIRECTORY "${WEB_SOURCE_DIR}"
+        COMMENT "Building ${WEB_NAME} (npm run build)..."
+    )
+    add_dependencies(${WEB_DEPENDS} ${WEB_NAME})
+
+    # 复制构建产物到输出目录
+    add_custom_command(TARGET ${WEB_DEPENDS} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${_dist_dir}"
+            "$<TARGET_FILE_DIR:${WEB_DEPENDS}>/${WEB_OUTPUT_DIR}"
+        COMMENT "Deploying ${WEB_NAME} to ${WEB_OUTPUT_DIR}/..."
+    )
+endfunction()
