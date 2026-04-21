@@ -1,6 +1,6 @@
 # NovaIIM 待办列表
 
-**最后更新：2026-04-19 | 编译状态：✅ 0 errors | 测试：✅ 265/265**
+**最后更新：2026-04-21 | 编译状态：✅ 0 errors | 测试：✅ 278/278**
 
 ---
 
@@ -8,6 +8,7 @@
 
 ### 网络层 ✅
 - [x] 实现 Gateway (libhv TCP 网关)
+- [x] WebSocket 网关 (与 TCP 并行运行, 可配置端口)
 - [x] 多端连接管理 (ConnManager)
 - [x] MPMC 消息队列 (Vyukov 算法)
 - [x] ThreadPool 消息分发
@@ -22,6 +23,7 @@
 - [x] main.cpp 信号处理/优雅退出
 - [x] CreateDaoFactory 根据配置选择后端
 - [x] ServerContext 依赖注入中心
+- [x] MsgBus 发布-订阅总线 (Admin↔IM 解耦, 异步事件分发)
 - [x] Gateway + ThreadPool 完整集成
 
 ---
@@ -123,22 +125,22 @@
 
 ## ✅ 已完成的测试 (Phase 4-5)
 
-### 单元测试 — ✅ 已完成 (265 用例)
+### 单元测试 — ✅ 已完成 (278 用例)
 - [x] JWT 单元测试 (Sign → Verify 往返 / 过期 / 篡改) — 13 用例
 - [x] PasswordUtils 测试 (Hash → Verify / 错误密码) — 11 用例
-- [x] AdminAccountDao 单元测试 (CRUD 操作) — 7 用例
-- [x] AdminSessionDao 单元测试 — 5 用例
-- [x] RbacDao 单元测试 (权限查询) — 12 用例
+- [x] AdminAccountDao 单元测试 (CRUD 操作) — 9 用例
+- [x] AdminSessionDao 单元测试 — 6 用例
+- [x] RbacDao 单元测试 (权限查询) — 9 用例
 - [x] Handler 集成测试 (HTTP 请求验证) — 21 用例
-- [x] Router / MPMC / ConnManager 基础测试 — 15 用例
+- [x] Router / MPMC / ConnManager 基础测试 — 18 用例
 - [x] UserService 注册/登录测试 — 53 用例
-- [x] FriendService 全功能测试 (申请/同意/拒绝/删除/拉黑/列表) — 23 用例
+- [x] FriendService 全功能测试 (申请/同意/拒绝/删除/拉黑/列表) — 26 用例
 - [x] MsgService 全功能测试 (发送/撤回/送达确认/已读确认) — 22 用例
 - [x] ConvService 全功能测试 (列表/删除/免打扰/置顶/多用户隔离) — 23 用例
-- [x] GroupService 全功能测试 (建群/解散/入群/退群/踢人/角色/更新) — 25 用例
-- [x] FileService 全功能测试 (上传/下载/权限/共享会话鉴权) — 20 用例
-- [x] SyncService 全功能测试 (消息同步/未读计数) — 18 用例
-- [x] Application 启动/数据库初始化测试 — 17 用例
+- [x] GroupService 全功能测试 (建群/解散/入群/退群/踢人/角色/更新) — 29 用例
+- [x] FileService 全功能测试 (上传/下载/权限/共享会话鉴权) — 15 用例
+- [x] AppHelper + Application 启动/数据库初始化测试 — 17 用例
+- [x] WsGateway WebSocket 网关测试 — 6 用例
 
 ### ConversationDao ✅
 - [x] 实现 ConversationDaoImplT 模板 (CreateConversation / IsMember / AddMember / IncrMaxSeq / GetMembersByConversation / GetMembersByUser / UpdateLastAckSeq / UpdateLastReadSeq)
@@ -252,10 +254,16 @@
 - [x] Admin 需求文档
 - [x] Admin API 设计
 - [x] Admin DB 补充设计
-- [x] Admin 实现计划 (每周更新)
+- [x] Admin 实现计划
+- [x] Admin 前端设计文档
 - [x] 服务端架构文档
 - [x] 协议文档
 - [x] 系统架构文档
+- [x] 软件设计文档 (含 Mermaid 图)
+- [x] IM 服务器设计/API/DB 文档
+- [x] SDK 文档 (API 参考 + 架构)
+- [x] 桌面客户端文档 (UI 结构 + Bridge + 生命周期)
+- [x] 脚本使用文档 (scripts/README.md)
 - [ ] API 文档 (Swagger/OpenAPI — 可选)
 - [ ] 部署指南 (SQLite vs MySQL 选择)
 - [ ] 开发者快速开始指南

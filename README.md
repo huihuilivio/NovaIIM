@@ -1,7 +1,7 @@
 # NovaIIM 🚀
 
 > A High-Performance Next-Gen Instant Messaging System (C++ / CMake)  
-> **Current Status:** 265 Tests Passing • 0 Compilation Errors
+> **Current Status:** 278 Tests Passing • 0 Compilation Errors
 
 ---
 
@@ -13,7 +13,7 @@
 * ✅ **双后端数据库** — SQLite3（开发）+ MySQL 5.7+（生产）
 * ✅ **JWT + RBAC 认证** — 精细权限控制，黑名单管理
 * ✅ **IM 核心框架** — TCP 网关、多端同步、消息序列化
-* ✅ **IM 用户侧服务** — 注册登录/好友/消息/会话/群组/文件/同步，265 测试用例全通过
+* ✅ **IM 用户侧服务** — 注册登录/好友/消息/会话/群组/文件/同步，278 测试用例全通过
 * ✅ **安全加固** — SQL 注入防护、权限隔离、审计日志
 
 本项目采用**纯 CMake 构建体系**，不依赖 Makefile，提供统一、跨平台的工程管理方案。
@@ -105,7 +105,7 @@ GET    /permissions             权限列表（всех）
 
 ### ✅ 已交付（Phase 5 — IM 完整服务）
 - ✅ 单元测试：278 个 C++ 服务端用例 + 14 个客户端用例 + 8 个前端用例全部通过
-  - JWT 13 / Password 11 / DAO 24 / API 21 / Router 6 / MPMC 5 / ConnMgr 4 / UserService 53 / FriendService 23 / MsgService 22 / ConvService 23 / GroupService 25 / FileService 20 / SyncService 18 / Application 17
+  - JWT 13 / Password 11 / AdminAccount 9 / AdminSession 6 / RBAC 9 / AdminAPI 21 / Router 6 / MPMC 5 / ConnMgr 7 / UserService 53 / FriendService 26 / MsgService 22 / ConvService 23 / GroupService 29 / FileService 15 / AppHelper 15 / Application 2 / WsGateway 6
 - ✅ **群组服务** (GroupService) — 建群/解散/入群审批/退群/踢人/群信息/成员角色/邀请
 - ✅ **文件服务** (FileService) — 上传/下载/共享会话鉴权
 - ✅ **同步服务** (SyncService) — 离线消息拉取/未读计数同步
@@ -258,11 +258,12 @@ NovaIIM/
 │   ├── admin/                     # Admin 管理面板
 │   │   ├── admin_server.h/cpp     # HTTP 路由 + 13 个 Handler
 │   │   ├── jwt_utils.h/cpp        # JWT 签发/验证
-│   │   ├── password_utils.h/cpp   # PBKDF2-SHA256
 │   │   └── http_helper.h          # JSON 响应模板 + ApiError 常量 + 权限检查
 │   ├── core/                      # 核心服务
 │   │   ├── app_config.h/cpp       # YAML 配置加载
 │   │   ├── server_context.h       # DaoFactory 所有权 + 全局上下文
+│   │   ├── events.h               # MsgBus 事件定义（Admin↔IM 解耦）
+│   │   ├── password_utils.h/cpp   # PBKDF2-SHA256 密码哈希
 │   │   ├── logger.h/cpp
 │   │   ├── thread_pool.h          # Worker threadpool
 │   │   ├── mpmc_queue.h           # Vyukov MPMC
@@ -272,29 +273,18 @@ NovaIIM/
 │   ├── dao/                       # 数据访问层
 │   │   ├── dao_factory.h/cpp      # DaoFactory 抽象工厂
 │   │   ├── user_dao.h             # 用户 DAO
-│   │   ├── admin_account_dao.h    # 管理员 DAO (NEW)
+│   │   ├── admin_account_dao.h    # 管理员 DAO
 │   │   ├── message_dao.h
 │   │   ├── audit_log_dao.h        # audit admin_id 追踪
 │   │   ├── admin_session_dao.h    # JWT 黑名单
 │   │   ├── rbac_dao.h             # 权限查询 (admin_roles)
-    │   ├── conversation_dao.h     # 会话 DAO (已完成)
-    │   ├── friend_dao.h           # 好友 DAO (已完成)
-    │   ├── group_dao.h            # 群组 DAO (已完成)
-    │   ├── file_dao.h             # 文件 DAO (已完成)
+│   │   ├── conversation_dao.h     # 会话 DAO
+│   │   ├── friend_dao.h           # 好友 DAO
+│   │   ├── group_dao.h            # 群组 DAO
+│   │   ├── file_dao.h             # 文件 DAO
 │   │   ├── impl/                  # 模板实现
-│   │   │   ├── user_dao_impl.h/cpp
-│   │   │   ├── admin_account_dao_impl.h/cpp (NEW)
-│   │   │   ├── message_dao_impl.h/cpp    │   │   ├── conversation_dao_impl.h/cpp
-    │   │   ├── friend_dao_impl.h/cpp│   │   │   ├── audit_log_dao_impl.h/cpp
-│   │   │   ├── admin_session_dao_impl.h/cpp
-│   │   │   └── rbac_dao_impl.h/cpp
 │   │   ├── sqlite3/               # SQLite3 后端
-│   │   │   ├── sqlite_db_manager.h/cpp
-│   │   │   ├── sqlite_dao_factory.h/cpp
-│   │   │   └── seed.h
 │   │   └── mysql/                 # MySQL 后端
-│   │       ├── mysql_db_manager.h/cpp
-│   │       └── mysql_dao_factory.h/cpp
 │   ├── model/                     # 数据模型
 │   │   ├── types.h                # 所有 struct (New: Admin)
 │   │   └── packet.h               # 二进制帧格式
@@ -302,33 +292,19 @@ NovaIIM/
 │   │   ├── connection.h           # 连接对象
 │   │   ├── tcp_connection.h
 │   │   ├── conn_manager.h/cpp
-│   │   └── gateway.h/cpp          # TCP 网关
+│   │   └── gateway.h/cpp          # TCP + WebSocket 网关
 │   ├── service/                   # 业务服务
 │   │   ├── router.h/cpp           # 命令字路由
-    │   ├── service_base.h         # Service 基类
-    │   ├── user_service.h/cpp     # 注册/登录/登出/搜索/资料
-    │   ├── friend_service.h/cpp   # 好友申请/同意/删除/拉黑/列表
-    │   ├── msg_service.h/cpp      # 发送/撤回/送达确认/已读确认
-    │   ├── conv_service.h/cpp     # 会话列表/删除/免打扰/置顶
-│   │   ├── group_service.h/cpp    # 群组管理 (建群/解散/入群/踢人/角色)
-    │   ├── file_service.h/cpp     # 文件上传/下载
-│   │   └── sync_service.h/cpp     # 离线同步 (消息拉取/未读计数)
-│   └── test/                      # 单元测试
-│       ├── test_conn_manager.cpp
-│       ├── test_mpmc_queue.cpp
-│       ├── test_router.cpp
-│       ├── test_jwt_utils.cpp
-        ├── test_password_utils.cpp
-        ├── test_admin_account_dao.cpp
-        ├── test_admin_api.cpp
-        ├── test_admin_dao.cpp
-        ├── test_application.cpp
-        ├── test_user_service.cpp
-        ├── test_friend_service.cpp
-        ├── test_msg_service.cpp
-        ├── test_conv_service.cpp
-        ├── test_group_service.cpp
-        └── test_file_service.cpp
+│   │   ├── service_base.h         # Service 基类
+│   │   ├── user_service.h/cpp     # 注册/登录/登出/搜索/资料
+│   │   ├── friend_service.h/cpp   # 好友申请/同意/删除/拉黑/列表
+│   │   ├── msg_service.h/cpp      # 发送/撤回/送达确认/已读确认
+│   │   ├── conv_service.h/cpp     # 会话列表/删除/免打扰/置顶
+│   │   ├── group_service.h/cpp    # 群组管理
+│   │   ├── file_service.h/cpp     # 文件上传/下载
+│   │   └── sync_service.h/cpp     # 离线同步
+│   └── test/                      # 单元测试 (278 用例)
+│
 │   ├── web/                       # Admin 管理后台 (Vue 3 + TS)
 │   │   ├── src/
 │   │   │   ├── api/               # REST 接口层
@@ -415,18 +391,10 @@ ls -la build/output/bin/NovaIIM
 
 ```bash
 # 启动 NovaIIM 服务器（默认 SQLite3 后端）
-./build/output/bin/NovaIIM
-
-# 预期输出：
-# [INFO] Loading config from: configs/server.yaml
-# [INFO] Using SQLite3 backend: ./data.db
-# [INFO] Seeding super admin account...
-# [INFO] Admin panel listening on: 0.0.0.0:9091
-# [INFO] IM service listening on: 0.0.0.0:9999
-# [INFO] Server started. Press Ctrl+C to shutdown.
+./build/output/bin/im_server --config configs/server.yaml
 
 # 运行 C++ 单元测试 (278 个用例)
-ctest --output-on-failure
+cd build && ctest --output-on-failure
 
 # 运行前端单元测试 (8 个用例)
 cd server/web && npm run test
@@ -435,29 +403,25 @@ cd server/web && npm run test
 ### 配置文件 (configs/server.yaml)
 
 ```yaml
-# 数据库配置
-db:
-  type: "sqlite3"              # 或 "mysql"
-  sqlite:
-    path: "./data.db"
-    wal_mode: true
-  mysql:
-    host: "localhost"
-    port: 3306
-    user: "root"
-    password: "xxx"
-    database: "novaim"
-
-# Admin 面板配置
-admin:
-  port: 9091
-  jwt_secret: "change-me-in-production"  # ⚠️ 生产必须修改!
-  jwt_expires: 86400                      # token 过期秒数
-
-# IM 服务配置
 server:
-  port: 9999
-  max_connections: 10000
+  port: 9090
+  worker_threads: 4
+  heartbeat_ms: 30000
+  ws_port: 0                  # WebSocket 端口（0 = 不启用）
+
+db:
+  type: sqlite                # sqlite / mysql
+  path: nova_im.db
+
+admin:
+  enabled: true
+  port: 9091
+  jwt_secret: "change-me-in-production"   # ⚠️ 生产必须修改!
+  jwt_expires: 86400
+
+log:
+  level: debug
+  file: ""                    # 留空则仅输出到控制台
 ```
 
 ### 测试 Admin 面板
@@ -484,16 +448,17 @@ curl "http://localhost:9091/api/v1/users?page=1&page_size=20" \
 
 ## 📚 核心文档
 
-| 文档 | 用途 | 完成度 |
-|------|------|--------|
-| [todo.md](docs/todo.md) | 📋 任务清单 | 🔄 |
-| [db_design.sql](docs/db_design.sql) | 🗄️ 11 张表完整 Schema | ✅ |
-| [admin API](docs/admin_server/api_design.md) | 🔌 REST API 设计 | ✅ |
-| [protocol.md](docs/protocol.md) | 📡 IM 二进制协议 | ✅ |
-| [architecture.md](docs/architecture.md) | 🏗️ 系统架构 | ✅ |
-| [server_arch.md](docs/server_arch.md) | 🖥️ 服务端架构详解 | ✅ |
-| [sdk/README.md](docs/sdk/README.md) | 📱 客户端 SDK API + 架构 | ✅ |
-| [desktop/README.md](docs/desktop/README.md) | 🖥️ 桌面端架构 + Vue 3 + Bridge | ✅ |
+| 文档 | 用途 |
+|------|------|
+| [todo.md](docs/todo.md) | 📋 任务清单 + 里程碑路线图 |
+| [db_design.sql](docs/db_design.sql) | 🗄️ 11 张表完整 Schema |
+| [admin API](docs/admin_server/api_design.md) | 🔌 REST API 设计 |
+| [protocol.md](docs/protocol.md) | 📡 IM 二进制协议 |
+| [architecture.md](docs/architecture.md) | 🏗️ 系统架构 |
+| [server_arch.md](docs/server_arch.md) | 🖥️ 服务端架构详解 |
+| [software_design.md](docs/software_design.md) | 📐 软件设计文档（含 Mermaid 图） |
+| [sdk/README.md](docs/sdk/README.md) | 📱 客户端 SDK API + 架构 |
+| [desktop/README.md](docs/desktop/README.md) | 🖥️ 桌面端架构 + Vue 3 + Bridge |
 
 ---
 
@@ -516,13 +481,14 @@ curl "http://localhost:9091/api/v1/users?page=1&page_size=20" \
 
 ## 🎯 开发路线图
 
-| Phase | 内容 | 状态 | ETA |
-|-------|------|------|-----|
-| 0-3 | 基础工具 + DAO + 认证 + API | ✅ 100% | Q1 2026 |
-| 3.5 | **Admin/User 表分离** | ✅ 100% | 2026-04-15 |
-| **4** | 单元测试 + ConversationDao | ✅ 83/83 | 2026-04-16 |
-| 5 | IM 用户侧（Login/Message/Sync） | ⏳ 0% | 2026-04-28 |
-| 6 | 性能优化 + 文档完善 | ⏳ 0% | 2026-05-05 |
+| Phase | 内容 | 状态 |
+|-------|------|------|
+| 0-3 | 基础工具 + DAO + 认证 + API | ✅ 100% |
+| 3.5 | Admin/User 表分离 | ✅ 100% |
+| 4 | 单元测试 + ConversationDao | ✅ 100% |
+| 5 | IM 用户侧（Login/Message/Sync） | ✅ 100% |
+| M1-M4 | Admin 前端 + 客户端 SDK + 桌面端 + 移动端 Bridge | ✅ 100% |
+| 6 | 运维管理 / 角色管理 API | ⏳ 未开始 |
 
 ---
 
@@ -548,13 +514,13 @@ curl "http://localhost:9091/api/v1/users?page=1&page_size=20" \
 
 ## 📊 项目指标
 
-- **代码行数** ~12,000 LoC
-- **完成度** 81% (60/74 Phase 任务)
 - **编译状态** ✅ 0 errors
+- **C++ 测试** 278 用例全通过（18 个测试套件）
+- **前端测试** 8 用例（Vitest）+ 14 用例（SDK）
 - **数据库表** 11 张
 - **HTTP API** 13 个端点
 - **后端支持** 2 个 (SQLite + MySQL)
-- **测试覆盖** ~30% (Phase 4补充)
+- **Git 提交** 110+
 
 ---
 
@@ -573,6 +539,6 @@ MIT License — 详见 [LICENSE](LICENSE)
 
 **项目维护方：** NovaIIM Core Team  
 **报告问题：** Issues 标签分类  
-**更新时间：** 2026-04-15  
-**成熟度等级：** Alpha → Beta 转型中  
-**编译状态：** ✅ 0 errors | 生产就绪
+**更新时间：** 2026-04-21  
+**成熟度等级：** Beta  
+**编译状态：** ✅ 0 errors | 278 测试全通过

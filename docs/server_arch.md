@@ -14,13 +14,14 @@
 | 类别 | 选型 | 说明 |
 |------|------|------|
 | 语言标准 | C++20 | MSVC 2022 Professional |
-| 网络 | libhv v1.3.3 | TcpServer (Gateway) + HttpServer (Admin) |
+| 网络 | libhv v1.3.3 | TcpServer + WebSocket (Gateway) + HttpServer (Admin) |
 | ORM | ormpp (header-only) | C++20 iguana 反射, prepared statement 防注入 |
 | 数据库 | SQLite3 (amalgamation) | SQLITE_THREADSAFE=1, WAL 模式 |
 | 日志 | spdlog v1.15.0 | 控制台 + 文件轮转, 命名 logger |
 | 配置 | ylt struct_yaml | C++20 聚合类型自动反射 |
 | JWT | l8w8jwt 2.5.0 | HS256/384/512, 自带 MbedTLS |
 | 密码 | PBKDF2-SHA256 (MbedTLS) | 100k iterations, 16B salt |
+| 消息总线 | msgbus (header-only) | MQTT-style 发布-订阅, Admin↔IM 解耦 |
 | CLI | CLI11 v2.4.2 | 命令行参数解析 |
 | 构建 | CMake + Ninja | FetchContent 管理依赖 |
 | 线程模型 | Reactor + 无锁队列 + Worker 线程池 | IO线程 → MPMCQueue → ThreadPool |
@@ -30,11 +31,11 @@
 ## 3. 整体架构
 
 ```text
-     TCP :9090                          HTTP :9091
+     TCP :9090 / WS :ws_port        HTTP :9091
          │                                  │
   ┌──────▼──────┐                   ┌───────▼───────┐
   │   Gateway   │                   │  AdminServer  │
-  │  (libhv TCP)│                   │ (libhv HTTP)  │
+  │(TCP + WS)  │                   │ (libhv HTTP)  │
   └──────┬──────┘                   └───────┬───────┘
          │                                  │
   ┌──────▼──────┐                   ┌───────▼───────┐
