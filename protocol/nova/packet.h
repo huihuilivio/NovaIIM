@@ -154,8 +154,11 @@ struct Packet {
 };
 
 // 命令字定义
+// 编号已固化，不可修改（客户端/服务端二进制兼容）
+// 分段：0x00xx 认证/心跳/好友, 0x01xx 消息/会话, 0x02xx 同步,
+//       0x03xx 资料, 0x04xx 搜索, 0x05xx 群组, 0x06xx 文件
 enum class Cmd : uint16_t {
-    // 认证
+    // ---- 认证 (0x0001-0x000F) ----
     kLogin       = 0x0001,
     kLoginAck    = 0x0002,
     kLogout      = 0x0003,
@@ -163,37 +166,11 @@ enum class Cmd : uint16_t {
     kRegisterAck = 0x0005,
     kKickNotify  = 0x0006,  // S→C 被踢下线通知
 
-    // 心跳
+    // ---- 心跳 (0x0010-0x001F) ----
     kHeartbeat    = 0x0010,
     kHeartbeatAck = 0x0011,
 
-    // 消息
-    kSendMsg       = 0x0100,
-    kSendMsgAck    = 0x0101,
-    kPushMsg       = 0x0102,
-    kDeliverAck    = 0x0103,
-    kReadAck       = 0x0104,
-    kRecallMsg     = 0x0105,
-    kRecallMsgAck  = 0x0106,
-    kRecallNotify  = 0x0107,
-
-    // 同步
-    kSyncMsg        = 0x0200,
-    kSyncMsgResp    = 0x0201,
-    kSyncUnread     = 0x0202,
-    kSyncUnreadResp = 0x0203,
-
-    // 个人资料
-    kGetUserProfile    = 0x0302,
-    kGetUserProfileAck = 0x0303,
-
-    // 用户搜索 / 资料编辑
-    kSearchUser        = 0x0400,
-    kSearchUserAck     = 0x0401,
-    kUpdateProfile     = 0x0402,
-    kUpdateProfileAck  = 0x0403,
-
-    // 好友
+    // ---- 好友 (0x0030-0x003F) ----
     kAddFriend            = 0x0030,
     kAddFriendAck         = 0x0031,
     kHandleFriendReq      = 0x0032,
@@ -210,7 +187,17 @@ enum class Cmd : uint16_t {
     kGetFriendRequestsAck = 0x003D,
     kFriendNotify         = 0x003E,
 
-    // 会话
+    // ---- 消息 (0x0100-0x010F) ----
+    kSendMsg       = 0x0100,
+    kSendMsgAck    = 0x0101,
+    kPushMsg       = 0x0102,
+    kDeliverAck    = 0x0103,
+    kReadAck       = 0x0104,
+    kRecallMsg     = 0x0105,
+    kRecallMsgAck  = 0x0106,
+    kRecallNotify  = 0x0107,
+
+    // ---- 会话 (0x0110-0x011F) ----
     kGetConvList        = 0x0112,
     kGetConvListAck     = 0x0113,
     kDeleteConv         = 0x0114,
@@ -221,7 +208,23 @@ enum class Cmd : uint16_t {
     kPinConvAck         = 0x0119,
     kConvUpdate         = 0x011A,
 
-    // 群组
+    // ---- 同步 (0x0200-0x020F) ----
+    kSyncMsg        = 0x0200,
+    kSyncMsgResp    = 0x0201,
+    kSyncUnread     = 0x0202,
+    kSyncUnreadResp = 0x0203,
+
+    // ---- 个人资料 (0x0300-0x030F) ----
+    kGetUserProfile    = 0x0302,
+    kGetUserProfileAck = 0x0303,
+
+    // ---- 用户搜索 / 资料编辑 (0x0400-0x040F) ----
+    kSearchUser        = 0x0400,
+    kSearchUserAck     = 0x0401,
+    kUpdateProfile     = 0x0402,
+    kUpdateProfileAck  = 0x0403,
+
+    // ---- 群组 (0x0500-0x051F) ----
     kCreateGroup        = 0x0500,
     kCreateGroupAck     = 0x0501,
     kDismissGroup       = 0x0502,
@@ -246,7 +249,7 @@ enum class Cmd : uint16_t {
     kSetMemberRoleAck   = 0x0515,
     kGroupNotify        = 0x0516,
 
-    // 文件
+    // ---- 文件 (0x0600-0x060F) ----
     kUploadReq          = 0x0600,
     kUploadAck          = 0x0601,
     kUploadComplete     = 0x0602,

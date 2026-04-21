@@ -468,14 +468,6 @@ void GroupService::HandleJoinReq(ConnectionPtr conn, Packet& pkt) {
             return;
         }
 
-        // 检查群成员上限
-        auto member_count = ctx_.dao().Conversation().CountMembers(jr->conversation_id);
-        if (member_count >= static_cast<int64_t>(kMaxGroupMembers)) {
-            SendPacket(conn, Cmd::kHandleJoinReqAck, seq, 0,
-                       proto::HandleJoinReqAck{ec::kInvalidBody.code, "group is full"});
-            return;
-        }
-
         if (!ctx_.dao().BeginTransaction()) {
             SendPacket(conn, Cmd::kHandleJoinReqAck, seq, 0,
                        proto::HandleJoinReqAck{ec::kDatabaseError.code, ec::kDatabaseError.msg});
@@ -485,6 +477,14 @@ void GroupService::HandleJoinReq(ConnectionPtr conn, Packet& pkt) {
         NOVA_DEFER {
             if (!committed) ctx_.dao().Rollback();
         };
+
+        // 检查群成员上限（事务内检查，防止并发审批超限）
+        auto member_count = ctx_.dao().Conversation().CountMembers(jr->conversation_id);
+        if (member_count >= static_cast<int64_t>(kMaxGroupMembers)) {
+            SendPacket(conn, Cmd::kHandleJoinReqAck, seq, 0,
+                       proto::HandleJoinReqAck{ec::kInvalidBody.code, "group is full"});
+            return;
+        }
 
         auto now = NowUtcStr();
         ConversationMember m;

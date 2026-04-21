@@ -512,8 +512,11 @@ int AdminServer::HandleCreateUser(HttpRequest* req, HttpResponse* resp) {
         return JsonError(resp, api_err::kEmailPasswordEmpty);
     }
 
-    // 昵称校验（trim + 长度 + 控制字符）
+    // 昵称校验（trim + 非空 + 长度 + 控制字符）
     TrimInPlace(nickname);
+    if (nickname.empty()) {
+        return JsonError(resp, api_err::kNicknameRequired);
+    }
     if (nickname.size() > 100) {
         return JsonError(resp, api_err::kNicknameTooLong);
     }

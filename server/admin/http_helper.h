@@ -78,6 +78,7 @@ inline constexpr ApiError kUserNotOnline        {ApiCode::kNotFound,        "use
 inline constexpr ApiError kHashFailed           {ApiCode::kInternal,        "failed to hash password",                  500};
 inline constexpr ApiError kSignTokenFailed      {ApiCode::kInternal,        "failed to sign token",                     500};
 inline constexpr ApiError kNicknameTooLong      {ApiCode::kParamError,      "nickname must be at most 100 characters",  400};
+inline constexpr ApiError kNicknameRequired     {ApiCode::kParamError,      "nickname is required",                     400};
 inline constexpr ApiError kNicknameInvalid      {ApiCode::kParamError,      "nickname contains invalid characters",     400};
 inline constexpr ApiError kCreateUserFailed     {ApiCode::kInternal,        "failed to create user",                    500};
 inline constexpr ApiError kRecallFailed         {ApiCode::kInternal,        "failed to recall message",                 500};

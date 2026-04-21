@@ -2,7 +2,8 @@
 // NovaIIM 协议错误码 —— 客户端 / 服务端共用
 //
 // 约定：code=0 表示成功，<0 通用错误，>0 业务错误
-// 业务错误码分段：user 1001-1099, msg 2001-2099, file 3001-3099, sync 4001-4099
+// 业务错误码分段：user 1001-1099, kick 1101-1199, msg 2001-2099,
+//   file 3001-3099, sync 4001-4099, friend 5001-5099, conv 6001-6099, group 7001-7099
 
 #include <cstdint>
 
@@ -91,6 +92,23 @@ inline constexpr Error kRecallAlready           {2009, "message already recalled
 }  // namespace msg
 
 // ================================================================
+// File (3001 - 3099)
+// ================================================================
+namespace file {
+
+// clang-format off
+inline constexpr Error kFileNameRequired         {3001, "file_name is required"};
+inline constexpr Error kFileSizeInvalid          {3002, "invalid file_size"};
+inline constexpr Error kFileSizeTooLarge         {3003, "file too large"};
+inline constexpr Error kMimeTypeRequired         {3004, "mime_type is required"};
+inline constexpr Error kFileNotFound             {3005, "file not found"};
+inline constexpr Error kUploadFailed             {3006, "upload failed"};
+inline constexpr Error kInvalidFileType          {3007, "invalid file_type"};
+// clang-format on
+
+}  // namespace file
+
+// ================================================================
 // Sync (4001 - 4099)
 // ================================================================
 namespace sync {
@@ -164,22 +182,5 @@ inline constexpr Error kNothingToUpdate          {7017, "nothing to update"};
 // clang-format on
 
 }  // namespace group
-
-// ================================================================
-// File (3001 - 3099)
-// ================================================================
-namespace file {
-
-// clang-format off
-inline constexpr Error kFileNameRequired         {3001, "file_name is required"};
-inline constexpr Error kFileSizeInvalid          {3002, "invalid file_size"};
-inline constexpr Error kFileSizeTooLarge         {3003, "file too large"};
-inline constexpr Error kMimeTypeRequired         {3004, "mime_type is required"};
-inline constexpr Error kFileNotFound             {3005, "file not found"};
-inline constexpr Error kUploadFailed             {3006, "upload failed"};
-inline constexpr Error kInvalidFileType          {3007, "invalid file_type"};
-// clang-format on
-
-}  // namespace file
 
 }  // namespace nova::errc

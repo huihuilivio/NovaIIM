@@ -116,11 +116,8 @@ struct RecallMsgReq {
     int64_t server_seq      = 0;
 };
 
-// S→C  Cmd::kRecallMsgAck (0x0106)
-struct RecallMsgAck {
-    int32_t code = 0;
-    std::string msg;
-};
+// S→C  Cmd::kRecallMsgAck (0x0106) — 复用 RspBase
+using RecallMsgAck = RspBase;
 
 // S→C  Cmd::kRecallNotify (0x0107)
 struct RecallNotify {
@@ -234,11 +231,8 @@ struct UpdateProfileReq {
     std::string file_hash;  // 可选，头像文件哈希（仅当 avatar 非空时有意义）
 };
 
-// S→C  Cmd::kUpdateProfileAck (0x0403)
-struct UpdateProfileAck {
-    int32_t code = 0;
-    std::string msg;
-};
+// S→C  Cmd::kUpdateProfileAck (0x0403) — 复用 RspBase
+using UpdateProfileAck = RspBase;
 
 // ============================================================
 //  好友
@@ -274,31 +268,22 @@ struct HandleFriendReqAck {
 struct DeleteFriendReq {
     std::string target_uid;
 };
-// S→C  Cmd::kDeleteFriendAck (0x0035)
-struct DeleteFriendAck {
-    int32_t code = 0;
-    std::string msg;
-};
+// S→C  Cmd::kDeleteFriendAck (0x0035) — 复用 RspBase
+using DeleteFriendAck = RspBase;
 
 // C→S  Cmd::kBlockFriend (0x0036)
 struct BlockFriendReq {
     std::string target_uid;
 };
-// S→C  Cmd::kBlockFriendAck (0x0037)
-struct BlockFriendAck {
-    int32_t code = 0;
-    std::string msg;
-};
+// S→C  Cmd::kBlockFriendAck (0x0037) — 复用 RspBase
+using BlockFriendAck = RspBase;
 
 // C→S  Cmd::kUnblockFriend (0x0038)
 struct UnblockFriendReq {
     std::string target_uid;
 };
-// S→C  Cmd::kUnblockFriendAck (0x0039)
-struct UnblockFriendAck {
-    int32_t code = 0;
-    std::string msg;
-};
+// S→C  Cmd::kUnblockFriendAck (0x0039) — 复用 RspBase
+using UnblockFriendAck = RspBase;
 
 // 好友列表条目
 struct FriendItem {
@@ -400,11 +385,8 @@ struct DeleteConvReq {
     int64_t conversation_id = 0;
 };
 
-// S→C  Cmd::kDeleteConvAck (0x0115)
-struct DeleteConvAck {
-    int32_t code = 0;
-    std::string msg;
-};
+// S→C  Cmd::kDeleteConvAck (0x0115) — 复用 RspBase
+using DeleteConvAck = RspBase;
 
 // C→S  Cmd::kMuteConv (0x0116)
 struct MuteConvReq {
@@ -412,11 +394,8 @@ struct MuteConvReq {
     int32_t mute            = 0;  // 0=取消免打扰, 1=开启免打扰
 };
 
-// S→C  Cmd::kMuteConvAck (0x0117)
-struct MuteConvAck {
-    int32_t code = 0;
-    std::string msg;
-};
+// S→C  Cmd::kMuteConvAck (0x0117) — 复用 RspBase
+using MuteConvAck = RspBase;
 
 // C→S  Cmd::kPinConv (0x0118)
 struct PinConvReq {
@@ -424,11 +403,8 @@ struct PinConvReq {
     int32_t pinned          = 0;  // 0=取消置顶, 1=置顶
 };
 
-// S→C  Cmd::kPinConvAck (0x0119)
-struct PinConvAck {
-    int32_t code = 0;
-    std::string msg;
-};
+// S→C  Cmd::kPinConvAck (0x0119) — 复用 RspBase
+using PinConvAck = RspBase;
 
 // S→C  Cmd::kConvUpdate (0x011A)
 // update_type: 1=新消息, 2=成员变化, 3=会话信息变更, 4=会话解散
@@ -605,7 +581,7 @@ struct UploadReq {
 };
 
 // S→C  Cmd::kUploadAck (0x0601)
-struct UploadAckMsg {
+struct UploadAck {
     int32_t code = 0;
     std::string msg;
     int64_t file_id = 0;
@@ -619,7 +595,7 @@ struct UploadCompleteReq {
 };
 
 // S→C  Cmd::kUploadCompleteAck (0x0603)
-struct UploadCompleteAckMsg {
+struct UploadCompleteAck {
     int32_t code = 0;
     std::string msg;
     std::string file_path;
@@ -632,7 +608,7 @@ struct DownloadReq {
 };
 
 // S→C  Cmd::kDownloadAck (0x0605)
-struct DownloadAckMsg {
+struct DownloadAck {
     int32_t code = 0;
     std::string msg;
     std::string download_url;

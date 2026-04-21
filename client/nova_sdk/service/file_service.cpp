@@ -23,8 +23,8 @@ void FileService::RequestUpload(const std::string& file_name, int64_t file_size,
         return;
     }
 
-    SendRequest<nova::proto::UploadAckMsg>(ctx_, pkt,
-        [cb](const std::optional<nova::proto::UploadAckMsg>& ack) {
+    SendRequest<nova::proto::UploadAck>(ctx_, pkt,
+        [cb](const std::optional<nova::proto::UploadAck>& ack) {
             UploadResult result;
             if (ack && ack->code == 0) {
                 result.success        = true;
@@ -46,8 +46,8 @@ void FileService::UploadComplete(int64_t file_id, UploadCompleteCallback cb) {
 
     auto pkt = MakePacket(nova::proto::Cmd::kUploadComplete, ctx_.NextSeq(), req);
 
-    SendRequest<nova::proto::UploadCompleteAckMsg>(ctx_, pkt,
-        [cb](const std::optional<nova::proto::UploadCompleteAckMsg>& ack) {
+    SendRequest<nova::proto::UploadCompleteAck>(ctx_, pkt,
+        [cb](const std::optional<nova::proto::UploadCompleteAck>& ack) {
             UploadCompleteResult result;
             if (ack && ack->code == 0) {
                 result.success   = true;
@@ -68,8 +68,8 @@ void FileService::RequestDownload(int64_t file_id, bool thumb, DownloadCallback 
 
     auto pkt = MakePacket(nova::proto::Cmd::kDownloadReq, ctx_.NextSeq(), req);
 
-    SendRequest<nova::proto::DownloadAckMsg>(ctx_, pkt,
-        [cb](const std::optional<nova::proto::DownloadAckMsg>& ack) {
+    SendRequest<nova::proto::DownloadAck>(ctx_, pkt,
+        [cb](const std::optional<nova::proto::DownloadAck>& ack) {
             DownloadResult result;
             if (ack && ack->code == 0) {
                 result.success      = true;

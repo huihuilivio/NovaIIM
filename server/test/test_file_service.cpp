@@ -94,7 +94,7 @@ TEST_F(FileServiceTest, UploadSuccess) {
     auto pkt = MakePacket(Cmd::kUploadReq,
                           proto::UploadReq{"photo.png", 1024, "image/png", "", "image"});
     file_svc_->HandleUpload(alice.conn, pkt);
-    auto ack = proto::Deserialize<proto::UploadAckMsg>(alice.conn->last_pkt.body);
+    auto ack = proto::Deserialize<proto::UploadAck>(alice.conn->last_pkt.body);
     ASSERT_TRUE(ack.has_value());
     EXPECT_EQ(ack->code, 0);
     EXPECT_GT(ack->file_id, 0);
@@ -108,7 +108,7 @@ TEST_F(FileServiceTest, UploadFileNameRequired) {
     auto pkt = MakePacket(Cmd::kUploadReq,
                           proto::UploadReq{"", 1024, "image/png", "", "image"});
     file_svc_->HandleUpload(alice.conn, pkt);
-    auto ack = proto::Deserialize<proto::UploadAckMsg>(alice.conn->last_pkt.body);
+    auto ack = proto::Deserialize<proto::UploadAck>(alice.conn->last_pkt.body);
     EXPECT_EQ(ack->code, errc::file::kFileNameRequired.code);
 }
 
@@ -118,7 +118,7 @@ TEST_F(FileServiceTest, UploadFileSizeInvalid) {
     auto pkt = MakePacket(Cmd::kUploadReq,
                           proto::UploadReq{"f.txt", 0, "text/plain", "", "file"});
     file_svc_->HandleUpload(alice.conn, pkt);
-    auto ack = proto::Deserialize<proto::UploadAckMsg>(alice.conn->last_pkt.body);
+    auto ack = proto::Deserialize<proto::UploadAck>(alice.conn->last_pkt.body);
     EXPECT_EQ(ack->code, errc::file::kFileSizeInvalid.code);
 }
 
@@ -128,7 +128,7 @@ TEST_F(FileServiceTest, UploadFileTooLarge) {
     auto pkt = MakePacket(Cmd::kUploadReq,
                           proto::UploadReq{"f.bin", 200LL * 1024 * 1024, "application/octet-stream", "", "file"});
     file_svc_->HandleUpload(alice.conn, pkt);
-    auto ack = proto::Deserialize<proto::UploadAckMsg>(alice.conn->last_pkt.body);
+    auto ack = proto::Deserialize<proto::UploadAck>(alice.conn->last_pkt.body);
     EXPECT_EQ(ack->code, errc::file::kFileSizeTooLarge.code);
 }
 
@@ -138,7 +138,7 @@ TEST_F(FileServiceTest, UploadMimeTypeRequired) {
     auto pkt = MakePacket(Cmd::kUploadReq,
                           proto::UploadReq{"f.txt", 100, "", "", "file"});
     file_svc_->HandleUpload(alice.conn, pkt);
-    auto ack = proto::Deserialize<proto::UploadAckMsg>(alice.conn->last_pkt.body);
+    auto ack = proto::Deserialize<proto::UploadAck>(alice.conn->last_pkt.body);
     EXPECT_EQ(ack->code, errc::file::kMimeTypeRequired.code);
 }
 
@@ -147,7 +147,7 @@ TEST_F(FileServiceTest, UploadNotAuth) {
     auto pkt  = MakePacket(Cmd::kUploadReq,
                            proto::UploadReq{"f.txt", 100, "text/plain", "", "file"});
     file_svc_->HandleUpload(conn, pkt);
-    auto ack = proto::Deserialize<proto::UploadAckMsg>(conn->last_pkt.body);
+    auto ack = proto::Deserialize<proto::UploadAck>(conn->last_pkt.body);
     EXPECT_EQ(ack->code, errc::kNotAuthenticated.code);
 }
 
@@ -162,13 +162,13 @@ TEST_F(FileServiceTest, UploadCompleteSuccess) {
     auto up_pkt = MakePacket(Cmd::kUploadReq,
                              proto::UploadReq{"photo.png", 1024, "image/png", "", "image"});
     file_svc_->HandleUpload(alice.conn, up_pkt);
-    auto up_ack = proto::Deserialize<proto::UploadAckMsg>(alice.conn->last_pkt.body);
+    auto up_ack = proto::Deserialize<proto::UploadAck>(alice.conn->last_pkt.body);
     ASSERT_EQ(up_ack->code, 0);
 
     auto pkt = MakePacket(Cmd::kUploadComplete,
                           proto::UploadCompleteReq{up_ack->file_id});
     file_svc_->HandleUploadComplete(alice.conn, pkt);
-    auto ack = proto::Deserialize<proto::UploadCompleteAckMsg>(alice.conn->last_pkt.body);
+    auto ack = proto::Deserialize<proto::UploadCompleteAck>(alice.conn->last_pkt.body);
     EXPECT_EQ(ack->code, 0);
     EXPECT_FALSE(ack->file_path.empty());
 }
@@ -179,7 +179,7 @@ TEST_F(FileServiceTest, UploadCompleteNotFound) {
     auto pkt = MakePacket(Cmd::kUploadComplete,
                           proto::UploadCompleteReq{99999});
     file_svc_->HandleUploadComplete(alice.conn, pkt);
-    auto ack = proto::Deserialize<proto::UploadCompleteAckMsg>(alice.conn->last_pkt.body);
+    auto ack = proto::Deserialize<proto::UploadCompleteAck>(alice.conn->last_pkt.body);
     EXPECT_EQ(ack->code, errc::file::kFileNotFound.code);
 }
 
@@ -194,12 +194,12 @@ TEST_F(FileServiceTest, DownloadSuccess) {
     auto up_pkt = MakePacket(Cmd::kUploadReq,
                              proto::UploadReq{"doc.pdf", 2048, "application/pdf", "", "file"});
     file_svc_->HandleUpload(alice.conn, up_pkt);
-    auto up_ack = proto::Deserialize<proto::UploadAckMsg>(alice.conn->last_pkt.body);
+    auto up_ack = proto::Deserialize<proto::UploadAck>(alice.conn->last_pkt.body);
     ASSERT_EQ(up_ack->code, 0);
 
     auto pkt = MakePacket(Cmd::kDownloadReq, proto::DownloadReq{up_ack->file_id, 0});
     file_svc_->HandleDownload(alice.conn, pkt);
-    auto ack = proto::Deserialize<proto::DownloadAckMsg>(alice.conn->last_pkt.body);
+    auto ack = proto::Deserialize<proto::DownloadAck>(alice.conn->last_pkt.body);
     EXPECT_EQ(ack->code, 0);
     EXPECT_EQ(ack->file_name, "doc.pdf");
     EXPECT_EQ(ack->file_size, 2048);
@@ -211,7 +211,7 @@ TEST_F(FileServiceTest, DownloadNotFound) {
 
     auto pkt = MakePacket(Cmd::kDownloadReq, proto::DownloadReq{99999, 0});
     file_svc_->HandleDownload(alice.conn, pkt);
-    auto ack = proto::Deserialize<proto::DownloadAckMsg>(alice.conn->last_pkt.body);
+    auto ack = proto::Deserialize<proto::DownloadAck>(alice.conn->last_pkt.body);
     EXPECT_EQ(ack->code, errc::file::kFileNotFound.code);
 }
 
@@ -219,7 +219,7 @@ TEST_F(FileServiceTest, DownloadNotAuth) {
     auto conn = std::make_shared<MockConnection>();
     auto pkt  = MakePacket(Cmd::kDownloadReq, proto::DownloadReq{1, 0});
     file_svc_->HandleDownload(conn, pkt);
-    auto ack = proto::Deserialize<proto::DownloadAckMsg>(conn->last_pkt.body);
+    auto ack = proto::Deserialize<proto::DownloadAck>(conn->last_pkt.body);
     EXPECT_EQ(ack->code, errc::kNotAuthenticated.code);
 }
 
@@ -231,13 +231,13 @@ TEST_F(FileServiceTest, DownloadOtherUserFile) {
     auto up_pkt = MakePacket(Cmd::kUploadReq,
                              proto::UploadReq{"secret.pdf", 1024, "application/pdf", "", "file"});
     file_svc_->HandleUpload(alice.conn, up_pkt);
-    auto up_ack = proto::Deserialize<proto::UploadAckMsg>(alice.conn->last_pkt.body);
+    auto up_ack = proto::Deserialize<proto::UploadAck>(alice.conn->last_pkt.body);
     ASSERT_EQ(up_ack->code, 0);
 
     // Bob tries to download Alice's file
     auto pkt = MakePacket(Cmd::kDownloadReq, proto::DownloadReq{up_ack->file_id, 0});
     file_svc_->HandleDownload(bob.conn, pkt);
-    auto ack = proto::Deserialize<proto::DownloadAckMsg>(bob.conn->last_pkt.body);
+    auto ack = proto::Deserialize<proto::DownloadAck>(bob.conn->last_pkt.body);
     EXPECT_EQ(ack->code, errc::file::kFileNotFound.code);
 }
 
@@ -251,7 +251,7 @@ TEST_F(FileServiceTest, UploadPathTraversal) {
     auto pkt = MakePacket(Cmd::kUploadReq,
                           proto::UploadReq{"../../etc/passwd", 100, "text/plain", "", "file"});
     file_svc_->HandleUpload(alice.conn, pkt);
-    auto ack = proto::Deserialize<proto::UploadAckMsg>(alice.conn->last_pkt.body);
+    auto ack = proto::Deserialize<proto::UploadAck>(alice.conn->last_pkt.body);
     ASSERT_EQ(ack->code, 0);
     // The path should only contain the filename, not the traversal
     EXPECT_TRUE(ack->upload_url.find("..") == std::string::npos);
@@ -264,7 +264,7 @@ TEST_F(FileServiceTest, UploadDotDotFileName) {
     auto pkt = MakePacket(Cmd::kUploadReq,
                           proto::UploadReq{"..", 100, "text/plain", "", "file"});
     file_svc_->HandleUpload(alice.conn, pkt);
-    auto ack = proto::Deserialize<proto::UploadAckMsg>(alice.conn->last_pkt.body);
+    auto ack = proto::Deserialize<proto::UploadAck>(alice.conn->last_pkt.body);
     EXPECT_EQ(ack->code, errc::file::kFileNameRequired.code);
 }
 
@@ -274,7 +274,7 @@ TEST_F(FileServiceTest, UploadInvalidFileType) {
     auto pkt = MakePacket(Cmd::kUploadReq,
                           proto::UploadReq{"f.txt", 100, "text/plain", "", "'; DROP TABLE user_files;--"});
     file_svc_->HandleUpload(alice.conn, pkt);
-    auto ack = proto::Deserialize<proto::UploadAckMsg>(alice.conn->last_pkt.body);
+    auto ack = proto::Deserialize<proto::UploadAck>(alice.conn->last_pkt.body);
     EXPECT_EQ(ack->code, errc::file::kInvalidFileType.code);
 }
 

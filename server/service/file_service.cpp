@@ -25,51 +25,51 @@ void FileService::HandleUpload(ConnectionPtr conn, Packet& pkt) {
 
     if (user_id == 0) {
         SendPacket(conn, Cmd::kUploadAck, seq, 0,
-                   proto::UploadAckMsg{ec::kNotAuthenticated.code, ec::kNotAuthenticated.msg});
+                   proto::UploadAck{ec::kNotAuthenticated.code, ec::kNotAuthenticated.msg});
         return;
     }
 
     auto req = proto::Deserialize<proto::UploadReq>(pkt.body);
     if (!req) {
         SendPacket(conn, Cmd::kUploadAck, seq, 0,
-                   proto::UploadAckMsg{ec::kInvalidBody.code, ec::kInvalidBody.msg});
+                   proto::UploadAck{ec::kInvalidBody.code, ec::kInvalidBody.msg});
         return;
     }
 
     // 校验
     if (req->file_name.empty()) {
         SendPacket(conn, Cmd::kUploadAck, seq, 0,
-                   proto::UploadAckMsg{ec::file::kFileNameRequired.code, ec::file::kFileNameRequired.msg});
+                   proto::UploadAck{ec::file::kFileNameRequired.code, ec::file::kFileNameRequired.msg});
         return;
     }
     if (req->file_name.size() > 512) {
         SendPacket(conn, Cmd::kUploadAck, seq, 0,
-                   proto::UploadAckMsg{ec::kInvalidBody.code, "file_name too long"});
+                   proto::UploadAck{ec::kInvalidBody.code, "file_name too long"});
         return;
     }
     if (req->file_hash.size() > 256) {
         SendPacket(conn, Cmd::kUploadAck, seq, 0,
-                   proto::UploadAckMsg{ec::kInvalidBody.code, "file_hash too long"});
+                   proto::UploadAck{ec::kInvalidBody.code, "file_hash too long"});
         return;
     }
     if (req->file_size <= 0) {
         SendPacket(conn, Cmd::kUploadAck, seq, 0,
-                   proto::UploadAckMsg{ec::file::kFileSizeInvalid.code, ec::file::kFileSizeInvalid.msg});
+                   proto::UploadAck{ec::file::kFileSizeInvalid.code, ec::file::kFileSizeInvalid.msg});
         return;
     }
     if (req->file_size > kMaxFileSize) {
         SendPacket(conn, Cmd::kUploadAck, seq, 0,
-                   proto::UploadAckMsg{ec::file::kFileSizeTooLarge.code, ec::file::kFileSizeTooLarge.msg});
+                   proto::UploadAck{ec::file::kFileSizeTooLarge.code, ec::file::kFileSizeTooLarge.msg});
         return;
     }
     if (req->mime_type.empty()) {
         SendPacket(conn, Cmd::kUploadAck, seq, 0,
-                   proto::UploadAckMsg{ec::file::kMimeTypeRequired.code, ec::file::kMimeTypeRequired.msg});
+                   proto::UploadAck{ec::file::kMimeTypeRequired.code, ec::file::kMimeTypeRequired.msg});
         return;
     }
     if (req->mime_type.size() > 128) {
         SendPacket(conn, Cmd::kUploadAck, seq, 0,
-                   proto::UploadAckMsg{ec::kInvalidBody.code, "mime_type too long"});
+                   proto::UploadAck{ec::kInvalidBody.code, "mime_type too long"});
         return;
     }
 
@@ -78,7 +78,7 @@ void FileService::HandleUpload(ConnectionPtr conn, Packet& pkt) {
     if (file_type != "avatar" && file_type != "image" && file_type != "voice" &&
         file_type != "video" && file_type != "file") {
         SendPacket(conn, Cmd::kUploadAck, seq, 0,
-                   proto::UploadAckMsg{ec::file::kInvalidFileType.code, ec::file::kInvalidFileType.msg});
+                   proto::UploadAck{ec::file::kInvalidFileType.code, ec::file::kInvalidFileType.msg});
         return;
     }
 
@@ -86,7 +86,7 @@ void FileService::HandleUpload(ConnectionPtr conn, Packet& pkt) {
     if (!req->file_hash.empty()) {
         auto existing = ctx_.dao().File().FindLatestByUserAndType(user_id, file_type);
         if (existing && existing->hash == req->file_hash) {
-            proto::UploadAckMsg ack;
+            proto::UploadAck ack;
             ack.code           = ec::kOk.code;
             ack.msg            = ec::kOk.msg;
             ack.file_id        = existing->id;
@@ -123,7 +123,7 @@ void FileService::HandleUpload(ConnectionPtr conn, Packet& pkt) {
     }
     if (safe_name.empty() || safe_name == "." || safe_name == "..") {
         SendPacket(conn, Cmd::kUploadAck, seq, 0,
-                   proto::UploadAckMsg{ec::file::kFileNameRequired.code, ec::file::kFileNameRequired.msg});
+                   proto::UploadAck{ec::file::kFileNameRequired.code, ec::file::kFileNameRequired.msg});
         return;
     }
 
@@ -143,7 +143,7 @@ void FileService::HandleUpload(ConnectionPtr conn, Packet& pkt) {
     file.file_path = "pending";
     if (!ctx_.dao().File().Insert(file)) {
         SendPacket(conn, Cmd::kUploadAck, seq, 0,
-                   proto::UploadAckMsg{ec::file::kUploadFailed.code, ec::file::kUploadFailed.msg});
+                   proto::UploadAck{ec::file::kUploadFailed.code, ec::file::kUploadFailed.msg});
         return;
     }
 
@@ -153,11 +153,11 @@ void FileService::HandleUpload(ConnectionPtr conn, Packet& pkt) {
     // 更新路径
     if (!ctx_.dao().File().UpdatePath(file.id, rel_path)) {
         SendPacket(conn, Cmd::kUploadAck, seq, 0,
-                   proto::UploadAckMsg{ec::file::kUploadFailed.code, ec::file::kUploadFailed.msg});
+                   proto::UploadAck{ec::file::kUploadFailed.code, ec::file::kUploadFailed.msg});
         return;
     }
 
-    proto::UploadAckMsg ack;
+    proto::UploadAck ack;
     ack.code       = ec::kOk.code;
     ack.msg        = ec::kOk.msg;
     ack.file_id    = file.id;
@@ -176,25 +176,25 @@ void FileService::HandleUploadComplete(ConnectionPtr conn, Packet& pkt) {
 
     if (user_id == 0) {
         SendPacket(conn, Cmd::kUploadCompleteAck, seq, 0,
-                   proto::UploadCompleteAckMsg{ec::kNotAuthenticated.code, ec::kNotAuthenticated.msg});
+                   proto::UploadCompleteAck{ec::kNotAuthenticated.code, ec::kNotAuthenticated.msg});
         return;
     }
 
     auto req = proto::Deserialize<proto::UploadCompleteReq>(pkt.body);
     if (!req || req->file_id <= 0) {
         SendPacket(conn, Cmd::kUploadCompleteAck, seq, 0,
-                   proto::UploadCompleteAckMsg{ec::kInvalidBody.code, ec::kInvalidBody.msg});
+                   proto::UploadCompleteAck{ec::kInvalidBody.code, ec::kInvalidBody.msg});
         return;
     }
 
     auto file = ctx_.dao().File().FindById(req->file_id);
     if (!file || file->user_id != user_id) {
         SendPacket(conn, Cmd::kUploadCompleteAck, seq, 0,
-                   proto::UploadCompleteAckMsg{ec::file::kFileNotFound.code, ec::file::kFileNotFound.msg});
+                   proto::UploadCompleteAck{ec::file::kFileNotFound.code, ec::file::kFileNotFound.msg});
         return;
     }
 
-    proto::UploadCompleteAckMsg ack;
+    proto::UploadCompleteAck ack;
     ack.code      = ec::kOk.code;
     ack.msg       = ec::kOk.msg;
     ack.file_path = file->file_path;
@@ -212,21 +212,21 @@ void FileService::HandleDownload(ConnectionPtr conn, Packet& pkt) {
 
     if (user_id == 0) {
         SendPacket(conn, Cmd::kDownloadAck, seq, 0,
-                   proto::DownloadAckMsg{ec::kNotAuthenticated.code, ec::kNotAuthenticated.msg});
+                   proto::DownloadAck{ec::kNotAuthenticated.code, ec::kNotAuthenticated.msg});
         return;
     }
 
     auto req = proto::Deserialize<proto::DownloadReq>(pkt.body);
     if (!req || req->file_id <= 0) {
         SendPacket(conn, Cmd::kDownloadAck, seq, 0,
-                   proto::DownloadAckMsg{ec::kInvalidBody.code, ec::kInvalidBody.msg});
+                   proto::DownloadAck{ec::kInvalidBody.code, ec::kInvalidBody.msg});
         return;
     }
 
     auto file = ctx_.dao().File().FindById(req->file_id);
     if (!file) {
         SendPacket(conn, Cmd::kDownloadAck, seq, 0,
-                   proto::DownloadAckMsg{ec::file::kFileNotFound.code, ec::file::kFileNotFound.msg});
+                   proto::DownloadAck{ec::file::kFileNotFound.code, ec::file::kFileNotFound.msg});
         return;
     }
     if (file->user_id != user_id) {
@@ -243,12 +243,12 @@ void FileService::HandleDownload(ConnectionPtr conn, Packet& pkt) {
             NOVA_NLOG_WARN(kLogTag, "unauthorized download: user={}, file_id={}, owner={}",
                            user_id, req->file_id, file->user_id);
             SendPacket(conn, Cmd::kDownloadAck, seq, 0,
-                       proto::DownloadAckMsg{ec::file::kFileNotFound.code, ec::file::kFileNotFound.msg});
+                       proto::DownloadAck{ec::file::kFileNotFound.code, ec::file::kFileNotFound.msg});
             return;
         }
     }
 
-    proto::DownloadAckMsg ack;
+    proto::DownloadAck ack;
     ack.code         = ec::kOk.code;
     ack.msg          = ec::kOk.msg;
     ack.download_url = file->file_path;

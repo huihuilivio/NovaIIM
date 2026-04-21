@@ -881,7 +881,7 @@ flowchart TD
     R --> S["Insert(file, path='pending')"]
     S --> T["生成唯一路径:<br/>uploads/YYYYMMDD/id_uid_name"]
     T --> U["UpdatePath(file_id, path)"]
-    U --> V["返回 UploadAckMsg<br/>(file_id, upload_url)"]
+    U --> V["返回 UploadAck<br/>(file_id, upload_url)"]
 ```
 
 ### 9.2 文件上传下载时序图

@@ -11,6 +11,11 @@ void ConnManager::Add(int64_t user_id, ConnectionPtr conn) {
         std::lock_guard<std::mutex> lock(shard.mutex);
         auto& vec = shard.conns[user_id];
 
+        // 在任何移除操作之前记录用户是否处于离线状态，
+        // 用于判断是否需要增加 online_count。
+        // 若用户已在线（vec 非空），后续的设备淘汰不改变在线状态。
+        bool was_offline = vec.empty();
+
         // 移除同一 device_id 的旧连接，避免重复推送
         auto did = conn->device_id();
         if (!did.empty()) {
@@ -30,14 +35,9 @@ void ConnManager::Add(int64_t user_id, ConnectionPtr conn) {
             vec.erase(vec.begin());
         }
 
-        // 在移除旧连接之后判断是否为空，避免边界情况：
-        // 若旧连接移除后 vec 变空，说明该用户之前已离线（online_count 已减过），
-        // 此时重新上线需要 +1
-        bool was_empty = vec.empty();
-
         vec.push_back(std::move(conn));
 
-        if (was_empty) {
+        if (was_offline) {
             online_count_.fetch_add(1, std::memory_order_relaxed);
         }
     }
