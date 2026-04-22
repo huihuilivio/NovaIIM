@@ -21,6 +21,11 @@ static std::string GenerateClientMsgId() {
 
 MessageService::MessageService(ClientContext& ctx) : ctx_(ctx) {}
 
+MessageService::~MessageService() {
+    if (on_received_sub_id_) ctx_.Events().unsubscribe(on_received_sub_id_);
+    if (on_recalled_sub_id_) ctx_.Events().unsubscribe(on_recalled_sub_id_);
+}
+
 void MessageService::SendTextMessage(int64_t conversation_id, const std::string& content,
                                 SendMsgCallback cb) {
     nova::proto::SendMsgReq req;
@@ -90,7 +95,12 @@ void MessageService::SendReadAck(int64_t conversation_id, int64_t read_up_to_seq
 }
 
 void MessageService::OnReceived(MessageCallback cb) {
-    ctx_.Events().subscribe<nova::proto::PushMsg>("PushMsg",
+    if (on_received_sub_id_) {
+        ctx_.Events().unsubscribe(on_received_sub_id_);
+        on_received_sub_id_ = 0;
+    }
+    if (!cb) return;
+    on_received_sub_id_ = ctx_.Events().subscribe<nova::proto::PushMsg>("PushMsg",
         [cb](const nova::proto::PushMsg& msg) {
             cb({
                 .conversation_id = msg.conversation_id,
@@ -104,7 +114,12 @@ void MessageService::OnReceived(MessageCallback cb) {
 }
 
 void MessageService::OnRecalled(RecallCallback cb) {
-    ctx_.Events().subscribe<nova::proto::RecallNotify>("RecallNotify",
+    if (on_recalled_sub_id_) {
+        ctx_.Events().unsubscribe(on_recalled_sub_id_);
+        on_recalled_sub_id_ = 0;
+    }
+    if (!cb) return;
+    on_recalled_sub_id_ = ctx_.Events().subscribe<nova::proto::RecallNotify>("RecallNotify",
         [cb](const nova::proto::RecallNotify& n) {
             cb({
                 .conversation_id = n.conversation_id,

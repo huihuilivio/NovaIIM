@@ -7,6 +7,10 @@ using namespace detail;
 
 FriendService::FriendService(ClientContext& ctx) : ctx_(ctx) {}
 
+FriendService::~FriendService() {
+    if (on_notify_sub_id_) ctx_.Events().unsubscribe(on_notify_sub_id_);
+}
+
 void FriendService::AddFriend(const std::string& target_uid, const std::string& remark,
                          AddFriendCallback cb) {
     nova::proto::AddFriendReq req;
@@ -181,7 +185,12 @@ void FriendService::GetFriendRequests(int page, int page_size, FriendRequestsCal
 }
 
 void FriendService::OnNotify(FriendNotifyCallback cb) {
-    ctx_.Events().subscribe<nova::proto::FriendNotifyMsg>("FriendNotify",
+    if (on_notify_sub_id_) {
+        ctx_.Events().unsubscribe(on_notify_sub_id_);
+        on_notify_sub_id_ = 0;
+    }
+    if (!cb) return;
+    on_notify_sub_id_ = ctx_.Events().subscribe<nova::proto::FriendNotifyMsg>("FriendNotify",
         [cb](const nova::proto::FriendNotifyMsg& n) {
             cb({
                 .notify_type      = n.notify_type,

@@ -7,6 +7,10 @@ using namespace detail;
 
 ConversationService::ConversationService(ClientContext& ctx) : ctx_(ctx) {}
 
+ConversationService::~ConversationService() {
+    if (on_updated_sub_id_) ctx_.Events().unsubscribe(on_updated_sub_id_);
+}
+
 void ConversationService::GetConversationList(ConvListCallback cb) {
     nova::proto::GetConvListReq req;
 
@@ -94,7 +98,12 @@ void ConversationService::PinConversation(int64_t conversation_id, bool pinned, 
 }
 
 void ConversationService::OnUpdated(ConvNotifyCallback cb) {
-    ctx_.Events().subscribe<nova::proto::ConvUpdateMsg>("ConvUpdate",
+    if (on_updated_sub_id_) {
+        ctx_.Events().unsubscribe(on_updated_sub_id_);
+        on_updated_sub_id_ = 0;
+    }
+    if (!cb) return;
+    on_updated_sub_id_ = ctx_.Events().subscribe<nova::proto::ConvUpdateMsg>("ConvUpdate",
         [cb](const nova::proto::ConvUpdateMsg& n) {
             cb({
                 .conversation_id = n.conversation_id,

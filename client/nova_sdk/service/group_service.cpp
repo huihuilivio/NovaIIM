@@ -7,6 +7,10 @@ using namespace detail;
 
 GroupService::GroupService(ClientContext& ctx) : ctx_(ctx) {}
 
+GroupService::~GroupService() {
+    if (on_notify_sub_id_) ctx_.Events().unsubscribe(on_notify_sub_id_);
+}
+
 void GroupService::CreateGroup(const std::string& name, const std::string& avatar,
                           const std::vector<int64_t>& member_ids, CreateGroupCallback cb) {
     nova::proto::CreateGroupReq req;
@@ -233,7 +237,12 @@ void GroupService::SetMemberRole(int64_t conversation_id, int64_t target_user_id
 }
 
 void GroupService::OnNotify(GroupNotifyCallback cb) {
-    ctx_.Events().subscribe<nova::proto::GroupNotifyMsg>("GroupNotify",
+    if (on_notify_sub_id_) {
+        ctx_.Events().unsubscribe(on_notify_sub_id_);
+        on_notify_sub_id_ = 0;
+    }
+    if (!cb) return;
+    on_notify_sub_id_ = ctx_.Events().subscribe<nova::proto::GroupNotifyMsg>("GroupNotify",
         [cb](const nova::proto::GroupNotifyMsg& n) {
             cb({
                 .conversation_id = n.conversation_id,

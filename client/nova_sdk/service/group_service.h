@@ -3,6 +3,7 @@
 
 #include <viewmodel/types.h>
 
+#include <cstdint>
 #include <functional>
 #include <string>
 #include <vector>
@@ -20,6 +21,7 @@ public:
     using GroupNotifyCallback  = std::function<void(const GroupNotification&)>;
 
     explicit GroupService(ClientContext& ctx);
+    ~GroupService();
 
     void CreateGroup(const std::string& name, const std::string& avatar,
                      const std::vector<int64_t>& member_ids, CreateGroupCallback cb);
@@ -40,11 +42,12 @@ public:
     void SetMemberRole(int64_t conversation_id, int64_t target_user_id,
                        int role, ResultCallback cb = nullptr);
 
-    // 事件监听
+    // 事件监听（传入 nullptr 可取消订阅）
     void OnNotify(GroupNotifyCallback cb);
 
 private:
     ClientContext& ctx_;
+    uint64_t on_notify_sub_id_{0};
 };
 
 }  // namespace nova::client

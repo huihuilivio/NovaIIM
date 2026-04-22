@@ -3,6 +3,7 @@
 
 #include <viewmodel/types.h>
 
+#include <cstdint>
 #include <functional>
 #include <string>
 
@@ -17,6 +18,7 @@ public:
     using RecallCallback   = std::function<void(const RecallNotification&)>;
 
     explicit MessageService(ClientContext& ctx);
+    ~MessageService();
 
     void SendTextMessage(int64_t conversation_id, const std::string& content,
                          SendMsgCallback cb = nullptr);
@@ -25,12 +27,14 @@ public:
     void SendDeliverAck(int64_t conversation_id, int64_t server_seq);
     void SendReadAck(int64_t conversation_id, int64_t read_up_to_seq);
 
-    // 事件监听
+    // 事件监听（传入 nullptr 可取消订阅；重复调用会先取消上一个订阅）
     void OnReceived(MessageCallback cb);
     void OnRecalled(RecallCallback cb);
 
 private:
     ClientContext& ctx_;
+    uint64_t on_received_sub_id_{0};
+    uint64_t on_recalled_sub_id_{0};
 };
 
 }  // namespace nova::client

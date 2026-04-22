@@ -3,6 +3,7 @@
 
 #include <viewmodel/types.h>
 
+#include <cstdint>
 #include <functional>
 
 namespace nova::client {
@@ -15,6 +16,7 @@ public:
     using ConvNotifyCallback = std::function<void(const ConvNotification&)>;
 
     explicit ConversationService(ClientContext& ctx);
+    ~ConversationService();
 
     void GetConversationList(ConvListCallback cb);
     void DeleteConversation(int64_t conversation_id, ResultCallback cb = nullptr);
@@ -23,11 +25,12 @@ public:
     void PinConversation(int64_t conversation_id, bool pinned,
                          ResultCallback cb = nullptr);
 
-    // 事件监听
+    // 事件监听（传入 nullptr 可取消订阅）
     void OnUpdated(ConvNotifyCallback cb);
 
 private:
     ClientContext& ctx_;
+    uint64_t on_updated_sub_id_{0};
 };
 
 }  // namespace nova::client
