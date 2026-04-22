@@ -1,6 +1,6 @@
 # NovaIIM 软件设计文档
 
-> **版本**: 2.1 | **最后更新**: 2026-04-21 | **状态**: 服务端完成 (278 测试), 客户端架构设计中
+> **版本**: 2.1 | **最后更新**: 2026-04-21 | **状态**: 服务端完成 (294 测试), 客户端架构设计中
 
 ---
 
@@ -17,10 +17,11 @@
 9. [FileService — 文件服务](#9-fileservice--文件服务)
 10. [SyncService — 同步服务](#10-syncservice--同步服务)
 11. [AdminServer — 管理面板](#11-adminserver--管理面板)
-12. [数据访问层](#12-数据访问层)
-13. [安全架构](#13-安全架构)
-14. [Admin 前端设计](#14-admin-前端设计)
-15. [IM 客户端设计 (跨平台 MVVM)](#15-im-客户端设计-跨平台-mvvm)
+12. [FileServer — HTTP 文件服务器](#12-fileserver--http-文件服务器)
+13. [数据访问层](#13-数据访问层)
+14. [安全架构](#14-安全架构)
+15. [Admin 前端设计](#15-admin-前端设计)
+16. [IM 客户端设计 (跨平台 MVVM)](#16-im-客户端设计-跨平台-mvvm)
 
 ---
 
@@ -47,10 +48,16 @@ graph TB
         end
 
         subgraph HTTP_Path["HTTP 通路 :9091"]
-            AS["AdminServer<br/>(libhv HttpServer)"]
+            AS["AdminServer<br/>(管理面板)"]
             AM["AuthMiddleware<br/>(JWT + RBAC)"]
             PG["PermissionGuard"]
             HH["HTTP Handlers"]
+        end
+
+        subgraph FILE_Path["HTTP 通路 :9092"]
+            FSV["FileServer<br/>(libhv HttpServer)"]
+            FRT["REST 路由<br/>(上传/下载/删除)"]
+            LFS["LocalFS<br/>(本地文件系统)"]
         end
 
         subgraph Services["Service 层"]
@@ -91,6 +98,9 @@ graph TB
     AS --> AM --> PG --> HH
     HH --> UD & MD
 
+    iOS & Android & Web & Desktop -.->|HTTP 文件| FSV
+    FSV --> FRT --> LFS
+
     US & FS & MS & CS & GS & FIS & SS --> SC
     SC --> DAO
     DAO --> SQLite
@@ -100,6 +110,7 @@ graph TB
 
     style TCP_Path fill:#e8f5e9
     style HTTP_Path fill:#e3f2fd
+    style FILE_Path fill:#e1f5fe
     style Services fill:#fff3e0
     style DAO fill:#fce4ec
 ```
@@ -112,6 +123,7 @@ graph LR
         direction TB
         G1["Gateway (TCP)"]
         G2["AdminServer (HTTP)"]
+        G3["FileServer (HTTP)"]
     end
 
     subgraph Distribution["分发层"]
@@ -1146,9 +1158,45 @@ graph TB
 
 ---
 
-## 12. 数据访问层
+## 12. FileServer — HTTP 文件服务器
 
-### 12.1 DAO 工厂架构图
+独立 HTTP 端口 (默认 9092)，提供文件上传/下载/删除 REST 接口，与 TCP 层 FileService (元数据管理) 配合工作。
+
+### 12.1 路由结构
+
+| 方法 | 路径 | 功能 |
+|------|------|------|
+| GET | `/healthz` | 健康检查 |
+| GET | `/static/**` | 静态文件预览/下载 (小文件 FileCache + 大文件 >4MB 流式) |
+| POST | `/api/v1/files/upload` | 小文件上传 (multipart/form-data 或 raw body) |
+| POST | `/api/v1/files/upload/{filename}` | 大文件流式上传 (http_state_handler 逐块写入) |
+| DELETE | `/api/v1/files/{filename}` | 删除文件 |
+
+### 12.2 安全措施
+
+- **路径校验 (IsPathSafe):** 拒绝 `..`、绝对路径、空字节、Windows 盘符、空文件名
+- **Multipart 安全:** 对原始文件名执行 IsPathSafe 校验后再做 basename 提取
+- **流式上传安全:** URL 路径中 `..` / `/` / `\` 检查 + Content-Length 上限
+- **删除安全:** `fs::canonical` + separator prefix 前缀校验防符号链接穿越
+- **下载限速:** 可配置 `limit_rate` (KB/s)
+- **上传大小限制:** 可配置 `max_upload_size` (MB)
+
+### 12.3 配置项
+
+```yaml
+file_server:
+  enabled: true
+  port: 9092
+  root_dir: files              # 文件存储根目录
+  max_upload_size: 500         # 上传上限 MB, 0=不限制
+  limit_rate: -1               # 下载限速 KB/s, -1=不限速
+```
+
+---
+
+## 13. 数据访问层
+
+### 13.1 DAO 工厂架构图
 
 ```mermaid
 graph TB
@@ -1191,7 +1239,7 @@ graph TB
     style MysqlFactory fill:#fff3e0
 ```
 
-### 12.2 事务管理流程
+### 13.2 事务管理流程
 
 ```mermaid
 sequenceDiagram
@@ -1222,9 +1270,9 @@ sequenceDiagram
 
 ---
 
-## 13. 安全架构
+## 14. 安全架构
 
-### 13.1 安全防护层次图
+### 14.1 安全防护层次图
 
 ```mermaid
 graph TB
@@ -1267,7 +1315,7 @@ graph TB
     L1 --> L2 --> L3 --> L4 --> L5
 ```
 
-### 13.2 认证授权流程图
+### 14.2 认证授权流程图
 
 ```mermaid
 flowchart TD
@@ -1321,9 +1369,9 @@ flowchart TD
 
 ---
 
-## 14. Admin 前端设计
+## 15. Admin 前端设计
 
-### 14.1 技术选型
+### 15.1 技术选型
 
 | 类别 | 选型 | 说明 |
 |------|------|------|
@@ -1334,7 +1382,7 @@ flowchart TD
 | 状态 | Pinia | 类型安全的状态管理 |
 | HTTP | Axios | 拦截器 + Token 自动注入 |
 
-### 14.2 页面结构
+### 15.2 页面结构
 
 ```mermaid
 graph TB
@@ -1356,7 +1404,7 @@ graph TB
     UserList --> UserDetail
 ```
 
-### 14.3 鉴权流程
+### 15.3 鉴权流程
 
 ```mermaid
 sequenceDiagram
@@ -1383,9 +1431,9 @@ sequenceDiagram
 
 ---
 
-## 15. IM 客户端设计 (跨平台 MVVM)
+## 16. IM 客户端设计 (跨平台 MVVM)
 
-### 15.1 MVVM 架构总览
+### 16.1 MVVM 架构总览
 
 ```mermaid
 graph TB
@@ -1430,7 +1478,7 @@ graph TB
     style Infra fill:#fce4ec
 ```
 
-### 15.2 ViewModel 职责
+### 16.2 ViewModel 职责
 
 | ViewModel | 职责 | 状态管理 |
 |-----------|------|----------|
@@ -1442,7 +1490,7 @@ graph TB
 | ProfileVM | 个人资料编辑 | 当前用户资料 |
 | SyncVM | 离线消息同步, 进度 | 同步状态, 进度百分比 |
 
-### 15.3 网络层设计
+### 16.3 网络层设计
 
 ```mermaid
 sequenceDiagram
@@ -1467,7 +1515,7 @@ sequenceDiagram
     VM->>VM: 更新状态, 通知 View
 ```
 
-### 15.4 本地存储设计
+### 16.4 本地存储设计
 
 ```mermaid
 erDiagram
@@ -1504,7 +1552,7 @@ erDiagram
     }
 ```
 
-### 15.5 平台 Bridge 方式
+### 16.5 平台 Bridge 方式
 
 | 平台 | Bridge 方式 | 说明 |
 |------|-------------|------|
@@ -1512,7 +1560,7 @@ erDiagram
 | iOS | Objective-C++ | .mm 文件桥接 Swift ↔ C++ |
 | Android | JNI | C++ 编译为 .so，Java/Kotlin 通过 JNI 调用 |
 
-### 15.6 客户端目录结构
+### 16.6 客户端目录结构
 
 ```
 client/

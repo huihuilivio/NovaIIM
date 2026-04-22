@@ -14,7 +14,7 @@
 | 类别 | 选型 | 说明 |
 |------|------|------|
 | 语言标准 | C++20 | MSVC 2022 Professional |
-| 网络 | libhv v1.3.3 | TcpServer + WebSocket (Gateway) + HttpServer (Admin) |
+| 网络 | libhv v1.3.3 | TcpServer + WebSocket (Gateway) + HttpServer (Admin + FileServer) |
 | ORM | ormpp (header-only) | C++20 iguana 反射, prepared statement 防注入 |
 | 数据库 | SQLite3 (amalgamation) | SQLITE_THREADSAFE=1, WAL 模式 |
 | 日志 | spdlog v1.15.0 | 控制台 + 文件轮转, 命名 logger |
@@ -31,24 +31,24 @@
 ## 3. 整体架构
 
 ```text
-     TCP :9090 / WS :ws_port        HTTP :9091
-         │                                  │
-  ┌──────▼──────┐                   ┌───────▼───────┐
-  │   Gateway   │                   │  AdminServer  │
-  │(TCP + WS)  │                   │ (libhv HTTP)  │
-  └──────┬──────┘                   └───────┬───────┘
-         │                                  │
-  ┌──────▼──────┐                   ┌───────▼───────┐
-  │ MPMCQueue   │                   │ AuthMiddleware│
-  │ (Vyukov)    │                   │  (JWT+RBAC)  │
-  └──────┬──────┘                   └───────┬───────┘
-         │                                  │
-  ┌──────▼──────┐                   ┌───────▼───────┐
-  │ ThreadPool  │                   │   Handlers    │
-  │ (Worker)    │                   │ (auth/user/   │
-  └──────┬──────┘                   │  msg/audit)   │
-         │                          └───────┬───────┘
-  ┌──────▼──────┐                           │
+     TCP :9090 / WS :ws_port        HTTP :9091            HTTP :9092
+         │                                  │                    │
+  ┌──────▼──────┐                   ┌───────▼───────┐   ┌───────▼───────┐
+  │   Gateway   │                   │  AdminServer  │   │  FileServer   │
+  │(TCP + WS)  │                   │ (libhv HTTP)  │   │ (libhv HTTP)  │
+  └──────┬──────┘                   └───────┬───────┘   └───────┬───────┘
+         │                                  │                    │
+  ┌──────▼──────┐                   ┌───────▼───────┐   REST endpoints:
+  │ MPMCQueue   │                   │ AuthMiddleware│   /api/v1/files/upload
+  │ (Vyukov)    │                   │  (JWT+RBAC)  │   /api/v1/files/upload/{name}
+  └──────┬──────┘                   └───────┬───────┘   /static/** (预览/下载)
+         │                                  │           DELETE /api/v1/files/{name}
+  ┌──────▼──────┐                   ┌───────▼───────┐          │
+  │ ThreadPool  │                   │   Handlers    │          │
+  │ (Worker)    │                   │ (auth/user/   │   ┌──────▼──────┐
+  └──────┬──────┘                   │  msg/audit)   │   │ 本地文件系统  │
+         │                          └───────┬───────┘   │ (root_dir)  │
+  ┌──────▼──────┐                           │           └─────────────┘
   │   Router    │                    ┌──────▼──────┐
   └──────┬──────┘                    │  DAO Layer  │
          │                           │  (ormpp)    │
@@ -66,9 +66,10 @@
   └─────────────┘
 ```
 
-**两条独立数据通路：**
+**三条独立数据通路：**
 - **左路 (TCP):** 客户端 IM 消息通信 — Gateway → MPMCQueue → ThreadPool → Router → Services
-- **右路 (HTTP):** 管理面板 API — AdminServer → JWT 中间件 → Handlers → DAO → SQLite3
+- **中路 (HTTP):** 管理面板 API — AdminServer → JWT 中间件 → Handlers → DAO → SQLite3
+- **右路 (HTTP):** 文件服务 — FileServer (:9092) → REST 路由 → 本地文件系统 (静态预览/上传/下载/删除)
 
 共享组件：`ServerContext` (原子指标)、`ConnManager` (连接管理)、`DbManager` (数据库)。
 
@@ -154,7 +155,36 @@ GET  /api/v1/audit-logs
 
 ---
 
-### 4.5 MsgService / ConvService（核心）
+### 4.5 FileServer
+
+职责：
+
+* 独立 HTTP 端口 (默认 9092)
+* 静态文件预览/下载 (`/static/**` → root_dir，小文件走 FileCache，大文件 >4MB 自动流式发送)
+* 小文件上传 (multipart/form-data 或 raw body)
+* 大文件流式上传 (文件名在 URL 路径中，`http_state_handler` 逐块写入)
+* 文件删除 (canonical 路径校验防穿越)
+* 路径安全 (IsPathSafe: 拒绝 `..` / 绝对路径 / 空字节 / Windows 盘符)
+
+**路由结构:**
+```
+GET  /healthz                              ← 健康检查
+GET  /static/**                            ← 预览/下载 (小文件缓存 + 大文件流式)
+POST /api/v1/files/upload                  ← 小文件上传 (multipart 或 raw body)
+POST /api/v1/files/upload/{filename}       ← 大文件流式上传
+DELETE /api/v1/files/{filename}            ← 删除文件
+```
+
+**安全措施:**
+- 所有入口均经过 `IsPathSafe` 路径校验 (含 multipart filename)
+- 大文件流式上传: `..` / `/` / `\` 检查 + Content-Length 上限
+- 删除: `fs::canonical` + separator prefix 防符号链接穿越
+- 下载限速可配 (limit_rate KB/s)
+- 上传大小上限可配 (max_upload_size MB)
+
+---
+
+### 4.6 MsgService / ConvService（核心）
 
 MsgService 职责：
 
@@ -174,7 +204,7 @@ ConvService 职责：
 
 ---
 
-### 4.6 GroupService
+### 4.7 GroupService
 
 职责：
 
@@ -191,7 +221,7 @@ ConvService 职责：
 
 ---
 
-### 4.7 FileService
+### 4.8 FileService
 
 职责：
 
@@ -202,7 +232,7 @@ ConvService 职责：
 
 ---
 
-### 4.8 SyncService
+### 4.9 SyncService
 
 职责：
 
@@ -211,7 +241,7 @@ ConvService 职责：
 
 ---
 
-### 4.9 DAO 层 (ormpp)
+### 4.10 DAO 层 (ormpp)
 
 | DAO | 说明 |
 |-----|------|

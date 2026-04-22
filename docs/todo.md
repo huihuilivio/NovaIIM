@@ -1,6 +1,6 @@
 # NovaIIM 待办列表
 
-**最后更新：2026-04-21 | 编译状态：✅ 0 errors | 测试：✅ 278/278**
+**最后更新：2026-04-21 | 编译状态：✅ 0 errors | 测试：✅ 294/294**
 
 ---
 
@@ -125,7 +125,7 @@
 
 ## ✅ 已完成的测试 (Phase 4-5)
 
-### 单元测试 — ✅ 已完成 (278 用例)
+### 单元测试 — ✅ 已完成 (294 用例)
 - [x] JWT 单元测试 (Sign → Verify 往返 / 过期 / 篡改) — 13 用例
 - [x] PasswordUtils 测试 (Hash → Verify / 错误密码) — 11 用例
 - [x] AdminAccountDao 单元测试 (CRUD 操作) — 9 用例
@@ -200,6 +200,18 @@
 - [x] FileService::UploadComplete (上传完成确认)
 - [x] FileService::Download (请求下载 + 共享会话成员鉴权)
 - [x] 文件大小限制 (100MB)
+
+### HTTP 文件服务器 (FileServer) ✅
+- [x] FileServer 独立 HTTP 端口 (默认 9092, libhv HttpServer)
+- [x] 小文件上传: multipart/form-data + raw body (IsPathSafe 校验)
+- [x] 大文件流式上传: http_state_handler 逐块写入 (Content-Length 限制)
+- [x] 静态文件预览/下载: /static/** (小文件 FileCache + 大文件 >4MB 流式发送)
+- [x] 文件删除: canonical 路径 + separator prefix 防穿越
+- [x] 路径安全: IsPathSafe (拒绝 .. / 绝对路径 / 空字节 / Windows 盘符)
+- [x] multipart filename 安全校验 (原始文件名 IsPathSafe + basename 提取)
+- [x] 下载限速 (limit_rate KB/s, 可配置)
+- [x] NOVA_NLOG 日志覆盖所有处理器
+- [x] 集成测试 16 用例 (test_file_server.cpp)
 
 ### 同步服务 ✅
 - [x] SyncService::SyncMessages (离线消息拉取, 分页 + has_more 标记)

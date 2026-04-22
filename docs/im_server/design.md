@@ -1,6 +1,6 @@
 # NovaIIM IM服务器架构设计
 
-> **注意：本文档为设计规划文档。**已实现：Gateway、ConnManager、Router、UserService、FriendService、MsgService、ConvService、GroupService、FileService、SyncService（278 测试用例全通过）。
+> **注意：本文档为设计规划文档。**已实现：Gateway、ConnManager、Router、UserService、FriendService、MsgService、ConvService、GroupService、FileService、SyncService、FileServer（294 测试用例全通过）。
 
 ## 1. 系统总体架构
 
@@ -10,17 +10,17 @@
 ┌─────────────────────────────────────────────────────────────┐
 │                      客户端                                   │
 │             (iOS/Android/Web/Desktop)                         │
-└──────────────────────┬──────────────────────────────────────┘
-                       │ TCP 长连接
-                       ▼
-┌─────────────────────────────────────────────────────────────┐
-│                      Gateway                                  │
-│  - TCP Server (libhv)                                        │
-│  - 连接管理 (ConnManager)                                    │
-│  - 包解析 (UNPACK_BY_LENGTH_FIELD)                          │
-│  - 分发到 Worker 线程池                                      │
-└──────────────────────┬──────────────────────────────────────┘
-                       │
+└──────┬──────────────────────────────────────┬───────────────┘
+       │ TCP 长连接                            │ HTTP REST
+       ▼                                      ▼
+┌─────────────────────────────────────┐  ┌────────────────┐
+│              Gateway                 │  │   FileServer   │
+│  - TCP Server (libhv)               │  │   (:9092)      │
+│  - 连接管理 (ConnManager)            │  │  上传/下载/删除 │
+│  - 包解析 (UNPACK_BY_LENGTH_FIELD)  │  │  静态文件预览   │
+│  - 分发到 Worker 线程池              │  └───────┬────────┘
+└──────────────────────┬──────────────┘          │
+                       │                    本地文件系统
         ┌──────────────┼──────────────┐
         ▼              ▼              ▼
     ┌────────┐   ┌────────┐   ┌────────┐
@@ -261,6 +261,8 @@ void HandleReadAck(ConnectionPtr conn, Packet& pkt);      // 已读
 - 下载 URL 签发 (有时效性)
 - 秒传去重 (file_hash SHA-256)
 - 文件大小限制 (avatar 2MB, image 10MB, file 100MB)
+
+> **注意**: FileService 负责 TCP 协议层的文件元数据管理（上传凭证/完成确认/下载URL），实际文件存储由独立的 **FileServer** (HTTP :9092) 提供 REST 接口完成。详见 `server_arch.md §4.5`。
 
 ### 4.7 SyncService - 消息同步
 
