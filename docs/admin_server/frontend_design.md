@@ -1,7 +1,7 @@
 # Admin Web 前端设计文档
 
 > **技术栈：** Vue 3 + TypeScript + Vite + Element Plus + Pinia  
-> **状态：** ✅ M1 + M4 框架完成 | 8 测试通过 | 最后更新：2026-04-19
+> 最后更新：2026-04-19
 
 ---
 

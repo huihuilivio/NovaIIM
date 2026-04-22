@@ -1,25 +1,25 @@
 # NovaIIM 待办列表
 
-**最后更新：2026-04-21 | 编译状态：✅ 0 errors | 测试：✅ 294/294**
+最后更新：2026-04-22
 
 ---
 
-## ✅ 已完成的核心基础设施
+## 核心基础设施
 
-### 网络层 ✅
+### 网络层
 - [x] 实现 Gateway (libhv TCP 网关)
 - [x] WebSocket 网关 (与 TCP 并行运行, 可配置端口)
 - [x] 多端连接管理 (ConnManager)
 - [x] MPMC 消息队列 (Vyukov 算法)
 - [x] ThreadPool 消息分发
 
-### 配置和日志 ✅
+### 配置和日志
 - [x] 添加配置文件加载 (ylt struct_yaml)
 - [x] 集成 spdlog 日志系统
 - [x] 自定义 formatter (时间格式等)
 - [x] JWT 秘钥校验
 
-### 主程序 ✅
+### 主程序
 - [x] main.cpp 信号处理/优雅退出
 - [x] CreateDaoFactory 根据配置选择后端
 - [x] ServerContext 依赖注入中心
@@ -28,17 +28,17 @@
 
 ---
 
-## ✅ 已完成的数据层
+## 数据层
 
-### 数据库引擎 ✅
+### 数据库引擎
 - [x] ormpp + SQLite3 集成 (WAL + FK)
 - [x] ormpp + MySQL 集成 (连接池 + ConnGuard)
 - [x] DbManager 封装 (Open/Close/InitSchema)
 - [x] MySQL 客户端库自动下载脚本
 
-### Model 层 ✅
+### Model 层
 - [x] User 完整定义 (id, uid, password_hash, status, ...)
-- [x] Admin 完整定义 (新增: 管理员账户) ← NEW
+- [x] Admin 完整定义 (管理员账户)
 - [x] UserDevice 定义
 - [x] Message 定义 (conversation_id + seq)
 - [x] Conversation 定义
@@ -46,7 +46,7 @@
 - [x] AdminSession 定义 (JWT 黑名单)
 - [x] Role / Permission / RolePermission / AdminRole 定义
 
-### DAO 层 ✅
+### DAO 层
 - [x] UserDaoImpl (FindByUid / ListUsers / Insert / UpdatePassword / SoftDelete)
 - [x] AdminAccountDaoImpl (NEW: 管理员专属) (FindByUid / Insert / UpdatePassword)
 - [x] MessageDaoImpl (Insert / GetAfterSeq / ListMessages / UpdateStatus)
@@ -59,9 +59,9 @@
 
 ---
 
-## ✅ 已完成的认证和授权
+## 认证和授权
 
-### 认证 + 鉴权层 ✅
+### 认证 + 鉴权层
 - [x] JWT 工具 (l8w8jwt, HS256, Sign/Verify)
 - [x] JWT Claims (admin_id 字段)
 - [x] PasswordUtils (PBKDF2-SHA256, 100k iterations, MbedTLS)
@@ -70,17 +70,17 @@
 
 ---
 
-## ✅ 已完成的 Admin 管理面板
+## Admin 管理面板
 
-### 认证端点 ✅
+### 认证端点
 - [x] POST /auth/login (AdminAccountDao 查询 + 密码验证 + JWT 签发 + 会话记录)
 - [x] POST /auth/logout (吊销 JWT 令牌 + 审计)
 - [x] GET /auth/me (返回管理员信息 + 权限列表)
 
-### 仪表盘 ✅
+### 仪表盘
 - [x] GET /dashboard/stats (在线人数 / 消息数 / uptime)
 
-### 用户管理 ✅
+### 用户管理
 - [x] GET /users (分页 + keyword/status 筛选)
 - [x] POST /users (创建用户 + 密码哈希 + 审计)
 - [x] GET /users/:id (详情 + 在线状态 + 设备列表)
@@ -90,18 +90,18 @@
 - [x] POST /users/:id/unban (解禁用户 + 审计)
 - [x] POST /users/:id/kick (立即踢出 + 审计)
 
-### 消息管理 ✅
+### 消息管理
 - [x] GET /messages (分页 + 时间/对话 筛选)
 - [x] POST /messages/:id/recall (撤回消息 + reason + 审计)
 
-### 审计日志 ✅
+### 审计日志
 - [x] GET /audit-logs (分页 + admin_id/action/时间 筛选 + operator_uid 缓存)
 
 ---
 
-## ✅ 已完成的核心特性
+## 核心特性
 
-### Phase 3.5 — Admin/User 表分离 (2026-04-15) ✅
+### Phase 3.5 — Admin/User 表分离 (2026-04-15)
 - [x] 创建 Admin 结构体 (id, uid, password_hash, nickname, status, created_at, updated_at)
 - [x] 创建 admins 表 (SQLite + MySQL)
 - [x] 实现 AdminAccountDao (FindByUid / FindById / Insert / UpdatePassword)
@@ -116,16 +116,16 @@
 - [x] 编译状态零错误 (验证通过)
 - [x] 所有改动已 commit (c236c0f)
 
-### 双后端一致性 ✅
+### 双后端一致性
 - [x] SQLite 和 MySQL 的 InitSchema 完全一致
 - [x] 所有 DAO impl 使用 template，两个工厂都实例化
 - [x] Seed 逻辑双后端通用
 
 ---
 
-## ✅ 已完成的测试 (Phase 4-5)
+## 测试 (Phase 4-5)
 
-### 单元测试 — ✅ 已完成 (294 用例)
+### 单元测试 (294 用例)
 - [x] JWT 单元测试 (Sign → Verify 往返 / 过期 / 篡改) — 13 用例
 - [x] PasswordUtils 测试 (Hash → Verify / 错误密码) — 11 用例
 - [x] AdminAccountDao 单元测试 (CRUD 操作) — 9 用例
@@ -142,16 +142,16 @@
 - [x] AppHelper + Application 启动/数据库初始化测试 — 17 用例
 - [x] WsGateway WebSocket 网关测试 — 6 用例
 
-### ConversationDao ✅
+### ConversationDao
 - [x] 实现 ConversationDaoImplT 模板 (CreateConversation / IsMember / AddMember / IncrMaxSeq / GetMembersByConversation / GetMembersByUser / UpdateLastAckSeq / UpdateLastReadSeq)
 - [x] 添加到 DaoFactory (SqliteDaoFactory / MysqlDaoFactory)
 - [x] 集成到 db_manager InitSchema
 
 ---
 
-## ✅ IM 用户侧服务 (Phase 5)
+## IM 用户侧服务 (Phase 5)
 
-### 用户服务 ✅
+### 用户服务
 - [x] UserService::Register (邮箱注册 + 格式校验 + 密码校验 + Snowflake UID + TOCTOU 防护)
 - [x] UserService::Login (邮箱登录 + trim/lowercase + 封禁返回通用错误 + 频率限制)
 - [x] UserService::Logout (清理会话, 从 ConnManager 移除)
@@ -159,7 +159,7 @@
 - [x] UserService::SearchUser (邮箱精确 / 昵称模糊搜索, 脱敏)
 - [x] UserService::GetProfile / UpdateProfile (个人资料 CRUD, 事务包裹原子更新)
 
-### 好友服务 ✅
+### 好友服务
 - [x] FriendService::AddFriend (发送好友申请, 拉黑/已好友/pending 校验)
 - [x] FriendService::HandleRequest (同意/拒绝, 同意时事务包裹: 创建会话 + 双向 friendship)
 - [x] FriendService::DeleteFriend (双向标记删除, 保留历史消息)
@@ -168,14 +168,14 @@
 - [x] FriendService::GetRequests (好友申请列表, 分页)
 - [x] FriendNotify 推送 (申请/同意/拒绝/删除, 多端推送)
 
-### 消息服务 ✅
+### 消息服务
 - [x] MsgService::SendMsg (消息投递 + seq 递增 + LRU 幂等去重 + in-flight 防 TOCTOU)
 - [x] MsgService::RecallMsg (消息撤回 + 可配置时间限制 + 仅发送者 + 广播通知)
 - [x] MsgService::DeliverAck (送达确认, 更新 last_ack_seq, 成员校验)
 - [x] MsgService::ReadAck (已读确认, 更新 last_read_seq, 成员校验)
 - [x] 多 msg_type 支持 (文本/表情/图片/语音/视频/文件/位置/名片) — UI 渲染 + 会话列表类型预览
 
-### 会话服务 ✅
+### 会话服务
 - [x] ConvService::GetConvList (会话列表 + 未读数 + 最后一条消息摘要 + 私聊对方昵称)
 - [x] ConvService::DeleteConv (软隐藏会话, hidden=1, 新消息自动恢复)
 - [x] ConvService::MuteConv (免打扰开关, mute 0/1)
@@ -184,7 +184,7 @@
 - [x] MsgService 自动恢复隐藏会话 (发送消息后 unhide)
 - [x] ConvUpdate 推送 (新消息摘要/成员变化/信息变更) — convUpdate 事件刷新会话列表
 
-### 群组服务 ✅
+### 群组服务
 - [x] GroupService::CreateGroup (建群 + 自动创建 Conversation + 封禁用户校验 + 成员上限 500)
 - [x] GroupService::DismissGroup (解散群, 仅群主)
 - [x] GroupService::JoinGroup / HandleJoinReq (入群申请 + 审批 + 封禁/删除用户校验 + 群员上限检查)
@@ -195,13 +195,13 @@
 - [x] GroupService::SetMemberRole (设置管理员)
 - [x] GroupNotify 推送 (创建/解散/加入/退出/踢出/变更/角色)
 
-### 文件服务 ✅
+### 文件服务
 - [x] FileService::Upload (请求上传 → Insert + UpdatePath 防路径碰撞)
 - [x] FileService::UploadComplete (上传完成确认)
 - [x] FileService::Download (请求下载 + 共享会话成员鉴权)
 - [x] 文件大小限制 (100MB)
 
-### HTTP 文件服务器 (FileServer) ✅
+### HTTP 文件服务器 (FileServer)
 - [x] FileServer 独立 HTTP 端口 (默认 9092, libhv HttpServer)
 - [x] 小文件上传: multipart/form-data + raw body (IsPathSafe 校验)
 - [x] 大文件流式上传: http_state_handler 逐块写入 (Content-Length 限制)
@@ -213,11 +213,11 @@
 - [x] NOVA_NLOG 日志覆盖所有处理器
 - [x] 集成测试 16 用例 (test_file_server.cpp)
 
-### 同步服务 ✅
+### 同步服务
 - [x] SyncService::SyncMessages (离线消息拉取, 分页 + has_more 标记)
 - [x] SyncService::SyncUnread (未读会话 + 未读数 + 最后消息预览, 批量查询优化)
 
-### 输入校验 ✅
+### 输入校验
 - [x] 邮箱格式校验 + 长度限制 (255)
 - [x] 密码长度校验 (6-128)
 - [x] 昵称长度校验 (100) + 控制字符检测
@@ -230,7 +230,7 @@
 
 ---
 
-## 📋 已完成的安全加固
+## 安全加固
 
 - [x] SQL 注入: 全参数化 (ormpp prepared statement)
 - [x] 请求头伪造: AuthMiddleware 清除 X-Nova-*
@@ -260,7 +260,7 @@
 - [x] 批量 DAO 优化: GroupDao/ConvDao 批量查询消除 N+1
 ---
 
-## 📚 文档
+## 文档
 
 - [x] 数据库设计 docs/db_design.sql
 - [x] Admin 需求文档
@@ -282,25 +282,23 @@
 
 ---
 
-## � 开发计划总览
-
-> **原则**: 框架搭建优先，具体业务实现跟进。先跑通最小闭环，再逐步补全功能。
+## 开发计划
 
 ### 里程碑路线图
 
 | 阶段 | 目标 | 交付物 | 状态 |
 |------|------|--------|------|
-| **M1** | Admin 前端脚手架 | Vue 项目可运行，能登录 | ✅ 完成 |
-| **M2** | IM 客户端 C++ 框架 | 共享库编译通过，能连接服务器 | ✅ 完成 |
-| **M3** | PC 端 WebView2 | Win32+WebView2 可编译运行 | ✅ 完成 |
-| **M4** | Admin 前端功能完善 | 全部管理页面可用 | ✅ 完成 |
-| **M5** | IM 客户端业务实现 | 登录/聊天/联系人可用 | ✅ 完成 |
-| **M6** | PC 端 UI 完善 | 完整桌面 IM 体验 | ✅ 完成 |
-| **M7** | 移动端 Bridge | iOS/Android 可编译运行 | � 框架 |
+| **M1** | Admin 前端脚手架 | Vue 项目可运行，能登录 | 完成 |
+| **M2** | IM 客户端 C++ 框架 | 共享库编译通过，能连接服务器 | 完成 |
+| **M3** | PC 端 WebView2 | Win32+WebView2 可编译运行 | 完成 |
+| **M4** | Admin 前端功能完善 | 全部管理页面可用 | 完成 |
+| **M5** | IM 客户端业务实现 | 登录/聊天/联系人可用 | 完成 |
+| **M6** | PC 端 UI 完善 | 完整桌面 IM 体验 | 完成 |
+| **M7** | 移动端 Bridge | iOS/Android 可编译运行 | 框架已搭 |
 
 ---
 
-## ✅ M1 — Admin 前端脚手架 (框架搭建) ✅
+## M1 — Admin 前端脚手架 (框架搭建)
 
 ### 1.1 项目初始化
 - [x] Vite + Vue 3 + TypeScript 项目创建 (server/web/)
@@ -334,13 +332,13 @@
 
 ---
 
-## ✅ M2 — IM 客户端 C++ 共享层框架 ✅
+## M2 — IM 客户端 C++ 共享层框架
 
 ### 2.1 CMake 工程搭建
 - [x] `client/nova_sdk/CMakeLists.txt` 重构 (编译为 shared library `nova_sdk`)
 - [x] 依赖管理 (复用 protocol/, libhv, spdlog)
 - [x] 导出头文件组织 (NOVA_SDK_API 宏, dllexport/dllimport)
-- [x] 跨平台编译验证 (Windows MSVC ✅ / Linux GCC + macOS Clang 待验证)
+- [x] 跨平台编译验证 (Windows MSVC 通过 / Linux GCC + macOS Clang 待验证)
 
 ### 2.2 Core 基础设施
 - [x] 客户端日志 (spdlog 封装, 文件 + 控制台, 轮转)
@@ -375,7 +373,7 @@
 
 ---
 
-## ## ✅ M3 — PC 端 WebView2 桌面客户端 (完成)
+## M3 — PC 端 WebView2 桌面客户端
 
 ### 3.1 WebView2 项目搭建
 - [x] `client/desktop/CMakeLists.txt` (WebView2 SDK 自动下载 + nova_sdk 链接, Windows-only)
@@ -406,7 +404,7 @@
 
 ---
 
-✅ M4 — Admin 前端功能完善 ✅
+## M4 — Admin 前端功能完善
 
 ### 4.1 仪表盘
 - [x] 数据概览卡片 (连接数 / 在线用户 / 今日消息 / 运行时长)
@@ -432,7 +430,7 @@
 
 ---
 
-## ✅ M5 — IM 客户端业务实现 (完成)
+## M5 — IM 客户端业务实现
 
 ### 5.1 Model 层实现 (通过 Pinia Store 实现)
 - [x] UserModel — auth store (uid/nickname/isLoggedIn)
@@ -459,7 +457,7 @@
 
 ---
 
-## ✅ M6 — PC 端 UI 完善
+## M6 — PC 端 UI 完善
 
 ### 6.1 会话模块
 - [x] 会话列表组件 (头像 + 昵称 + 最后消息 + 未读数 + 时间 + 群聊区分)

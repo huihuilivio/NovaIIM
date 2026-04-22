@@ -8,25 +8,25 @@
 
 ## 核心设计原则
 
-### ✅ 已实现的架构
+### 架构设计
 
-**Admin/User 完全分离（NEW：2026-04-15）**
+**Admin/User 完全分离（实施于 2026-04-15）**
 - **admins 表**：存储运维人员账户（管理员账户）
 - **users 表**：存储 IM 系统的最终用户（业务用户）
 - **admin_roles 表**：管理员-角色绑定（独占管理员权限）
 - **无 user_roles 表**：用户表不绑定任何权限
 
 **隔离收益：**
-1. ✅ 权限混淆风险消除（admins 无法混入 users 权限系统）
-2. ✅ 审计追踪清晰（admin_id 明确标记操作者身份）
-3. ✅ IM 逻辑简化（users 表完全专注消息业务）
-4. ✅ 安全性提升（管理员和用户在数据层物理隔离）
+1. 权限混淆风险消除（admins 无法混入 users 权限系统）
+2. 审计追踪清晰（admin_id 明确标记操作者身份）
+3. IM 逻辑简化（users 表完全专注消息业务）
+4. 安全性提升（管理员和用户在数据层物理隔离）
 
 ---
 
 ## 表结构详解
 
-### 1. admins — 管理员账户表（NEW）
+### 1. admins — 管理员账户表
 
 **用途：** 系统管理员和运维人员账户。与 users 表完全独立。
 
@@ -57,7 +57,7 @@ CREATE INDEX idx_admins_status ON admins(status);
 
 ---
 
-### 2. admin_roles — 管理员-角色绑定表（NEW，替代 user_roles）
+### 2. admin_roles — 管理员-角色绑定表（替代 user_roles）
 
 **用途：** 关联 admins 和 roles，管理员的权限来源。
 
@@ -139,7 +139,7 @@ CREATE INDEX idx_messages_sender ON messages(sender_id);
 ```sql
 CREATE TABLE IF NOT EXISTS audit_logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    admin_id INTEGER NOT NULL,                   -- ✨ NEW：操作者（来自 admins.id）
+    admin_id INTEGER NOT NULL,                   -- 操作者（来自 admins.id）
     action TEXT NOT NULL,                        -- user.create, user.ban, msg.recall, etc
     target_type TEXT NOT NULL,                   -- user, message, conversation
     target_id INTEGER,
@@ -277,7 +277,7 @@ WHERE r.code = 'auditor' AND p.code = 'admin.audit';
 
 - **conversations** — 对话/群组
 - **user_devices** — 用户设备指纹
-- **（无 user_roles 表）** — ✨ 删除，用户无权限概念
+- **（无 user_roles 表）** — 已移除，用户无权限概念
 
 ---
 
@@ -289,12 +289,12 @@ WHERE r.code = 'auditor' AND p.code = 'admin.audit';
         └─→ DbManager::Open()
              └─→ InitSchema()
                   ├─ CREATE TABLE users
-                  ├─ CREATE TABLE admins            ← NEW
+                  ├─ CREATE TABLE admins            
                   ├─ CREATE TABLE messages
                   ├─ CREATE TABLE conversations
                   ├─ CREATE TABLE audit_logs        (admin_id 字段)
                   ├─ CREATE TABLE admin_sessions
-                  ├─ CREATE TABLE admin_roles       ← NEW (替代 user_roles)
+                  ├─ CREATE TABLE admin_roles        (替代 user_roles)
                   ├─ CREATE TABLE roles
                   ├─ CREATE TABLE permissions
                   ├─ CREATE TABLE role_permissions
@@ -377,7 +377,7 @@ diff sqlite_schema.txt mysql_schema.txt
 ---
 
 **设计完成日期：** 2026-04-15  
-**实现状态：** ✅ 100% 完成 + 双后端验证  
+双后端（SQLite / MySQL）均已验证  
 **下一步：** 单元测试（Phase 4）
 
 - `admin_sessions.idx_token_hash`：鉴权中间件每次请求查询黑名单

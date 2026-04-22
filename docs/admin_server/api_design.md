@@ -3,7 +3,7 @@
 > Base URL: `http://{host}:9091/api/v1`  
 > Auth: `Authorization: Bearer {JWT_TOKEN}`  
 > Content-Type: `application/json`  
-> **Status:** ✅ 100% 实现 | 最后更新：2026-04-16
+> 最后更新：2026-04-16
 
 ---
 

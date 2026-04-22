@@ -142,9 +142,9 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| email | string | ✅ | 登录邮箱，最长 255 字符，不区分大小写，格式校验 |
-| nickname | string | ✅ | 昵称，可重复，最长 100 字符，自动 trim 首尾空白，禁止控制字符 |
-| password | string | ✅ | 密码，6–128 字符 |
+| email | string | 是 | 登录邮箱，最长 255 字符，不区分大小写，格式校验 |
+| nickname | string | 是 | 昵称，可重复，最长 100 字符，自动 trim 首尾空白，禁止控制字符 |
+| password | string | 是 | 密码，6–128 字符 |
 
 **RegisterAck** (S→C, 0x0005):
 
@@ -175,8 +175,8 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| email | string | ✅ | 登录邮箱（不区分大小写） |
-| password | string | ✅ | 密码 |
+| email | string | 是 | 登录邮箱（不区分大小写） |
+| password | string | 是 | 密码 |
 | device_id | string | | 设备标识（用于多端管理） |
 | device_type | string | | 设备类型："pc", "mobile", "web" 等 |
 
@@ -240,7 +240,7 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| keyword | string | ✅ | 搜索关键词（含 `@` 按邮箱精确匹配，否则按昵称模糊搜索） |
+| keyword | string | 是 | 搜索关键词（含 `@` 按邮箱精确匹配，否则按昵称模糊搜索） |
 
 **SearchUserAck** (S→C, 0x0401):
 
@@ -319,7 +319,7 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| target_uid | string | ✅ | 目标用户 UID（Snowflake） |
+| target_uid | string | 是 | 目标用户 UID（Snowflake） |
 | remark | string | | 验证消息 / 备注（最长 200 字符） |
 
 **AddFriendAck** (S→C, 0x0031):
@@ -353,8 +353,8 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| request_id | int64 | ✅ | 好友申请 ID（来自 AddFriendAck 或 FriendNotify） |
-| action | int32 | ✅ | 1=同意，2=拒绝 |
+| request_id | int64 | 是 | 好友申请 ID（来自 AddFriendAck 或 FriendNotify） |
+| action | int32 | 是 | 1=同意，2=拒绝 |
 
 **HandleFriendReqAck** (S→C, 0x0033):
 
@@ -384,7 +384,7 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| target_uid | string | ✅ | 要删除的好友 UID |
+| target_uid | string | 是 | 要删除的好友 UID |
 
 **DeleteFriendAck** (S→C, 0x0035):
 
@@ -412,7 +412,7 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| target_uid | string | ✅ | 要拉黑的用户 UID |
+| target_uid | string | 是 | 要拉黑的用户 UID |
 
 **BlockFriendAck** (S→C, 0x0037):
 
@@ -545,9 +545,9 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| conversation_id | int64 | ✅ | 目标会话 ID |
-| content | string | ✅ | 消息内容（格式取决于 msg_type） |
-| msg_type | int32 | ✅ | 消息类型，见 3.7.1 |
+| conversation_id | int64 | 是 | 目标会话 ID |
+| content | string | 是 | 消息内容（格式取决于 msg_type） |
+| msg_type | int32 | 是 | 消息类型，见 3.7.1 |
 | client_msg_id | string | | 客户端幂等 ID（UUID），相同 ID 不重复入库 |
 
 **SendMsgAck** (S→C, 0x0101):
@@ -601,15 +601,15 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| conversation_id | int64 | ✅ | 会话 ID |
-| server_seq | int64 | ✅ | 已送达的消息 seq |
+| conversation_id | int64 | 是 | 会话 ID |
+| server_seq | int64 | 是 | 已送达的消息 seq |
 
 **ReadAckReq** (C→S, 0x0104):
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| conversation_id | int64 | ✅ | 会话 ID |
-| read_up_to_seq | int64 | ✅ | 已读到的最大 seq（批量标记） |
+| conversation_id | int64 | 是 | 会话 ID |
+| read_up_to_seq | int64 | 是 | 已读到的最大 seq（批量标记） |
 
 **服务端处理：**
 - DeliverAck：更新 `conversation_members.last_ack_seq`
@@ -621,8 +621,8 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| conversation_id | int64 | ✅ | 会话 ID |
-| server_seq | int64 | ✅ | 要撤回的消息 seq |
+| conversation_id | int64 | 是 | 会话 ID |
+| server_seq | int64 | 是 | 要撤回的消息 seq |
 
 **RecallMsgAck** (S→C, 0x0106):
 
@@ -670,7 +670,7 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| type | int32 | ✅ | 1=私聊，2=群聊 |
+| type | int32 | 是 | 1=私聊，2=群聊 |
 | target_user_id | int64 | 条件 | 私聊时必填，对方用户 ID |
 | name | string | 条件 | 群聊时必填，群名称 |
 | member_ids | int64[] | 条件 | 群聊时必填，初始成员 ID 列表 |
@@ -737,7 +737,7 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| conversation_id | int64 | ✅ | 要删除（隐藏）的会话 ID |
+| conversation_id | int64 | 是 | 要删除（隐藏）的会话 ID |
 
 **DeleteConvAck** (S→C, 0x0115):
 
@@ -765,15 +765,15 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| conversation_id | int64 | ✅ | 会话 ID |
-| mute | int32 | ✅ | 0=取消免打扰，1=开启免打扰 |
+| conversation_id | int64 | 是 | 会话 ID |
+| mute | int32 | 是 | 0=取消免打扰，1=开启免打扰 |
 
 **PinConvReq** (C→S, 0x0118):
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| conversation_id | int64 | ✅ | 会话 ID |
-| pinned | int32 | ✅ | 0=取消置顶，1=置顶 |
+| conversation_id | int64 | 是 | 会话 ID |
+| pinned | int32 | 是 | 0=取消置顶，1=置顶 |
 
 两者的 Ack 均为 `RspBase`（code + msg）。
 
@@ -806,9 +806,9 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| name | string | ✅ | 群名称，1–100 字符，禁止控制字符 |
+| name | string | 是 | 群名称，1–100 字符，禁止控制字符 |
 | avatar | string | | 群头像 URL，最长 512 字符 |
-| member_ids | int64[] | ✅ | 初始成员 ID 列表（不含自己，最少 2 人，总人数不超过 500） |
+| member_ids | int64[] | 是 | 初始成员 ID 列表（不含自己，最少 2 人，总人数不超过 500） |
 
 **CreateGroupAck** (S→C, 0x0501):
 
@@ -842,7 +842,7 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| conversation_id | int64 | ✅ | 群会话 ID |
+| conversation_id | int64 | 是 | 群会话 ID |
 
 **DismissGroupAck** (S→C, 0x0503):
 
@@ -867,7 +867,7 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| conversation_id | int64 | ✅ | 群会话 ID |
+| conversation_id | int64 | 是 | 群会话 ID |
 | remark | string | | 申请备注 |
 
 **JoinGroupAck** (S→C, 0x0505):
@@ -881,8 +881,8 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| request_id | int64 | ✅ | 入群申请 ID（来自 GroupNotify 推送） |
-| action | int32 | ✅ | 1=同意，2=拒绝 |
+| request_id | int64 | 是 | 入群申请 ID（来自 GroupNotify 推送） |
+| action | int32 | 是 | 1=同意，2=拒绝 |
 
 **HandleJoinReqAck** (S→C, 0x0507):
 
@@ -910,7 +910,7 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| conversation_id | int64 | ✅ | 群会话 ID |
+| conversation_id | int64 | 是 | 群会话 ID |
 
 **LeaveGroupAck** (S→C, 0x0509):
 
@@ -935,8 +935,8 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| conversation_id | int64 | ✅ | 群会话 ID |
-| target_user_id | int64 | ✅ | 被踢用户 ID |
+| conversation_id | int64 | 是 | 群会话 ID |
+| target_user_id | int64 | 是 | 被踢用户 ID |
 
 **KickMemberAck** (S→C, 0x050B):
 
@@ -967,7 +967,7 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| conversation_id | int64 | ✅ | 群会话 ID |
+| conversation_id | int64 | 是 | 群会话 ID |
 
 **GetGroupInfoAck** (S→C, 0x050D):
 
@@ -989,7 +989,7 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| conversation_id | int64 | ✅ | 群会话 ID |
+| conversation_id | int64 | 是 | 群会话 ID |
 | name | string | | 新群名（为空不修改），1–100 字符，禁止控制字符 |
 | avatar | string | | 新头像（为空不修改），最长 512 字符 |
 | notice | string | | 新公告（为空不修改），最长 1000 字符 |
@@ -1021,7 +1021,7 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| conversation_id | int64 | ✅ | 群会话 ID |
+| conversation_id | int64 | 是 | 群会话 ID |
 
 **GetGroupMembersAck** (S→C, 0x0511):
 
@@ -1074,9 +1074,9 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| conversation_id | int64 | ✅ | 群会话 ID |
-| target_user_id | int64 | ✅ | 目标成员 ID |
-| role | int32 | ✅ | 0=普通成员，1=管理员 |
+| conversation_id | int64 | 是 | 群会话 ID |
+| target_user_id | int64 | 是 | 目标成员 ID |
+| role | int32 | 是 | 0=普通成员，1=管理员 |
 
 **SetMemberRoleAck** (S→C, 0x0515):
 
@@ -1134,9 +1134,9 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| file_name | string | ✅ | 原始文件名 |
-| file_size | int64 | ✅ | 文件大小（字节） |
-| mime_type | string | ✅ | MIME 类型，如 `image/png` |
+| file_name | string | 是 | 原始文件名 |
+| file_size | int64 | 是 | 文件大小（字节） |
+| mime_type | string | 是 | MIME 类型，如 `image/png` |
 | file_hash | string | | 文件 SHA-256（秒传去重） |
 | file_type | string | | 用途分类：`avatar`/`image`/`voice`/`video`/`file` |
 
@@ -1180,7 +1180,7 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| file_id | int64 | ✅ | 文件 ID（来自 UploadAck） |
+| file_id | int64 | 是 | 文件 ID（来自 UploadAck） |
 
 **UploadCompleteAck** (S→C, 0x0603):
 
@@ -1196,7 +1196,7 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| file_id | int64 | ✅ | 文件 ID |
+| file_id | int64 | 是 | 文件 ID |
 | thumb | int32 | | 1=仅缩略图（图片/视频） |
 
 **DownloadAck** (S→C, 0x0605):
@@ -1226,8 +1226,8 @@ libhv `UNPACK_BY_LENGTH_FIELD`:
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| conversation_id | int64 | ✅ | 会话 ID |
-| last_seq | int64 | ✅ | 客户端已有的最大 seq（从该 seq 之后拉取，必须 ≥ 0） |
+| conversation_id | int64 | 是 | 会话 ID |
+| last_seq | int64 | 是 | 客户端已有的最大 seq（从该 seq 之后拉取，必须 ≥ 0） |
 | limit | int32 | | 拉取条数，默认 20，最大 100 |
 
 **SyncMsgResp** (S→C, 0x0201):

@@ -1,6 +1,6 @@
 # NovaIIM IM服务器架构设计
 
-> **注意：本文档为设计规划文档。**已实现：Gateway、ConnManager、Router、UserService、FriendService、MsgService、ConvService、GroupService、FileService、SyncService、FileServer（294 测试用例全通过）。
+> 本文档描述 IM 服务器的架构设计与实现细节。
 
 ## 1. 系统总体架构
 
@@ -529,9 +529,9 @@ server/
 
 ### 12.3 常见陷阱
 
-- ❌ 在 Gateway 线程中做耗时操作 (应 submit 到工作队列)
-- ❌ 不检查用户登录状态就处理操作
-- ❌ 消息存储前没有检查消息长度上限
-- ❌ 未正确处理数据库连接异常
-- ✅ 始终使用 NOVA_LOG_* 记录关键操作
-- ✅ 使用智能指针管理内存 (shared_ptr/unique_ptr)
+- 避免在 Gateway 线程中做耗时操作 (应 submit 到工作队列)
+- 避免不检查用户登录状态就处理操作
+- 避免消息存储前没有检查消息长度上限
+- 避免未正确处理数据库连接异常
+- 始终使用 NOVA_LOG_* 记录关键操作
+- 使用智能指针管理内存 (shared_ptr/unique_ptr)
