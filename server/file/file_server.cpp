@@ -219,6 +219,9 @@ void FileServer::RegisterRoutes() {
             if (pos != std::string::npos) {
                 filename = filename.substr(pos + 1);
             }
+            if (filename.empty()) {
+                return response_status(ctx, HTTP_STATUS_BAD_REQUEST, "empty filename");
+            }
             // 用安全文件名保存
             std::string filepath = save_path + filename;
             HFile file;
@@ -267,6 +270,8 @@ void FileServer::RegisterRoutes() {
                 // Content-Length 检查
                 int64_t content_len = ctx->request->ContentLength();
                 if (max_upload_size > 0 && content_len > max_upload_size) {
+                    NOVA_NLOG_WARN(kLogTag, "large upload rejected: size {} exceeds limit {}",
+                                   content_len, max_upload_size);
                     ctx->close();
                     return HTTP_STATUS_BAD_REQUEST;
                 }
@@ -332,7 +337,8 @@ void FileServer::RegisterRoutes() {
         std::error_code ec, ec2;
         auto canonical      = fs::canonical(full_path, ec);
         auto root_canonical = fs::canonical(opts_.root_dir, ec2);
-        if (ec || ec2 || canonical.string().find(root_canonical.string()) != 0) {
+        auto root_prefix    = root_canonical.string() + std::string(1, fs::path::preferred_separator);
+        if (ec || ec2 || !canonical.string().starts_with(root_prefix)) {
             return response_status(ctx, HTTP_STATUS_BAD_REQUEST, "invalid path");
         }
 
