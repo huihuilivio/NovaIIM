@@ -24,7 +24,7 @@
 | 线程安全 | 完成 | Connection::user_id_ atomic, device_id_ mutex, ThreadPool 重入安全 |
 | AdminConfig | 完成 | jwt_secret + jwt_expires, server.yaml 已更新 |
 | 鉴权中间件 | 完成 | JWT 验签 + X-Nova-Admin-Id 清除/注入 + 黑名单查询 + RBAC 权限注入 |
-| Handler 层 | 完成 | auth/dashboard/user/message/audit 共 13 个 handler 已实现 |
+| Handler 层 | 完成 | auth/dashboard/user/message/audit/admin/role 共 28 个路由已实现 |
 | 审计日志写入 | 完成 | 全部写操作 handler 均集成 WriteAuditLog，明确 admin_id 操作者 |
 | 数据库 Seed | 完成 | 首次运行自动创建 super admin 账户，nova2024 默认密码，幂等逻辑 |
 | DAO 目录重构 | 完成 | 公共接口 dao/, 模板实现 dao/impl/, 后端 dao/sqlite3/ + dao/mysql/ |
@@ -187,7 +187,7 @@
 
 ---
 
-## Phase 5 — 运维管理 + 角色管理（待实现）
+## Phase 5 — 运维管理 + 角色管理（2026-04-22 完成）
 
 **前置依赖：** Phase 4 (单元测试通过)
 
@@ -195,25 +195,23 @@
 
 | # | 任务 | 说明 | 权限 | 状态 |
 |---|------|------|------|------|
-| 5.1 | GET /admins | AdminAccountDao::ListAdmins + 分页 + keyword/status 筛选 | `admin.ops.view` | 待实现 |
-| 5.2 | POST /admins | 创建管理员(uid/password) + 默认无权限 + 后续绑定角色 | `admin.ops.create` | 待实现 |
-| 5.3 | GET /admins/:id | 管理员详情 + 绑定的角色列表 + 权限列表 | `admin.ops.view` | 待实现 |
-| 5.4 | POST /admins/:id/reset-password | 重置管理员密码 | `admin.ops.edit` | 待实现 |
-| 5.5 | DELETE /admins/:id | 删除管理员(软删除 status=3) | `admin.ops.delete` | 待实现 |
-| 5.6 | POST /admins/:id/enable | 启用管理员(status=1) | `admin.ops.edit` | 待实现 |
-| 5.7 | POST /admins/:id/disable | 禁用管理员(status=2) | `admin.ops.edit` | 待实现 |
+| 5.1 | GET /admins | AdminAccountDao::ListAdmins + 分页 + keyword 筛选 + 角色列表 | `admin.manage` | 完成 |
+| 5.2 | POST /admins | 创建管理员(uid/password/nickname) + 审计 | `admin.manage` | 完成 |
+| 5.3 | DELETE /admins/:id | 软删除 (super admin id=1 和自身保护) + 审计 | `admin.manage` | 完成 |
+| 5.4 | POST /admins/:id/reset-password | 重置管理员密码 + 审计 | `admin.manage` | 完成 |
+| 5.5 | POST /admins/:id/enable | 启用管理员(status=Normal) + 审计 | `admin.manage` | 完成 |
+| 5.6 | POST /admins/:id/disable | 禁用管理员(status=Banned, super admin 和自身保护) + 审计 | `admin.manage` | 完成 |
+| 5.7 | PUT /admins/:id/roles | 替换管理员角色 + 审计 | `admin.manage` | 完成 |
 
 ### 5B — 角色管理 (Role Management)
 
 | # | 任务 | 说明 | 权限 | 状态 |
 |---|------|------|------|------|
-| 5.8 | GET /roles | RbacDao::ListRoles + 分页 | `admin.roles.view` | 待实现 |
-| 5.9 | POST /roles | 创建新角色(name/code/description) | `admin.roles.create` | 待实现 |
-| 5.10 | GET /roles/:id | 角色详情 + 绑定的权限列表(10个) | `admin.roles.view` | 待实现 |
-| 5.11 | PUT /roles/:id | 编辑角色(name/description) | `admin.roles.edit` | 待实现 |
-| 5.12 | DELETE /roles/:id | 删除角色 (约束检查：admin_roles无引用) | `admin.roles.delete` | 待实现 |
-| 5.13 | POST /roles/:id/permissions | 配置角色权限(permission_ids=[1,2,3,...]) | `admin.roles.edit` | 待实现 |
-| 5.14 | GET /permissions | 列出所有权限(分组显示：admin.*/user.*/msg.*) | `admin.roles.view` | 待实现 |
+| 5.8 | GET /roles | RbacDao::ListRoles + 含权限列表 | `admin.manage` | 完成 |
+| 5.9 | POST /roles | 创建角色(name/description/可选 permissions) + 审计 | `admin.manage` | 完成 |
+| 5.10 | PUT /roles/:id | 编辑角色(description + permissions) + 审计 | `admin.manage` | 完成 |
+| 5.11 | DELETE /roles/:id | 删除角色 + 审计 | `admin.manage` | 完成 |
+| 5.12 | GET /permissions | 列出所有 13 个权限码 | `admin.manage` | 完成 |
 
 ---
 
@@ -224,7 +222,7 @@ server/
   main.cpp                          # 入口: config → CreateDaoFactory → ctx.set_dao() → gateway → threadpool
   CMakeLists.txt
   admin/
-    admin_server.h / .cpp           # 路由注册 + JWT中间件 + 13个Handler + 审计写入
+    admin_server.h / .cpp           # 路由注册 + JWT中间件 + 28个路由(30个Handler) + 审计写入
     jwt_utils.h / .cpp              # JWT 签发/验证 (l8w8jwt)
     password_utils.h / .cpp         # PBKDF2-SHA256 (MbedTLS)
     http_helper.h                   # JSON 响应 + ApiError 常量 + 分页 + 权限检查
@@ -298,11 +296,11 @@ server/
 5. ~~Phase 3 (3.1-3.11) — 业务 API~~
 6. ~~Phase 3.5 (3.5.1-3.5.14) — Admin/User 表分离~~
 7. ~~Phase 4 (4.1-4.10) — 单元测试 + ConversationDao~~
-8. **Phase 5 (5.1-5.14) — 运维管理 + 角色管理** — 待实现
+7. ~~Phase 5 (5.1-5.12) — 运维管理 + 角色管理~~
 
 ---
 
 ## 当前状态
 
-Phase 0-4 全部完成。Admin 模块 13 个 API 端点可用，294 个单元测试通过。
-剩余工作为 Phase 5 的运维管理（7 个端点）和角色管理（7 个端点）。
+Phase 0-5 全部完成。Admin 模块 28 个 API 路由可用，294 个后端单元测试 + 8 个前端测试全部通过。
+Admin 前端 (Vue 3 + Element Plus) 7 个页面功能完善，覆盖所有后端端点。

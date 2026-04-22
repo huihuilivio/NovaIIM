@@ -97,6 +97,22 @@
 ### 审计日志
 - [x] GET /audit-logs (分页 + admin_id/action/时间 筛选 + operator_uid 缓存)
 
+### 运维管理 (Phase 5)
+- [x] GET /admins (分页 + keyword 筛选 + 角色列表)
+- [x] POST /admins (创建管理员 + 密码哈希 + 审计)
+- [x] DELETE /admins/:id (软删除 + 超管/自身保护 + 审计)
+- [x] POST /admins/:id/reset-password (重置管理员密码 + 审计)
+- [x] POST /admins/:id/enable (启用管理员 + 审计)
+- [x] POST /admins/:id/disable (禁用管理员 + 超管/自身保护 + 审计)
+- [x] PUT /admins/:id/roles (替换管理员角色 + 审计)
+
+### 角色管理 (Phase 5)
+- [x] GET /roles (全部角色 + 权限列表)
+- [x] POST /roles (创建角色 + 可选权限 + 审计)
+- [x] PUT /roles/:id (编辑角色描述 + 权限 + 审计)
+- [x] DELETE /roles/:id (删除角色 + 审计)
+- [x] GET /permissions (列出全部 13 个权限码)
+
 ---
 
 ## 核心特性
@@ -501,3 +517,28 @@
 - [x] Kotlin 封装层 (NovaClient.kt — 单例 + Callback 接口)
 - [ ] Gradle + CMake 交叉编译 (arm64-v8a, armeabi-v7a)
 - [ ] Jetpack Compose View 骨架 (登录 + 主页)
+
+---
+
+## 待办事项 (Outstanding Items)
+
+### Admin 增强
+- [ ] `admin.config` 权限对应端点 (运行时配置热更新 API)
+- [ ] CPU 占用指标采集 (双次采样, 当前 cpu_percent 固定返回 0)
+- [ ] 群组管理 Admin API (/api/v1/groups: 列表/详情/解散/审计)
+- [ ] 过期 token 清理机制 (admin_sessions 定时任务)
+- [ ] DeleteRole 引用约束检查 (校验 admin_roles 无引用后再删除)
+
+### 前端可选增强
+- [ ] ECharts 集成 (仪表盘统计图表, 待实际数据量大时启用)
+- [ ] 时序统计端点 (日活/消息量趋势)
+
+### 移动端 (M7)
+- [ ] iOS Xcode 项目 + CMake 交叉编译 (arm64)
+- [ ] iOS SwiftUI View 骨架 (登录 + 主页)
+- [ ] Android Gradle + CMake 交叉编译 (arm64-v8a, armeabi-v7a)
+- [ ] Android Jetpack Compose View 骨架 (登录 + 主页)
+
+### 集群与安全 (远期)
+- [ ] 多实例集群支持 (会话路由 + 消息广播)
+- [ ] 端到端消息加密
