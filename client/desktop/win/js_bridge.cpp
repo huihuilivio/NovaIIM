@@ -120,7 +120,14 @@ void JsBridge::PostEvent(const std::string& event, const std::string& json_data)
         auto alive = weak_alive.lock();
         if (!alive || !alive->load()) return;
         auto wjs = Utf8ToWide(js);
-        webview_->ExecuteScript(wjs.c_str(), nullptr);
+        webview_->ExecuteScript(wjs.c_str(),
+            Callback<ICoreWebView2ExecuteScriptCompletedHandler>(
+                [](HRESULT hr, PCWSTR /*result*/) -> HRESULT {
+                    if (FAILED(hr)) {
+                        NOVA_LOG_WARN("ExecuteScript failed: 0x{:08X}", static_cast<unsigned>(hr));
+                    }
+                    return S_OK;
+                }).Get());
     });
 }
 

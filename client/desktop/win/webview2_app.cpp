@@ -159,7 +159,12 @@ void WebView2App::InitWebView2() {
                                 return result;
                             }
                             controller_ = controller;
-                            controller_->get_CoreWebView2(&webview_);
+                            HRESULT cwhr = controller_->get_CoreWebView2(&webview_);
+                            if (FAILED(cwhr) || !webview_) {
+                                NOVA_LOG_ERROR("get_CoreWebView2 failed: 0x{:08X}", static_cast<unsigned>(cwhr));
+                                PostQuitMessage(1);
+                                return cwhr;
+                            }
                             OnWebViewReady();
                             return S_OK;
                         }).Get()
@@ -199,10 +204,15 @@ void WebView2App::OnWebViewReady() {
     webview_->QueryInterface(IID_PPV_ARGS(&webview3));
     if (webview3) {
         auto webDir = GetWebDir();
-        webview3->SetVirtualHostNameToFolderMapping(
+        HRESULT mhr = webview3->SetVirtualHostNameToFolderMapping(
             L"novaim.local", webDir.c_str(),
             COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW
         );
+        if (FAILED(mhr)) {
+            NOVA_LOG_ERROR("SetVirtualHostNameToFolderMapping failed: 0x{:08X}", static_cast<unsigned>(mhr));
+        }
+    } else {
+        NOVA_LOG_WARN("ICoreWebView2_3 not available; virtual host mapping skipped");
     }
 
     // 导航到主页
