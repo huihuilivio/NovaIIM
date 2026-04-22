@@ -43,3 +43,10 @@ admin:
   jwt_expires: 86400                       # JWT 有效期（秒）
   login_max_attempts: 5                    # Admin 登录频率限制：最大失败次数
   login_window_secs: 60                    # Admin 登录频率限制：窗口时间（秒）
+
+file_server:
+  enabled: true
+  port: 9092
+  root_dir: files                          # 文件存储根目录
+  max_upload_size: 500                     # 上传大小上限（MB），0 = 不限制
+  limit_rate: -1                           # 下载限速 KB/s，-1 = 不限速

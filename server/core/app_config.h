@@ -62,11 +62,20 @@ struct AdminConfig {
     int login_window_secs  = 60;    // 登录频率限制：窗口时间（秒）
 };
 
+struct FileServerConfig {
+    bool enabled          = false;
+    int port              = 9092;
+    std::string root_dir  = "files";
+    int64_t max_upload_size = 500;   // MB，0 = 不限制
+    int limit_rate        = -1;     // 下载限速 KB/s，-1 不限速
+};
+
 struct AppConfig {
     ServerConfig server;
     LogConfig log;
     DatabaseConfig db;
     AdminConfig admin;
+    FileServerConfig file_server;
 };
 
 // 从 YAML 文件加载配置，成功返回 true

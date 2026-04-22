@@ -100,6 +100,13 @@ nova_add_test(
     LIBS    im_server_lib
 )
 
+# FileServer HTTP 集成测试: 真实 FileServer + HTTP 客户端 (临时目录, 端口 19092)
+nova_add_test(
+    NAME    test_file_server
+    SOURCES test_file_server.cpp
+    LIBS    im_server_lib
+)
+
 # WsGateway WebSocket 网关: 二进制收发, 无效包断开, JSON 编解码
 nova_add_test(
     NAME    test_ws_gateway

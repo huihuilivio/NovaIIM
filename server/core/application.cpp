@@ -16,6 +16,7 @@
 #include "../service/file_service.h"
 #include <nova/errors.h>
 #include "../admin/admin_server.h"
+#include "../file/file_server.h"
 #include "../dao/dao_factory.h"
 #include "../dao/conversation_dao.h"
 #include <nova/packet.h>
@@ -273,13 +274,29 @@ int Application::Run(const AppConfig& cfg) {
         }
     }
 
+    // 10. 文件服务器
+    std::unique_ptr<FileServer> file_srv;
+    if (cfg.file_server.enabled) {
+        file_srv = std::make_unique<FileServer>();
+        FileServer::Options fsopts;
+        fsopts.port            = cfg.file_server.port;
+        fsopts.root_dir        = cfg.file_server.root_dir;
+        fsopts.max_upload_size = cfg.file_server.max_upload_size * 1024LL * 1024LL;
+        fsopts.limit_rate      = cfg.file_server.limit_rate;
+        if (file_srv->Start(fsopts) != 0) {
+            NOVA_NLOG_WARN(kLogTag, "File server failed to start, continuing without it");
+            file_srv.reset();
+        }
+    }
+
     // 10. 等待退出信号
     while (g_running.load(std::memory_order_relaxed)) {
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
     }
 
-    // 11. 有序关闭：Admin → WsGateway → Gateway → ThreadPool → MsgBus
+    // 11. 有序关闭：FileServer → Admin → WsGateway → Gateway → ThreadPool → MsgBus
     NOVA_NLOG_INFO(kLogTag, "Received signal {}, shutting down...", g_signal.load());
+    if (file_srv) file_srv->Stop();
     if (admin) admin->Stop();
     if (ws_gateway) ws_gateway->Stop();
     gateway.Stop();
