@@ -73,6 +73,7 @@ public:
         // 清理临时目录
         std::error_code ec;
         fs::remove_all(tmp_dir_, ec);
+        fs::remove_all(fs::temp_directory_path() / "nova_upload_src", ec);
     }
 
     static std::string tmp_dir_;
@@ -133,8 +134,8 @@ TEST_F(FileServerTest, UploadRawBodyDefaultFilename) {
 // ============================================================
 
 TEST_F(FileServerTest, UploadMultipartSuccess) {
-    // 在子目录中创建源文件，与 root_dir 隔离
-    std::string src_dir = tmp_dir_ + "/upload_src";
+    // 在系统临时目录下创建独立的源目录，与服务器 root_dir 完全隔离
+    std::string src_dir = (fs::temp_directory_path() / "nova_upload_src").string();
     fs::create_directories(src_dir);
     std::string src_file = src_dir + "/multipart_data.txt";
     std::string content  = "multipart upload content";
@@ -267,6 +268,29 @@ TEST_F(FileServerTest, DeletePathTraversalRejected) {
     ASSERT_NE(resp, nullptr);
     // 400 (path safety) 或 404 (不存在) 均可，不应为 200
     EXPECT_NE(resp->status_code, 200);
+}
+
+TEST_F(FileServerTest, UploadMultipartPathTraversalRejected) {
+    // 手工构造 multipart body，绕过 libhv 的 basename 处理
+    // 模拟恶意客户端发送 filename="../../evil.txt"
+    std::string boundary = "----TestBoundary12345";
+    std::string body;
+    body += "--" + boundary + "\r\n";
+    body += "Content-Disposition: form-data; name=\"file\"; filename=\"../../evil.txt\"\r\n";
+    body += "\r\n";
+    body += "evil content\r\n";
+    body += "--" + boundary + "--\r\n";
+
+    auto req    = std::make_shared<HttpRequest>();
+    req->method = HTTP_POST;
+    req->url    = Url("/api/v1/files/upload");
+    req->SetHeader("Content-Type", "multipart/form-data; boundary=" + boundary);
+    req->body   = body;
+    auto resp = requests::request(req);
+    ASSERT_NE(resp, nullptr);
+    EXPECT_EQ(resp->status_code, 400);
+    // 确保文件没有被写到 root_dir 之外
+    EXPECT_FALSE(fs::exists(tmp_dir_ + "/../../evil.txt"));
 }
 
 // ============================================================

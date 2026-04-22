@@ -67,6 +67,7 @@ static int sendLargeFile(const HttpContextPtr& ctx) {
             content_type = APPLICATION_OCTET_STREAM;
         }
         size_t filesize = file.size();
+        ctx->writer->WriteStatus(HTTP_STATUS_OK);
         ctx->writer->WriteHeader("Content-Type", http_content_type_str(content_type));
         ctx->writer->WriteHeader("Content-Length", filesize);
         ctx->writer->EndHeaders();
@@ -197,8 +198,35 @@ void FileServer::RegisterRoutes() {
         int status_code       = 200;
         std::string save_path = opts_.root_dir + "/";
         if (ctx->is(MULTIPART_FORM_DATA)) {
-            status_code = ctx->request->SaveFormFile("file", save_path.c_str());
-            NOVA_NLOG_INFO(kLogTag, "multipart upload status={}", status_code);
+            // multipart: 先解析表单，校验文件名安全性
+            auto& form = ctx->request->form;
+            if (form.empty()) {
+                ctx->request->ParseBody();
+            }
+            auto it = form.find("file");
+            if (it == form.end() || it->second.content.empty()) {
+                return response_status(ctx, HTTP_STATUS_BAD_REQUEST, "missing file field");
+            }
+            // 先校验原始文件名，拒绝包含 ".." 等危险路径
+            std::string raw_filename = it->second.filename;
+            if (!IsPathSafe(raw_filename)) {
+                NOVA_NLOG_WARN(kLogTag, "multipart upload rejected: invalid filename '{}'", raw_filename);
+                return response_status(ctx, HTTP_STATUS_BAD_REQUEST, "invalid filename");
+            }
+            // 取 basename 作为最终文件名
+            std::string filename = raw_filename;
+            auto pos = filename.find_last_of("/\\");
+            if (pos != std::string::npos) {
+                filename = filename.substr(pos + 1);
+            }
+            // 用安全文件名保存
+            std::string filepath = save_path + filename;
+            HFile file;
+            if (file.open(filepath.c_str(), "wb") != 0) {
+                return response_status(ctx, HTTP_STATUS_INTERNAL_SERVER_ERROR, "cannot create file");
+            }
+            file.write(it->second.content.data(), it->second.content.size());
+            NOVA_NLOG_INFO(kLogTag, "multipart upload '{}' ok", filename);
         } else {
             std::string filename = ctx->param("filename", "unnamed.txt");
             if (!IsPathSafe(filename)) {
