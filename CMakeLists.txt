@@ -42,7 +42,7 @@ if(NOVA_BUILD_TESTS)
     include(testing)
     add_subdirectory(server/test)
     if(NOVA_BUILD_CLIENT)
-        add_subdirectory(client/test)
+        add_subdirectory(client/nova_sdk/test)
     endif()
 endif()
 

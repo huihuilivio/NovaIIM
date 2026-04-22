@@ -7,6 +7,7 @@
 
 #include <model/client_state.h>
 #include <infra/timer.h>
+#include <export.h>
 
 #include <atomic>
 #include <cstdint>
@@ -16,7 +17,7 @@ namespace nova::client {
 
 struct ClientConfig;
 
-class ReconnectManager {
+class NOVA_SDK_API ReconnectManager {
 public:
     using ReconnectFunc = std::function<void()>;
 

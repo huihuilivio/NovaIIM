@@ -91,3 +91,5 @@ install(DIRECTORY service/   DESTINATION include/nova/client/service   FILES_MAT
 install(DIRECTORY viewmodel/ DESTINATION include/nova/client/viewmodel FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY infra/     DESTINATION include/nova/client/infra     FILES_MATCHING PATTERN "*.h")
 install(TARGETS nova_sdk DESTINATION lib)
+
+# 注：单元测试由根 CMakeLists 在 testing.cmake 加载后统一添加 (client/nova_sdk/test)
