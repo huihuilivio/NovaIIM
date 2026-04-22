@@ -52,8 +52,8 @@ set(CLIENT_CACHE_SOURCES
     cache/group_cache_dao.cpp
 )
 
-# ---- 动态库 ----
-add_library(nova_sdk SHARED
+# ---- 共用 OBJECT 库 (避免源文件被编译两次 + 隔离 PDB) ----
+add_library(nova_sdk_objs OBJECT
     ${CLIENT_CORE_SOURCES}
     ${CLIENT_SERVICE_SOURCES}
     ${CLIENT_VIEWMODEL_SOURCES}
@@ -61,11 +61,11 @@ add_library(nova_sdk SHARED
     ${CLIENT_CACHE_SOURCES}
 )
 
-target_include_directories(nova_sdk PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}          # client/nova_sdk/ → #include <model/xxx.h>
+target_include_directories(nova_sdk_objs PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
-target_link_libraries(nova_sdk PUBLIC
+target_link_libraries(nova_sdk_objs PUBLIC
     nova_protocol
     spdlog::spdlog
     hv_static
@@ -73,16 +73,24 @@ target_link_libraries(nova_sdk PUBLIC
     ormpp
 )
 
-# 编译器选项（含 NOMINMAX / WIN32_LEAN_AND_MEAN）
-nova_set_compiler_options(nova_sdk)
+nova_set_compiler_options(nova_sdk_objs)
 
-# 导出宏
-target_compile_definitions(nova_sdk
-    PRIVATE NOVA_SDK_EXPORTS
-    PUBLIC  NOVA_SDK_SHARED
-)
+# 动态库导出宏（仅 SHARED 需要）
+target_compile_definitions(nova_sdk_objs PRIVATE NOVA_SDK_EXPORTS)
 
+# ---- 动态库（默认对外发布） ----
+add_library(nova_sdk SHARED $<TARGET_OBJECTS:nova_sdk_objs>)
+target_link_libraries(nova_sdk PUBLIC nova_sdk_objs)
+target_compile_definitions(nova_sdk PUBLIC NOVA_SDK_SHARED)
 nova_set_output_dirs(nova_sdk)
+
+# ---- 静态库（仅测试启用时构建，供单元测试链接以避免 DLL 导出符号问题） ----
+if(NOVA_BUILD_TESTS)
+    add_library(nova_sdk_static STATIC $<TARGET_OBJECTS:nova_sdk_objs>)
+    target_link_libraries(nova_sdk_static PUBLIC nova_sdk_objs)
+    nova_set_output_dirs(nova_sdk_static)
+    # 不传播 NOVA_SDK_SHARED：测试代码取空宏定义，符号默认本地链接
+endif()
 
 # ---- 安装导出头文件 ----
 install(FILES export.h DESTINATION include/nova/client)

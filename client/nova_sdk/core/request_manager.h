@@ -5,7 +5,6 @@
 // 收到应答后按 seq 匹配并调用回调
 
 #include <nova/packet.h>
-#include <export.h>
 
 #include <chrono>
 #include <functional>
@@ -14,7 +13,7 @@
 
 namespace nova::client {
 
-class NOVA_SDK_API RequestManager {
+class RequestManager {
 public:
     using ResponseCallback = std::function<void(const nova::proto::Packet& resp)>;
     using TimeoutCallback  = std::function<void(uint32_t seq)>;
