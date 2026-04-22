@@ -5,7 +5,9 @@
 #include <viewmodel/observable.h>
 #include <viewmodel/types.h>
 
+#include <atomic>
 #include <functional>
+#include <memory>
 
 namespace nova::client {
 
@@ -35,6 +37,7 @@ public:
 private:
     ConversationService& conv_;
     Observable<std::vector<Conversation>> conversations_;
+    std::shared_ptr<std::atomic<bool>> alive_{std::make_shared<std::atomic<bool>>(true)};
 };
 
 }  // namespace nova::client

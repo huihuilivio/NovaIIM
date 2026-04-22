@@ -5,7 +5,9 @@
 #include <viewmodel/observable.h>
 #include <viewmodel/types.h>
 
+#include <atomic>
 #include <functional>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -52,6 +54,7 @@ public:
 private:
     GroupService& group_;
     Observable<std::vector<MyGroup>> groups_;
+    std::shared_ptr<std::atomic<bool>> alive_{std::make_shared<std::atomic<bool>>(true)};
 };
 
 }  // namespace nova::client

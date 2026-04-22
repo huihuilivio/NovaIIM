@@ -51,6 +51,16 @@ JsBridge::~JsBridge() {
     // 清除 Observable 观察者（防止后续回调触发）
     if (app_vm_)  app_vm_->State().ClearObservers();
 
+    // 清空 VM 单回调槽位（防止 MsgBus 事件回到已析构的 lambda）
+    if (chat_vm_) {
+        chat_vm_->OnMessageReceived(nullptr);
+        chat_vm_->OnMessageRecalled(nullptr);
+    }
+    if (app_vm_)     app_vm_->OnKicked(nullptr);
+    if (contact_vm_) contact_vm_->OnFriendNotify(nullptr);
+    if (conv_vm_)    conv_vm_->OnUpdated(nullptr);
+    if (group_vm_)   group_vm_->OnNotify(nullptr);
+
     if (webview_ && msg_token_.value != 0) {
         webview_->remove_WebMessageReceived(msg_token_);
     }
@@ -233,7 +243,8 @@ void JsBridge::HandleLogin(const std::string& email, const std::string& password
     NOVA_LOG_INFO("JsBridge: login request for {}", email);
 
     login_vm_->Login(email, password,
-        [this](const nova::client::LoginResult& result) {
+        [this, alive = alive_](const nova::client::LoginResult& result) {
+            if (!alive->load()) return;
             nlohmann::json data;
             data["success"]  = result.success;
             if (result.success) {
@@ -251,7 +262,8 @@ void JsBridge::HandleRegister(const std::string& email, const std::string& nickn
     NOVA_LOG_INFO("JsBridge: register request for {}", email);
 
     login_vm_->Register(email, nickname, password,
-        [this](const nova::client::RegisterResult& result) {
+        [this, alive = alive_](const nova::client::RegisterResult& result) {
+            if (!alive->load()) return;
             nlohmann::json data;
             data["success"] = result.success;
             if (result.success) {
@@ -286,7 +298,8 @@ void JsBridge::HandleSendMessage(const std::string& to_uid, const std::string& c
     }
 
     chat_vm_->SendTextMessage(conversation_id, content,
-        [this](const nova::client::SendMsgResult& result) {
+        [this, alive = alive_](const nova::client::SendMsgResult& result) {
+            if (!alive->load()) return;
             nlohmann::json data;
             data["success"]    = result.success;
             data["serverSeq"]  = result.server_seq;
@@ -300,7 +313,8 @@ void JsBridge::HandleSendMessage(const std::string& to_uid, const std::string& c
 
 void JsBridge::HandleRecallMessage(int64_t conversation_id, int64_t server_seq) {
     chat_vm_->RecallMessage(conversation_id, server_seq,
-        [this](const nova::client::Result& r) {
+        [this, alive = alive_](const nova::client::Result& r) {
+            if (!alive->load()) return;
             nlohmann::json data;
             data["success"] = r.success;
             data["msg"]     = r.msg;
@@ -318,7 +332,8 @@ void JsBridge::HandleSendReadAck(int64_t conversation_id, int64_t read_up_to_seq
 
 void JsBridge::HandleSyncMessages(int64_t conversation_id, int64_t last_seq, int32_t limit) {
     chat_vm_->SyncMessages(conversation_id, last_seq, limit,
-        [this](const nova::client::SyncMsgResult& r) {
+        [this, alive = alive_](const nova::client::SyncMsgResult& r) {
+            if (!alive->load()) return;
             nlohmann::json data;
             data["success"] = r.success;
             data["hasMore"] = r.has_more;
@@ -340,7 +355,8 @@ void JsBridge::HandleSyncMessages(int64_t conversation_id, int64_t last_seq, int
 
 void JsBridge::HandleSyncUnread() {
     chat_vm_->SyncUnread(
-        [this](const nova::client::SyncUnreadResult& r) {
+        [this, alive = alive_](const nova::client::SyncUnreadResult& r) {
+            if (!alive->load()) return;
             nlohmann::json data;
             data["success"]     = r.success;
             data["totalUnread"] = r.total_unread;
@@ -360,7 +376,8 @@ void JsBridge::HandleSyncUnread() {
 
 void JsBridge::HandleGetConversationList() {
     conv_vm_->GetConversationList(
-        [this](const nova::client::ConvListResult& r) {
+        [this, alive = alive_](const nova::client::ConvListResult& r) {
+            if (!alive->load()) return;
             nlohmann::json data;
             data["success"] = r.success;
             data["msg"]     = r.msg;
@@ -391,21 +408,24 @@ void JsBridge::HandleGetConversationList() {
 
 void JsBridge::HandleDeleteConversation(int64_t conversation_id) {
     conv_vm_->DeleteConversation(conversation_id,
-        [this](const nova::client::Result& r) {
+        [this, alive = alive_](const nova::client::Result& r) {
+            if (!alive->load()) return;
             PostEvent("deleteConvResult", nlohmann::json({{"success", r.success}, {"msg", r.msg}}).dump());
         });
 }
 
 void JsBridge::HandleMuteConversation(int64_t conversation_id, bool mute) {
     conv_vm_->MuteConversation(conversation_id, mute,
-        [this](const nova::client::Result& r) {
+        [this, alive = alive_](const nova::client::Result& r) {
+            if (!alive->load()) return;
             PostEvent("muteConvResult", nlohmann::json({{"success", r.success}, {"msg", r.msg}}).dump());
         });
 }
 
 void JsBridge::HandlePinConversation(int64_t conversation_id, bool pinned) {
     conv_vm_->PinConversation(conversation_id, pinned,
-        [this](const nova::client::Result& r) {
+        [this, alive = alive_](const nova::client::Result& r) {
+            if (!alive->load()) return;
             PostEvent("pinConvResult", nlohmann::json({{"success", r.success}, {"msg", r.msg}}).dump());
         });
 }
@@ -414,7 +434,8 @@ void JsBridge::HandlePinConversation(int64_t conversation_id, bool pinned) {
 
 void JsBridge::HandleAddFriend(const std::string& target_uid, const std::string& remark) {
     contact_vm_->AddFriend(target_uid, remark,
-        [this](const nova::client::AddFriendResult& r) {
+        [this, alive = alive_](const nova::client::AddFriendResult& r) {
+            if (!alive->load()) return;
             nlohmann::json data;
             data["success"]   = r.success;
             data["msg"]       = r.msg;
@@ -425,7 +446,8 @@ void JsBridge::HandleAddFriend(const std::string& target_uid, const std::string&
 
 void JsBridge::HandleHandleFriendRequest(int64_t request_id, int action) {
     contact_vm_->HandleFriendRequest(request_id, action,
-        [this](const nova::client::HandleFriendResult& r) {
+        [this, alive = alive_](const nova::client::HandleFriendResult& r) {
+            if (!alive->load()) return;
             nlohmann::json data;
             data["success"]        = r.success;
             data["msg"]            = r.msg;
@@ -436,28 +458,32 @@ void JsBridge::HandleHandleFriendRequest(int64_t request_id, int action) {
 
 void JsBridge::HandleDeleteFriend(const std::string& target_uid) {
     contact_vm_->DeleteFriend(target_uid,
-        [this](const nova::client::Result& r) {
+        [this, alive = alive_](const nova::client::Result& r) {
+            if (!alive->load()) return;
             PostEvent("deleteFriendResult", nlohmann::json({{"success", r.success}, {"msg", r.msg}}).dump());
         });
 }
 
 void JsBridge::HandleBlockFriend(const std::string& target_uid) {
     contact_vm_->BlockFriend(target_uid,
-        [this](const nova::client::Result& r) {
+        [this, alive = alive_](const nova::client::Result& r) {
+            if (!alive->load()) return;
             PostEvent("blockFriendResult", nlohmann::json({{"success", r.success}, {"msg", r.msg}}).dump());
         });
 }
 
 void JsBridge::HandleUnblockFriend(const std::string& target_uid) {
     contact_vm_->UnblockFriend(target_uid,
-        [this](const nova::client::Result& r) {
+        [this, alive = alive_](const nova::client::Result& r) {
+            if (!alive->load()) return;
             PostEvent("unblockFriendResult", nlohmann::json({{"success", r.success}, {"msg", r.msg}}).dump());
         });
 }
 
 void JsBridge::HandleGetFriendList() {
     contact_vm_->GetFriendList(
-        [this](const nova::client::FriendListResult& r) {
+        [this, alive = alive_](const nova::client::FriendListResult& r) {
+            if (!alive->load()) return;
             nlohmann::json data;
             data["success"] = r.success;
             data["msg"]     = r.msg;
@@ -477,7 +503,8 @@ void JsBridge::HandleGetFriendList() {
 
 void JsBridge::HandleGetFriendRequests(int page, int page_size) {
     contact_vm_->GetFriendRequests(page, page_size,
-        [this](const nova::client::FriendRequestsResult& r) {
+        [this, alive = alive_](const nova::client::FriendRequestsResult& r) {
+            if (!alive->load()) return;
             nlohmann::json data;
             data["success"] = r.success;
             data["msg"]     = r.msg;
@@ -501,7 +528,8 @@ void JsBridge::HandleGetFriendRequests(int page, int page_size) {
 
 void JsBridge::HandleGetUserProfile(const std::string& target_uid) {
     contact_vm_->GetUserProfile(target_uid,
-        [this](const nova::client::UserProfile& p) {
+        [this, alive = alive_](const nova::client::UserProfile& p) {
+            if (!alive->load()) return;
             nlohmann::json data;
             data["success"]  = p.success;
             data["msg"]      = p.msg;
@@ -515,7 +543,8 @@ void JsBridge::HandleGetUserProfile(const std::string& target_uid) {
 
 void JsBridge::HandleSearchUser(const std::string& keyword) {
     contact_vm_->SearchUser(keyword,
-        [this](const nova::client::SearchUserResult& r) {
+        [this, alive = alive_](const nova::client::SearchUserResult& r) {
+            if (!alive->load()) return;
             nlohmann::json data;
             data["success"] = r.success;
             data["msg"]     = r.msg;
@@ -535,7 +564,8 @@ void JsBridge::HandleSearchUser(const std::string& keyword) {
 void JsBridge::HandleUpdateProfile(const std::string& nickname, const std::string& avatar,
                                    const std::string& file_hash) {
     contact_vm_->UpdateProfile(nickname, avatar, file_hash,
-        [this](const nova::client::Result& r) {
+        [this, alive = alive_](const nova::client::Result& r) {
+            if (!alive->load()) return;
             PostEvent("updateProfileResult", nlohmann::json({{"success", r.success}, {"msg", r.msg}}).dump());
         });
 }
@@ -545,7 +575,8 @@ void JsBridge::HandleUpdateProfile(const std::string& nickname, const std::strin
 void JsBridge::HandleCreateGroup(const std::string& name, const std::string& avatar,
                                  const std::vector<int64_t>& member_ids) {
     group_vm_->CreateGroup(name, avatar, member_ids,
-        [this](const nova::client::CreateGroupResult& r) {
+        [this, alive = alive_](const nova::client::CreateGroupResult& r) {
+            if (!alive->load()) return;
             nlohmann::json data;
             data["success"]        = r.success;
             data["msg"]            = r.msg;
@@ -557,42 +588,48 @@ void JsBridge::HandleCreateGroup(const std::string& name, const std::string& ava
 
 void JsBridge::HandleDismissGroup(int64_t conversation_id) {
     group_vm_->DismissGroup(conversation_id,
-        [this](const nova::client::Result& r) {
+        [this, alive = alive_](const nova::client::Result& r) {
+            if (!alive->load()) return;
             PostEvent("dismissGroupResult", nlohmann::json({{"success", r.success}, {"msg", r.msg}}).dump());
         });
 }
 
 void JsBridge::HandleJoinGroup(int64_t conversation_id, const std::string& remark) {
     group_vm_->JoinGroup(conversation_id, remark,
-        [this](const nova::client::Result& r) {
+        [this, alive = alive_](const nova::client::Result& r) {
+            if (!alive->load()) return;
             PostEvent("joinGroupResult", nlohmann::json({{"success", r.success}, {"msg", r.msg}}).dump());
         });
 }
 
 void JsBridge::HandleHandleJoinRequest(int64_t request_id, int action) {
     group_vm_->HandleJoinRequest(request_id, action,
-        [this](const nova::client::Result& r) {
+        [this, alive = alive_](const nova::client::Result& r) {
+            if (!alive->load()) return;
             PostEvent("handleJoinRequestResult", nlohmann::json({{"success", r.success}, {"msg", r.msg}}).dump());
         });
 }
 
 void JsBridge::HandleLeaveGroup(int64_t conversation_id) {
     group_vm_->LeaveGroup(conversation_id,
-        [this](const nova::client::Result& r) {
+        [this, alive = alive_](const nova::client::Result& r) {
+            if (!alive->load()) return;
             PostEvent("leaveGroupResult", nlohmann::json({{"success", r.success}, {"msg", r.msg}}).dump());
         });
 }
 
 void JsBridge::HandleKickMember(int64_t conversation_id, int64_t target_user_id) {
     group_vm_->KickMember(conversation_id, target_user_id,
-        [this](const nova::client::Result& r) {
+        [this, alive = alive_](const nova::client::Result& r) {
+            if (!alive->load()) return;
             PostEvent("kickMemberResult", nlohmann::json({{"success", r.success}, {"msg", r.msg}}).dump());
         });
 }
 
 void JsBridge::HandleGetGroupInfo(int64_t conversation_id) {
     group_vm_->GetGroupInfo(conversation_id,
-        [this](const nova::client::GroupInfo& g) {
+        [this, alive = alive_](const nova::client::GroupInfo& g) {
+            if (!alive->load()) return;
             nlohmann::json data;
             data["success"]        = g.success;
             data["msg"]            = g.msg;
@@ -610,14 +647,16 @@ void JsBridge::HandleGetGroupInfo(int64_t conversation_id) {
 void JsBridge::HandleUpdateGroup(int64_t conversation_id, const std::string& name,
                                  const std::string& avatar, const std::string& notice) {
     group_vm_->UpdateGroup(conversation_id, name, avatar, notice,
-        [this](const nova::client::Result& r) {
+        [this, alive = alive_](const nova::client::Result& r) {
+            if (!alive->load()) return;
             PostEvent("updateGroupResult", nlohmann::json({{"success", r.success}, {"msg", r.msg}}).dump());
         });
 }
 
 void JsBridge::HandleGetGroupMembers(int64_t conversation_id) {
     group_vm_->GetGroupMembers(conversation_id,
-        [this](const nova::client::GroupMembersResult& r) {
+        [this, alive = alive_](const nova::client::GroupMembersResult& r) {
+            if (!alive->load()) return;
             nlohmann::json data;
             data["success"] = r.success;
             data["msg"]     = r.msg;
@@ -639,7 +678,8 @@ void JsBridge::HandleGetGroupMembers(int64_t conversation_id) {
 
 void JsBridge::HandleGetMyGroups() {
     group_vm_->GetMyGroups(
-        [this](const nova::client::MyGroupsResult& r) {
+        [this, alive = alive_](const nova::client::MyGroupsResult& r) {
+            if (!alive->load()) return;
             nlohmann::json data;
             data["success"] = r.success;
             data["msg"]     = r.msg;
@@ -660,7 +700,8 @@ void JsBridge::HandleGetMyGroups() {
 
 void JsBridge::HandleSetMemberRole(int64_t conversation_id, int64_t target_user_id, int role) {
     group_vm_->SetMemberRole(conversation_id, target_user_id, role,
-        [this](const nova::client::Result& r) {
+        [this, alive = alive_](const nova::client::Result& r) {
+            if (!alive->load()) return;
             PostEvent("setMemberRoleResult", nlohmann::json({{"success", r.success}, {"msg", r.msg}}).dump());
         });
 }
@@ -671,7 +712,8 @@ void JsBridge::HandleRequestUpload(const std::string& file_name, int64_t file_si
                                    const std::string& mime_type, const std::string& file_hash,
                                    const std::string& file_type) {
     chat_vm_->RequestUpload(file_name, file_size, mime_type, file_hash, file_type,
-        [this](const nova::client::UploadResult& r) {
+        [this, alive = alive_](const nova::client::UploadResult& r) {
+            if (!alive->load()) return;
             nlohmann::json data;
             data["success"]       = r.success;
             data["msg"]           = r.msg;
@@ -684,7 +726,8 @@ void JsBridge::HandleRequestUpload(const std::string& file_name, int64_t file_si
 
 void JsBridge::HandleUploadComplete(int64_t file_id) {
     chat_vm_->UploadComplete(file_id,
-        [this](const nova::client::UploadCompleteResult& r) {
+        [this, alive = alive_](const nova::client::UploadCompleteResult& r) {
+            if (!alive->load()) return;
             nlohmann::json data;
             data["success"]  = r.success;
             data["msg"]      = r.msg;
@@ -695,7 +738,8 @@ void JsBridge::HandleUploadComplete(int64_t file_id) {
 
 void JsBridge::HandleRequestDownload(int64_t file_id, bool thumb) {
     chat_vm_->RequestDownload(file_id, thumb,
-        [this](const nova::client::DownloadResult& r) {
+        [this, alive = alive_](const nova::client::DownloadResult& r) {
+            if (!alive->load()) return;
             nlohmann::json data;
             data["success"]     = r.success;
             data["msg"]         = r.msg;
@@ -709,13 +753,15 @@ void JsBridge::HandleRequestDownload(int64_t file_id, bool thumb) {
 // ---- 事件订阅 ----
 
 void JsBridge::SubscribeEvents() {
-    app_vm_->State().Observe([this](nova::client::ClientState state) {
+    app_vm_->State().Observe([this, alive = alive_](nova::client::ClientState state) {
+        if (!alive->load()) return;
         nlohmann::json data;
         data["state"] = nova::client::ClientStateStr(state);
         PostEvent("connectionState", data.dump());
     });
 
-    chat_vm_->OnMessageReceived([this](const nova::client::ReceivedMessage& msg) {
+    chat_vm_->OnMessageReceived([this, alive = alive_](const nova::client::ReceivedMessage& msg) {
+        if (!alive->load()) return;
         nlohmann::json data;
         data["conversationId"] = msg.conversation_id;
         data["senderUid"]      = msg.sender_uid;
@@ -733,7 +779,8 @@ void JsBridge::SubscribeEvents() {
         }
     });
 
-    chat_vm_->OnMessageRecalled([this](const nova::client::RecallNotification& n) {
+    chat_vm_->OnMessageRecalled([this, alive = alive_](const nova::client::RecallNotification& n) {
+        if (!alive->load()) return;
         nlohmann::json data;
         data["conversationId"] = n.conversation_id;
         data["serverSeq"]      = n.server_seq;
@@ -741,7 +788,8 @@ void JsBridge::SubscribeEvents() {
         PostEvent("recallNotify", data.dump());
     });
 
-    app_vm_->OnKicked([this](int reason, const std::string& msg) {
+    app_vm_->OnKicked([this, alive = alive_](int reason, const std::string& msg) {
+        if (!alive->load()) return;
         nlohmann::json data;
         data["reason"] = reason;
         data["msg"]    = msg;
@@ -749,7 +797,8 @@ void JsBridge::SubscribeEvents() {
     });
 
     // 好友通知
-    contact_vm_->OnFriendNotify([this](const nova::client::FriendNotification& n) {
+    contact_vm_->OnFriendNotify([this, alive = alive_](const nova::client::FriendNotification& n) {
+        if (!alive->load()) return;
         nlohmann::json data;
         data["notifyType"]      = n.notify_type;
         data["fromUid"]         = n.from_uid;
@@ -769,7 +818,8 @@ void JsBridge::SubscribeEvents() {
     });
 
     // 会话更新通知
-    conv_vm_->OnUpdated([this](const nova::client::ConvNotification& n) {
+    conv_vm_->OnUpdated([this, alive = alive_](const nova::client::ConvNotification& n) {
+        if (!alive->load()) return;
         nlohmann::json data;
         data["conversationId"] = n.conversation_id;
         data["updateType"]     = n.update_type;
@@ -778,7 +828,8 @@ void JsBridge::SubscribeEvents() {
     });
 
     // 群组通知
-    group_vm_->OnNotify([this](const nova::client::GroupNotification& n) {
+    group_vm_->OnNotify([this, alive = alive_](const nova::client::GroupNotification& n) {
+        if (!alive->load()) return;
         nlohmann::json data;
         data["conversationId"] = n.conversation_id;
         data["notifyType"]     = n.notify_type;

@@ -6,7 +6,7 @@ namespace nova::client {
 
 ContactVM::ContactVM(FriendService& friend_svc, ProfileService& profile)
     : friend_(friend_svc), profile_(profile) {}
-ContactVM::~ContactVM() = default;
+ContactVM::~ContactVM() { alive_->store(false); }
 
 // ---- 好友 ----
 
@@ -32,7 +32,8 @@ void ContactVM::UnblockFriend(const std::string& target_uid, ResultCallback cb) 
 }
 
 void ContactVM::GetFriendList(FriendListCallback cb) {
-    friend_.GetFriendList([this, cb = std::move(cb)](const FriendListResult& r) {
+    friend_.GetFriendList([this, alive = alive_, cb = std::move(cb)](const FriendListResult& r) {
+        if (!alive->load()) return;
         if (r.success) {
             friends_.Set(r.friends);
         }

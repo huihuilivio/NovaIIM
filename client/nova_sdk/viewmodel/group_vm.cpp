@@ -4,7 +4,7 @@
 namespace nova::client {
 
 GroupVM::GroupVM(GroupService& group) : group_(group) {}
-GroupVM::~GroupVM() = default;
+GroupVM::~GroupVM() { alive_->store(false); }
 
 void GroupVM::CreateGroup(const std::string& name, const std::string& avatar,
                           const std::vector<int64_t>& member_ids, CreateGroupCallback cb) {
@@ -46,7 +46,8 @@ void GroupVM::GetGroupMembers(int64_t conversation_id, GroupMembersCallback cb) 
 }
 
 void GroupVM::GetMyGroups(MyGroupsCallback cb) {
-    group_.GetMyGroups([this, cb = std::move(cb)](const MyGroupsResult& r) {
+    group_.GetMyGroups([this, alive = alive_, cb = std::move(cb)](const MyGroupsResult& r) {
+        if (!alive->load()) return;
         if (r.success) {
             groups_.Set(r.groups);
         }

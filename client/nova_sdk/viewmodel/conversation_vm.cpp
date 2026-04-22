@@ -4,10 +4,11 @@
 namespace nova::client {
 
 ConversationVM::ConversationVM(ConversationService& conv) : conv_(conv) {}
-ConversationVM::~ConversationVM() = default;
+ConversationVM::~ConversationVM() { alive_->store(false); }
 
 void ConversationVM::GetConversationList(ConvListCallback cb) {
-    conv_.GetConversationList([this, cb = std::move(cb)](const ConvListResult& r) {
+    conv_.GetConversationList([this, alive = alive_, cb = std::move(cb)](const ConvListResult& r) {
+        if (!alive->load()) return;
         if (r.success) {
             conversations_.Set(r.conversations);
         }

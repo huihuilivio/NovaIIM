@@ -4,13 +4,11 @@
 namespace nova::client {
 
 LoginVM::LoginVM(AuthService& auth) : auth_(auth) {}
-LoginVM::~LoginVM() { *alive_ = false; }
+LoginVM::~LoginVM() { alive_->store(false); }
 
 void LoginVM::Login(const std::string& email, const std::string& password, LoginCallback cb) {
-    std::weak_ptr<bool> weak = alive_;
-    auth_.Login(email, password, [this, weak, cb = std::move(cb)](const LoginResult& r) {
-        auto alive = weak.lock();
-        if (!alive) return;
+    auth_.Login(email, password, [this, alive = alive_, cb = std::move(cb)](const LoginResult& r) {
+        if (!alive->load()) return;  // LoginVM 已销毁
         if (r.success) {
             uid_.Set(r.uid);
             logged_in_.Set(true);
