@@ -486,7 +486,7 @@
 
 ---
 
-## � M7 — 移动端 Bridge (框架已搭建)
+## M7 — 移动端 Bridge (框架已搭建)
 
 ### 7.1 iOS
 - [x] CMake 构建脚本 (条件编译 — NOVA_BUILD_IOS)

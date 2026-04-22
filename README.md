@@ -199,7 +199,7 @@ admin:
 file_server:
   enabled: true
   port: 9092
-  upload_dir: "./uploads"
+  root_dir: files              # 文件存储根目录
 
 log:
   level: debug
@@ -258,12 +258,13 @@ curl "http://localhost:9091/api/v1/users?page=1&page_size=20" \
 
 | 阶段 | 内容 | 状态 |
 |------|------|------|
-| Phase 0-3 | 基础设施 + DAO + 认证 + Admin API | 完成 |
-| Phase 3.5 | Admin/User 表分离 | 完成 |
-| Phase 4 | 单元测试 + ConversationDao | 完成 |
-| Phase 5 | IM 用户侧服务 | 完成 |
-| M1-M4 | Admin 前端 + SDK + 桌面端 + 移动端 Bridge | 完成 |
-| Phase 6 | 运维管理 / 角色管理 API | 待开始 |
+| 基础设施 | DAO 抽象工厂 + 认证 + Admin API 13 端点 | 完成 |
+| 表分离 | Admin/User 独立表，RBAC 权限隔离 | 完成 |
+| 测试 | 294 个单元测试 (GTest + Vitest) | 完成 |
+| IM 服务 | 用户/好友/消息/会话/群组/文件/同步 | 完成 |
+| 客户端 | SDK + Admin 前端 + 桌面端 + 移动端 Bridge | 完成 |
+| 文件服务 | FileServer HTTP REST (端口 9092) | 完成 |
+| 运维管理 | 管理员账户 CRUD + 角色权限管理 | 待开始 |
 
 ---
 

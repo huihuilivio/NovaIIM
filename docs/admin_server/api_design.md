@@ -577,7 +577,7 @@ GET /audit-logs?page=1&page_size=50&admin_id=1&action=user.create&start_time=202
 
 ---
 
-## 8. ⏳ 运维管理 (Operations Management — Phase 5 待实现)
+## 8. 运维管理 (待实现)
 
 ### GET /admins
 
@@ -725,7 +725,7 @@ GET /admins?page=1&page_size=20&keyword=admin&status=1
 
 ---
 
-## 9. ⏳ 角色管理 (Role Management — Phase 5 待实现)
+## 9. 角色管理 (待实现)
 
 ### GET /roles
 

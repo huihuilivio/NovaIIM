@@ -420,46 +420,26 @@ for (auto conn : conn_mgr.Get(user_id)) {
 
 ## 11. 扩展路径
 
----
+当前为单进程架构，后续可按需扩展：
 
-### Phase 1（当前）
-
-* 单进程
-
----
-
-### Phase 2
-
-* Redis（在线状态）
-* seq优化
-
----
-
-### Phase 3
-
-* Gateway拆分
-* MsgSvc拆分
-
----
-
-### Phase 4
-
-* Kafka
-* 分库分表
+- Redis 缓存在线状态和 seq
+- Gateway / MsgService 拆分为独立进程
+- Kafka 作为消息队列
+- 分库分表（按 conversation_id 或时间分区）
 
 ---
 
 ## 12. 项目结构
 
 ```text
-im-server/
-├── net/
-├── router/
-├── service/
-├── db/
-├── model/
-├── proto/
-├── util/
+server/
+├── net/          # 网络层 (TCP/WS 网关, 连接管理)
+├── service/      # 业务服务层
+├── dao/          # 数据访问层 (ormpp, 双后端)
+├── model/        # 数据模型
+├── admin/        # Admin HTTP REST API
+├── file/         # 文件服务器
+├── core/         # 配置/日志/线程池/安全工具
 ```
 
 ---

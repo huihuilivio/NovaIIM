@@ -73,138 +73,91 @@ CREATE INDEX idx_created_at ON users(created_at);
 CREATE TABLE conversations (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     type TINYINT NOT NULL,             -- 1私聊 2群聊
-    member_ids VARCHAR(2048) NOT NULL, -- 逗号分隔的用户ID列表 (已排序)
-    last_msg_id BIGINT,                -- 最后一条消息ID (冗余优化)
-    last_msg_time DATETIME,
+    name VARCHAR(255),
+    avatar VARCHAR(255),
+    owner_id BIGINT,                   -- 私聊时可为 NULL；群聊以 groups.owner_id 为准
+    max_seq BIGINT DEFAULT 0,          -- 并发分配需 UPDATE max_seq=max_seq+1 (行锁)
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    
-    UNIQUE KEY unique_members (member_ids(100), type),
-    INDEX idx_last_msg_time (last_msg_time DESC)
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 ```
 
-**字段说明:**
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| id | BIGINT | 会话ID |
-| type | TINYINT | 1=私聊(1:1), 2=群聊(N:N) |
-| member_ids | VARCHAR | 成员ID列表，逗号分隔，已排序 (用于快速查找) |
-| last_msg_id | BIGINT | 最后一条消息ID (冗余，用于分页) |
-| last_msg_time | DATETIME | 最后一条消息时间 |
-| created_at | DATETIME | 创建时间 |
-| updated_at | DATETIME | 更新时间 |
-
-**查询示例:**
+### 2.2.1 conversation_members 表 - 会话成员
 
 ```sql
--- 查找用户123和456的私聊
-SELECT * FROM conversations WHERE member_ids = '123,456' AND type = 1;
-
--- 查找包含用户123的所有会话
-SELECT * FROM conversations 
-WHERE member_ids LIKE '123,%' 
-   OR member_ids LIKE '%,123,%'
-   OR member_ids LIKE '%,123'
-ORDER BY last_msg_time DESC;
+CREATE TABLE conversation_members (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    conversation_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    role TINYINT DEFAULT 0,            -- 0成员 1管理员 2群主
+    last_read_seq BIGINT DEFAULT 0,
+    last_ack_seq BIGINT DEFAULT 0,
+    mute TINYINT DEFAULT 0,
+    pinned TINYINT DEFAULT 0,          -- 0=不置顶 1=置顶
+    hidden TINYINT DEFAULT 0,          -- 0=可见 1=隐藏（新消息自动恢复）
+    joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_conv_user (conversation_id, user_id)
+);
 ```
+
+**说明：** 采用 conversation_members 关联表（而非 member_ids 逗号分隔），支持高效的成员查询和 per-member 状态（已读位置、免打扰、置顶等）。
 
 ---
 
-### 2.3 messages 表 - 消息 (可分区)
+### 2.3 messages 表 - 消息
 
 ```sql
 CREATE TABLE messages (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     conversation_id BIGINT NOT NULL,
     sender_id BIGINT NOT NULL,
-    seq BIGINT NOT NULL,               -- 服务器生成的序列号(单调递增)
-    content LONGTEXT NOT NULL,         -- 消息内容 (≤4KB)
-    msg_type TINYINT DEFAULT 1,        -- 1文本 2图片 3语音 4视频
-    status TINYINT DEFAULT 0,          -- 0发送中 1已送达 2已读 3已撤回
+    seq BIGINT NOT NULL,
+    msg_type TINYINT NOT NULL,         -- 1文本 2图片 3语音 4视频
+    content TEXT,
+    encrypted_content BLOB,
+    status TINYINT DEFAULT 0,          -- 0正常 1已撤回 2已删除
+    client_msg_id VARCHAR(64),         -- 客户端幂等去重
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    
-    INDEX idx_conversation_id (conversation_id),
-    INDEX idx_sender_id (sender_id),
-    INDEX idx_seq (seq),
-    INDEX idx_created_at (created_at),
-    UNIQUE KEY unique_seq_conversation (conversation_id, seq)
-);
 
--- 查询优化: 分区 (按月/年)
--- ALTER TABLE messages PARTITION BY RANGE (YEAR(created_at))
+    UNIQUE KEY uk_conv_seq (conversation_id, seq),
+    UNIQUE KEY uk_conv_client_msg (conversation_id, client_msg_id),
+    KEY idx_conv_time (conversation_id, created_at),
+    KEY idx_sender (sender_id)
+);
 ```
 
-**字段说明:**
+**说明：**
+- seq 由服务端通过 `conversations.max_seq` 原子递增分配
+- status: 0=正常, 1=已撤回, 2=已删除
+- client_msg_id 用于客户端幂等去重（同一 conversation 内唯一）
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| id | BIGINT | 消息ID |
-| conversation_id | BIGINT | 会话ID (外键) |
-| sender_id | BIGINT | 发送者ID (外键) |
-| seq | BIGINT | 序列号 (服务器生成，单调递增) |
-| content | LONGTEXT | 消息内容 |
-| msg_type | TINYINT | 消息类型 (1=文本, 2=图片, 3=语音...) |
-| status | TINYINT | 0=发送中, 1=已送达, 2=已读, 3=已撤回 |
-| created_at | DATETIME | 创建时间 |
-
-**查询示例:**
+**常用查询：**
 
 ```sql
--- 拉取会话9999的最新50条消息
-SELECT * FROM messages 
-WHERE conversation_id = 9999 
-ORDER BY seq DESC 
-LIMIT 50;
+-- 拉取会话最新50条消息
+SELECT * FROM messages WHERE conversation_id = 9999 ORDER BY seq DESC LIMIT 50;
 
--- 查询某时间段内的消息
-SELECT * FROM messages 
-WHERE conversation_id = 9999 
-  AND created_at >= '2024-01-01' 
-  AND created_at < '2024-02-01'
-ORDER BY seq DESC;
-```
-
-**分区建议:**
-
-```sql
--- 按年分区
-ALTER TABLE messages 
-PARTITION BY RANGE (YEAR(created_at)) (
-    PARTITION p2023 VALUES LESS THAN (2024),
-    PARTITION p2024 VALUES LESS THAN (2025),
-    PARTITION p2025 VALUES LESS THAN (2026),
-    PARTITION pmax VALUES LESS THAN MAXVALUE
-);
+-- 增量同步（拉取 seq > last_read_seq 的消息）
+SELECT * FROM messages WHERE conversation_id = 9999 AND seq > 100 ORDER BY seq ASC LIMIT 100;
 ```
 
 ---
 
-### 2.4 message_status 表 - 消息状态 (可选)
+### 2.4 message_receipts 表 - 已读回执 (可选)
 
-用于跟踪每个接收者的消息状态（已送达/已读）。
+记录每个用户对消息的已读状态。
 
 ```sql
-CREATE TABLE message_status (
+CREATE TABLE message_receipts (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     message_id BIGINT NOT NULL,
-    receiver_id BIGINT NOT NULL,
-    status TINYINT DEFAULT 0,          -- 0未送达 1已送达 2已读
-    read_at DATETIME,
-    delivered_at DATETIME,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    
-    INDEX idx_message_id (message_id),
-    INDEX idx_receiver_id (receiver_id),
-    UNIQUE KEY unique_msg_receiver (message_id, receiver_id)
+    user_id BIGINT NOT NULL,
+    read_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_msg_user (message_id, user_id)
 );
 ```
 
-**应用场景:**
-- 群聊消息: 每条消息为 N 条记录 (N=群成员数)
-- 私聊: 每条消息 1 条记录
-- 可选: 如果消息表已包含 status，此表可省略
+在当前实现中，已读状态通过 `conversation_members.last_read_seq` 追踪（按 seq 比较），不依赖此表。此表为后续精细到单条消息的已读回执预留。
 
 ---
 

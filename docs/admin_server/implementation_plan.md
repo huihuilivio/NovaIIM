@@ -34,21 +34,13 @@
 ## 依赖关系
 
 ```
-Phase 0 (基础工具)              ← 完成
-  └─ Phase 1 (DAO 层)           ← 完成
-       └─ Phase 2 (认证 + 鉴权)  ← 完成
-            └─ Phase 3 (业务 API) ← 完成
-                 └─ Phase 4 (审计 + 测试) ← 进行中
-                      └─ Phase 3.5 (Admin/User 分离) ← 完成 (4月15日)
+基础工具 (Phase 0)
+  └─ DAO 层 (Phase 1)
+       └─ 认证 + 鉴权 (Phase 2)
+            └─ 业务 API (Phase 3)
+                 └─ Admin/User 分离 (Phase 3.5)
+                      └─ 审计 + 测试 (Phase 4) — 已完成
 ```
-
-**新增交付项:** Phase 3.5 「管理员和用户表分离」
-- 创建独立的 Admin 表存储运维人员账户
-- AdminAccountDao 专门处理管理员持久化
-- AdminRole 替代 UserRole，绑定 admin_id
-- AuditLog.admin_id 唯一追踪操作者身份
-- X-Nova-Admin-Id 头明确标记管理员上下文
-- RBAC 查询独占 admin_roles，与用户权限系统隔离
 
 ---
 
@@ -191,7 +183,7 @@ Phase 0 (基础工具)              ← 完成
 | 4.7 | DAO 单元测试 | 各 DAO 操作验证(SQLite 后端) | 完成 | 24用例 |
 | 4.8 | Handler 集成测试 | 真实 HTTP 请求/响应验证 | 完成 | 21用例 |
 | 4.9 | 基础设施测试 | Router/MPMC/ConnManager | 完成 | 14用例 |
-| 4.10 | ConversationDao 实现 | 接口已定义, 需补模板实现 + 接入 DaoFactory | 待补 |
+| 4.10 | ConversationDao 实现 | 接口已定义, 需补模板实现 + 接入 DaoFactory | 完成 |
 
 ---
 
@@ -225,66 +217,54 @@ Phase 0 (基础工具)              ← 完成
 
 ---
 
-## 文件结构（当前实际）
+## 文件结构
 
 ```
 server/
-  main.cpp                          ← 入口: config → CreateDaoFactory → ctx.set_dao() → gateway → threadpool
+  main.cpp                          # 入口: config → CreateDaoFactory → ctx.set_dao() → gateway → threadpool
   CMakeLists.txt
   admin/
-    admin_server.h / .cpp           ← 路由注册 + JWT中间件(黑名单+RBAC+admin_id) + 13个Handler + 审计写入
-    jwt_utils.h / .cpp              ← JWT 签发/验证 (l8w8jwt), admin_id 字段替代 user_id
-    password_utils.h / .cpp         ← PBKDF2-SHA256 (MbedTLS, 返回值全检查)
-    http_helper.h                   ← JSON 响应 + ApiError 28个constexpr常量 + 分页(int64_t) + 权限检查 + GetCurrentAdminId()
+    admin_server.h / .cpp           # 路由注册 + JWT中间件 + 13个Handler + 审计写入
+    jwt_utils.h / .cpp              # JWT 签发/验证 (l8w8jwt)
+    password_utils.h / .cpp         # PBKDF2-SHA256 (MbedTLS)
+    http_helper.h                   # JSON 响应 + ApiError 常量 + 分页 + 权限检查
+  file/
+    file_server.h / .cpp            # HTTP 文件服务器 (端口 9092)
   core/
-    app_config.h / .cpp             ← YAML 配置 (ylt struct_yaml), Config→AppConfig 已重命名
-    server_context.h                ← DaoFactory 所有权中心, set_dao()/dao() 访问器
-    logger.h / .cpp                 ← spdlog 封装
-    formatters.h                    ← spdlog 自定义 formatter
-    thread_pool.h                   ← Worker 线程池 (重入安全Stop, atomic exchange)
-    mpmc_queue.h                    ← Vyukov MPMC (move Push, 容量 assert)
+    app_config.h / .cpp             # YAML 配置 (ylt struct_yaml)
+    server_context.h                # DaoFactory 所有权中心
+    logger.h / .cpp                 # spdlog 封装
+    thread_pool.h                   # Worker 线程池
+    mpmc_queue.h                    # Vyukov MPMC 队列
+    rate_limiter.h                  # 滑动窗口频率限制
+    defer.h                         # NOVA_DEFER scope guard 宏
   dao/
-    dao_factory.h / .cpp            ← DaoFactory 抽象工厂, AdminAccount() 虚方法, CreateDaoFactory 调度
-    user_dao.h                      ← 抽象接口 (IM 端用户)
-    admin_account_dao.h             ← 抽象接口 (管理员账户)
-    message_dao.h                   ← 抽象接口
-    audit_log_dao.h                 ← 抽象接口, 参数改为 admin_id
-    admin_session_dao.h             ← 抽象接口, RevokeByAdmin() 替代 RevokeByUser()
-    rbac_dao.h                      ← 抽象接口, 查询 admin_roles
-    conversation_dao.h              ← 接口已定义, 无模板实现, 未接入 DaoFactory
-    impl/
-      user_dao_impl.h / .cpp        ← 模板 XxxDaoImplT<DbMgr>, 双后端显式实例化
-      admin_account_dao_impl.h / .cpp ← 模板 AdminAccountDaoImplT<DbMgr>
-      message_dao_impl.h / .cpp     ← 同上
-      audit_log_dao_impl.h / .cpp   ← 同上, 查询 admin_id 而非 user_id
-      admin_session_dao_impl.h / .cpp ← RevokeByAdmin(), 查询 admin_id
-      rbac_dao_impl.h / .cpp        ← GetUserPermissions(), 查询 admin_roles
-    sqlite3/
-      sqlite_db_manager.h / .cpp    ← ormpp + SQLite3, admins + admin_roles 表创建
-      sqlite_dao_factory.h / .cpp   ← SqliteDaoFactory, 持有 AdminAccountDaoImplT
-    mysql/
-      mysql_db_manager.h / .cpp     ← ormpp + MySQL, admins + admin_roles 表创建
-      mysql_dao_factory.h / .cpp    ← MysqlDaoFactory, 持有 AdminAccountDaoImplT
+    dao_factory.h / .cpp            # DaoFactory 抽象工厂
+    user_dao.h                      # 用户 DAO 接口
+    admin_account_dao.h             # 管理员 DAO 接口
+    message_dao.h / conversation_dao.h / friend_dao.h / group_dao.h / file_dao.h
+    audit_log_dao.h / admin_session_dao.h / rbac_dao.h
+    impl/                           # 模板实现 XxxDaoImplT<DbMgr>
+    sqlite3/                        # SQLite3 后端
+    mysql/                          # MySQL 后端
   model/
-    types.h                         ← Admin 结构体, User/Message/AuditLog 全部型, ormpp ADL 别名
-    packet.h                        ← 二进制帧编解码
+    types.h                         # Admin / User / Message 等所有数据结构
+    packet.h                        # 二进制帧格式
   net/
-    connection.h                    ← user_id atomic + device_id mutex
-    tcp_connection.h                ← libhv SocketChannel 实现
-    conn_manager.h / .cpp           ← 多端连接管理
-    gateway.h / .cpp                ← TCP 网关 (unpack + 心跳)
+    connection.h / tcp_connection.h # 连接对象
+    conn_manager.h / .cpp           # 多端连接管理
+    gateway.h / .cpp                # TCP + WebSocket 网关
   service/
-    router.h / .cpp                 ← 命令字路由
-    user_service.h / .cpp           ← Login/Logout 存根, Heartbeat 使用 conn->user_id()
-    msg_service.h / .cpp            ← 存根
-    sync_service.h / .cpp           ← 存根
-  test/
-    test_conn_manager.cpp           ← 连接管理器测试
-    test_mpmc_queue.cpp             ← MPMC 队列测试
-    test_router.cpp                 ← 路由测试
-cmake/
-  fetch_mysql_client.py             ← MySQL 客户端库 检测/下载 脚本
-  dependencies.cmake                ← FetchContent 依赖管理 (含 MySQL 客户端宏)
+    router.h / .cpp                 # 命令字路由
+    service_base.h                  # Service 基类
+    user_service.h / .cpp           # 注册/登录/登出/搜索/资料
+    friend_service.h / .cpp         # 好友管理
+    msg_service.h / .cpp            # 消息收发
+    conv_service.h / .cpp           # 会话管理
+    group_service.h / .cpp          # 群组管理
+    file_service.h / .cpp           # 文件服务
+    sync_service.h / .cpp           # 离线同步
+  test/                              # 单元测试 (294 用例)
 ```
 
 ---
@@ -311,35 +291,18 @@ cmake/
 
 ## 实施顺序
 
-1. ~~**Phase 0** (0.1–0.5) — 工具层~~
-2. ~~**Phase 1A** (1.1–1.5) — Model 补全~~
-3. ~~**Phase 1B** (1.6–1.11) — DAO 实现 (ormpp)~~
-4. ~~**Phase 2** (2.1–2.6) — 认证 + 鉴权~~
-5. ~~**Phase 3** (3.1–3.11) — 业务 API~~
-6. ~~**Phase 3.5** (3.5.1–3.5.14) — Admin/User 表分离~~ 2026-04-15
-7. **Phase 4** (4.1–4.10) — 单元测试 + ConversationDao ← **当前** (进行中)
-8. **Phase 5** (5.1–5.14) — **运维管理 + 角色管理** ← 待实现 (估计 25h)
-
-**关键里程碑：**
-- M1: DbManager + UserDao 具体实现 → 能执行 SQL
-- M2: JWT 中间件 + /auth/login → 能登录获取 token
-- M3: 全部 P0 API 可用 → 可交付前端对接 (Phase 3 完成)
-- M4: Admin/User 分离 → 权限模型清晰化 (2026-04-15)
-- M5: 单元测试覆盖 JWT / DAO / Handler — 下一阶段 (Phase 4)
-- M6: 运维/角色管理完整 — 后续阶段 (Phase 5)
+1. ~~Phase 0 (0.1-0.5) — 工具层~~
+2. ~~Phase 1A (1.1-1.5) — Model 补全~~
+3. ~~Phase 1B (1.6-1.11) — DAO 实现 (ormpp)~~
+4. ~~Phase 2 (2.1-2.6) — 认证 + 鉴权~~
+5. ~~Phase 3 (3.1-3.11) — 业务 API~~
+6. ~~Phase 3.5 (3.5.1-3.5.14) — Admin/User 表分离~~
+7. ~~Phase 4 (4.1-4.10) — 单元测试 + ConversationDao~~
+8. **Phase 5 (5.1-5.14) — 运维管理 + 角色管理** — 待实现
 
 ---
 
-## 进度统计
+## 当前状态
 
-| 指标 | 数据 | 备注 |
-|------|------|------|
-| 总计划任务 | 98 个 | Phase 0–5 |
-| 已完成任务 | 60 个 | 61% 完成度 |
-| 进行中任务 | 1 个 | Phase 4 (单元测试/ConversationDao) |
-| 待补任务 | 37 个 | Phase 4 (9) + Phase 5 (14) + IM 服务 (14) |
-| 代码行数 | ~12,000 loc | IM 服务 + Admin 面板 |
-| 数据库表数 | 11 个 | users/admins/messages/... |
-| HTTP API 端点 | 30+ 个 | 已实现 13 + 待实现 14 + IM 侧 3 |
-| 编译状态 | 完成 | 0 errors | 最后验证: 2026-04-17 |
-| Git 提交数 | 30+ commits | 包括本次 refactor 3 次提交 |
+Phase 0-4 全部完成。Admin 模块 13 个 API 端点可用，294 个单元测试通过。
+剩余工作为 Phase 5 的运维管理（7 个端点）和角色管理（7 个端点）。

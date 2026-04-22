@@ -195,6 +195,13 @@ void FileServer::RegisterRoutes() {
     // curl -v http://ip:port/api/v1/files/upload -F 'file=@test.txt'
     // curl -v http://ip:port/api/v1/files/upload?filename=test.txt -d '@test.txt'
     service_.POST("/api/v1/files/upload", [this](const HttpContextPtr& ctx) {
+        // Content-Length 检查
+        int64_t content_len = ctx->request->ContentLength();
+        if (opts_.max_upload_size > 0 && content_len > opts_.max_upload_size) {
+            NOVA_NLOG_WARN(kLogTag, "upload rejected: size {} exceeds limit {}", content_len, opts_.max_upload_size);
+            return response_status(ctx, HTTP_STATUS_BAD_REQUEST, "file too large");
+        }
+
         int status_code       = 200;
         std::string save_path = opts_.root_dir + "/";
         if (ctx->is(MULTIPART_FORM_DATA)) {
@@ -228,7 +235,9 @@ void FileServer::RegisterRoutes() {
             if (file.open(filepath.c_str(), "wb") != 0) {
                 return response_status(ctx, HTTP_STATUS_INTERNAL_SERVER_ERROR, "cannot create file");
             }
-            file.write(it->second.content.data(), it->second.content.size());
+            if (file.write(it->second.content.data(), it->second.content.size()) != it->second.content.size()) {
+                return response_status(ctx, HTTP_STATUS_INTERNAL_SERVER_ERROR, "write failed");
+            }
             NOVA_NLOG_INFO(kLogTag, "multipart upload '{}' ok", filename);
         } else {
             std::string filename = ctx->param("filename", "unnamed.txt");

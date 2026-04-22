@@ -132,9 +132,9 @@ using PacketHandler = std::function<void(ConnectionPtr, Packet&)>;
 | kRegister (0x0005) | HandleRegister | UserService | 邮箱注册 |
 | kHeartbeat (0x0010) | HandleHeartbeat | UserService | 心跳 |
 | **用户** |
-| kSearchUser (0x0020) | HandleSearchUser | UserService | 搜索用户 |
-| kGetUserProfile (0x0022) | HandleGetProfile | UserService | 获取资料 |
-| kUpdateProfile (0x0024) | HandleUpdateProfile | UserService | 修改资料 |
+| kSearchUser (0x0400) | HandleSearchUser | UserService | 搜索用户 |
+| kGetUserProfile (0x0302) | HandleGetProfile | UserService | 获取资料 |
+| kUpdateProfile (0x0402) | HandleUpdateProfile | UserService | 修改资料 |
 | **好友** |
 | kAddFriend (0x0030) | HandleAddFriend | FriendService | 发送好友申请 |
 | kHandleFriendReq (0x0032) | HandleFriendReq | FriendService | 处理申请 |
@@ -158,21 +158,21 @@ using PacketHandler = std::function<void(ConnectionPtr, Packet&)>;
 | kSyncMsg (0x0200) | HandleSyncMsg | SyncService | 拉取历史消息 |
 | kSyncUnread (0x0202) | HandleSyncUnread | SyncService | 拉取未读 |
 | **群组** |
-| kCreateGroup (0x0400) | HandleCreateGroup | GroupService | 建群 |
-| kDismissGroup (0x0402) | HandleDismissGroup | GroupService | 解散群 |
-| kJoinGroup (0x0404) | HandleJoinGroup | GroupService | 申请入群 |
-| kHandleJoinReq (0x0406) | HandleJoinReq | GroupService | 审批入群 |
-| kLeaveGroup (0x0408) | HandleLeaveGroup | GroupService | 退群 |
-| kKickMember (0x040A) | HandleKickMember | GroupService | 踢出成员 |
-| kGetGroupInfo (0x040C) | HandleGetGroupInfo | GroupService | 群信息 |
-| kUpdateGroup (0x040E) | HandleUpdateGroup | GroupService | 修改群信息 |
-| kGetGroupMembers (0x0410) | HandleGetGroupMembers | GroupService | 群成员列表 |
-| kGetMyGroups (0x0412) | HandleGetMyGroups | GroupService | 我的群列表 |
-| kSetMemberRole (0x0414) | HandleSetMemberRole | GroupService | 设置角色 |
+| kCreateGroup (0x0500) | HandleCreateGroup | GroupService | 建群 |
+| kDismissGroup (0x0502) | HandleDismissGroup | GroupService | 解散群 |
+| kJoinGroup (0x0504) | HandleJoinGroup | GroupService | 申请入群 |
+| kHandleJoinReq (0x0506) | HandleJoinReq | GroupService | 审批入群 |
+| kLeaveGroup (0x0508) | HandleLeaveGroup | GroupService | 退群 |
+| kKickMember (0x050A) | HandleKickMember | GroupService | 踢出成员 |
+| kGetGroupInfo (0x050C) | HandleGetGroupInfo | GroupService | 群信息 |
+| kUpdateGroup (0x050E) | HandleUpdateGroup | GroupService | 修改群信息 |
+| kGetGroupMembers (0x0510) | HandleGetGroupMembers | GroupService | 群成员列表 |
+| kGetMyGroups (0x0512) | HandleGetMyGroups | GroupService | 我的群列表 |
+| kSetMemberRole (0x0514) | HandleSetMemberRole | GroupService | 设置角色 |
 | **文件** |
-| kUploadReq (0x0500) | HandleUploadReq | FileService | 请求上传 |
-| kUploadComplete (0x0502) | HandleUploadComplete | FileService | 上传完成 |
-| kDownloadReq (0x0504) | HandleDownloadReq | FileService | 请求下载 |
+| kUploadReq (0x0600) | HandleUploadReq | FileService | 请求上传 |
+| kUploadComplete (0x0602) | HandleUploadComplete | FileService | 上传完成 |
+| kDownloadReq (0x0604) | HandleDownloadReq | FileService | 请求下载 |
 
 ### 3.2 分发流程
 
