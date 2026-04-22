@@ -1,5 +1,7 @@
 #include "message_cache_dao.h"
 
+#include <infra/logger.h>
+
 namespace nova::client {
 
 // ---- 消息缓存 ----
@@ -10,11 +12,20 @@ void MessageCacheDao::Insert(const CachedMessage& msg) {
 
 void MessageCacheDao::InsertBatch(const std::vector<CachedMessage>& msgs) {
     if (msgs.empty()) return;
-    db_.DB().execute("BEGIN");
-    for (auto& m : msgs) {
-        db_.DB().insert(m);
+    auto& conn = db_.DB();
+    conn.execute("BEGIN");
+    try {
+        for (auto& m : msgs) {
+            conn.insert(m);
+        }
+        conn.execute("COMMIT");
+    } catch (const std::exception& e) {
+        conn.execute("ROLLBACK");
+        NOVA_LOG_ERROR("MessageCacheDao::InsertBatch failed, rolled back: {}", e.what());
+    } catch (...) {
+        conn.execute("ROLLBACK");
+        NOVA_LOG_ERROR("MessageCacheDao::InsertBatch failed (unknown), rolled back");
     }
-    db_.DB().execute("COMMIT");
 }
 
 std::vector<CachedMessage> MessageCacheDao::GetByConversation(

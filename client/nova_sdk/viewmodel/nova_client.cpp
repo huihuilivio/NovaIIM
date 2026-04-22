@@ -51,6 +51,10 @@ struct NovaClient::Impl {
     std::unique_ptr<ConversationCacheDao> conv_cache;
     std::unique_ptr<GroupCacheDao>        group_cache;
 
+    // 生命周期状态位（保证 Init/Shutdown 幂等，避免重复注册事件）
+    bool initialized_ = false;
+    bool shutdown_done_ = false;
+
     explicit Impl(const std::string& config_path) {
         ClientConfig config;
         LoadClientConfig(config, config_path);
@@ -109,6 +113,12 @@ NovaClient::~NovaClient() {
 }
 
 void NovaClient::Init() {
+    if (impl_->initialized_) {
+        NOVA_LOG_WARN("NovaClient::Init called more than once; ignoring");
+        return;
+    }
+    impl_->initialized_ = true;
+
     impl_->ctx->Init();
     impl_->CreateVMs();
 
@@ -126,7 +136,9 @@ void NovaClient::Init() {
 }
 
 void NovaClient::Shutdown() {
-    if (impl_ && impl_->ctx) {
+    if (!impl_ || impl_->shutdown_done_) return;
+    impl_->shutdown_done_ = true;
+    if (impl_->ctx) {
         impl_->CloseCache();
         impl_->ctx->Shutdown();
     }
