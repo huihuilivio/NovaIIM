@@ -7,6 +7,10 @@ using namespace detail;
 
 AuthService::AuthService(ClientContext& ctx) : ctx_(ctx) {}
 
+AuthService::~AuthService() {
+    alive_->store(false);
+}
+
 void AuthService::Login(const std::string& email, const std::string& password, LoginCallback cb) {
     if (email.empty() || email.size() > 255) {
         if (cb) cb({.success = false, .msg = "invalid email"});
@@ -30,7 +34,8 @@ void AuthService::Login(const std::string& email, const std::string& password, L
     }
 
     SendRequest<nova::proto::LoginAck>(ctx_, pkt,
-        [this, cb](const std::optional<nova::proto::LoginAck>& ack) {
+        [this, cb, alive = alive_](const std::optional<nova::proto::LoginAck>& ack) {
+            if (!alive->load()) return;  // AuthService 已销毁
             LoginResult result;
             if (ack && ack->code == 0) {
                 ctx_.SetAuthenticated(ack->uid);

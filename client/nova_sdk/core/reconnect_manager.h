@@ -12,6 +12,7 @@
 #include <atomic>
 #include <cstdint>
 #include <functional>
+#include <mutex>
 
 namespace nova::client {
 
@@ -61,7 +62,8 @@ private:
     std::atomic<uint32_t> current_delay_ms_{0};
     std::atomic<uint32_t> attempt_count_{0};
 
-    Timer::TimerID pending_timer_{0};
+    mutable std::mutex timer_mu_;
+    Timer::TimerID pending_timer_{0};  // 受 timer_mu_ 保护
 };
 
 }  // namespace nova::client

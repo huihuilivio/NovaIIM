@@ -4,6 +4,7 @@
 #include <viewmodel/ui_dispatcher.h>
 
 #include <Windows.h>
+#include <atomic>
 
 namespace nova::desktop {
 
@@ -16,7 +17,7 @@ public:
     static void SetHwnd(HWND hwnd);
 
 private:
-    static HWND hwnd_;
+    static std::atomic<HWND> hwnd_;
 };
 
 }  // namespace nova::desktop

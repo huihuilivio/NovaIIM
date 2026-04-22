@@ -10,23 +10,25 @@
 #include <ShlObj.h>
 #include <wrl/event.h>
 
+#include <atomic>
+
 using namespace Microsoft::WRL;
 
 namespace nova::desktop {
 
-static WebView2App* g_app = nullptr;
+static std::atomic<WebView2App*> g_app{nullptr};
 
 // ---- 构造 / 析构 ----
 
 WebView2App::WebView2App(HINSTANCE hInstance, nova::client::NovaClient* client)
     : hinstance_(hInstance), client_(client), tray_(std::make_unique<TrayIcon>()) {
-    g_app = this;
+    g_app.store(this, std::memory_order_release);
 }
 
 WebView2App::~WebView2App() {
     if (bridge_) bridge_.reset();
     if (tray_) tray_->Destroy();
-    g_app = nullptr;
+    g_app.store(nullptr, std::memory_order_release);
 }
 
 // ---- 初始化 ----
@@ -78,8 +80,9 @@ int WebView2App::Run() {
 // ---- 窗口消息处理 ----
 
 LRESULT CALLBACK WebView2App::WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
-    if (g_app && g_app->hwnd_ == hwnd) {
-        return g_app->HandleMessage(msg, wp, lp);
+    auto* app = g_app.load(std::memory_order_acquire);
+    if (app && app->hwnd_ == hwnd) {
+        return app->HandleMessage(msg, wp, lp);
     }
     return DefWindowProcW(hwnd, msg, wp, lp);
 }

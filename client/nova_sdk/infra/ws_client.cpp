@@ -19,13 +19,18 @@ struct WsClient::Impl {
     BinaryCallback  on_binary;
     StateCallback   on_state;
 
+    std::mutex cb_mutex;       // 保护 on_message / on_binary / on_state 赋值与读取
     std::mutex send_mutex;
 
     void SetState(ConnectionState s) {
         auto old = state.exchange(s);
-        if (old != s && on_state) {
-            on_state(s);
+        if (old == s) return;
+        StateCallback cb_copy;
+        {
+            std::lock_guard<std::mutex> lk(cb_mutex);
+            cb_copy = on_state;
         }
+        if (cb_copy) cb_copy(s);
     }
 };
 
@@ -57,7 +62,12 @@ void WsClient::Connect(const std::string& url) {
     };
 
     impl_->client->onmessage = [this](const std::string& msg) {
-        if (impl_->on_message) impl_->on_message(msg);
+        MessageCallback cb_copy;
+        {
+            std::lock_guard<std::mutex> lk(impl_->cb_mutex);
+            cb_copy = impl_->on_message;
+        }
+        if (cb_copy) cb_copy(msg);
     };
 
     // 构造请求头并连接
@@ -100,14 +110,17 @@ ConnectionState WsClient::GetState() const {
 }
 
 void WsClient::OnMessage(MessageCallback cb) {
+    std::lock_guard<std::mutex> lk(impl_->cb_mutex);
     impl_->on_message = std::move(cb);
 }
 
 void WsClient::OnBinary(BinaryCallback cb) {
+    std::lock_guard<std::mutex> lk(impl_->cb_mutex);
     impl_->on_binary = std::move(cb);
 }
 
 void WsClient::OnStateChanged(StateCallback cb) {
+    std::lock_guard<std::mutex> lk(impl_->cb_mutex);
     impl_->on_state = std::move(cb);
 }
 

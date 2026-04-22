@@ -70,8 +70,9 @@ void JsBridge::Init() {
     // 监听 JS → C++ 消息
     webview_->add_WebMessageReceived(
         Callback<ICoreWebView2WebMessageReceivedEventHandler>(
-            [this](ICoreWebView2* /*sender*/,
+            [this, alive = alive_](ICoreWebView2* /*sender*/,
                    ICoreWebView2WebMessageReceivedEventArgs* args) -> HRESULT {
+                if (!alive->load()) return S_OK;  // JsBridge 已销毁
                 wchar_t* raw = nullptr;
                 args->TryGetWebMessageAsString(&raw);
                 if (raw) {

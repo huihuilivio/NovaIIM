@@ -40,9 +40,14 @@ void ReconnectManager::Reset() {
 void ReconnectManager::Stop() {
     stopped_ = true;
     enabled_ = false;
-    if (pending_timer_) {
-        timer_.KillTimer(pending_timer_);
+    Timer::TimerID id = 0;
+    {
+        std::lock_guard<std::mutex> lk(timer_mu_);
+        id = pending_timer_;
         pending_timer_ = 0;
+    }
+    if (id) {
+        timer_.KillTimer(id);
     }
 }
 
@@ -50,20 +55,37 @@ void ReconnectManager::ScheduleReconnect() {
     if (stopped_) return;
 
     // 取消上一个 pending timer（防止重复调度）
-    if (pending_timer_) {
-        timer_.KillTimer(pending_timer_);
+    Timer::TimerID old_id = 0;
+    {
+        std::lock_guard<std::mutex> lk(timer_mu_);
+        old_id = pending_timer_;
         pending_timer_ = 0;
+    }
+    if (old_id) {
+        timer_.KillTimer(old_id);
     }
 
     uint32_t delay = NextDelay();
     NOVA_LOG_INFO("Reconnecting in {}ms (attempt #{})", delay, attempt_count_.load());
 
-    pending_timer_ = timer_.SetTimeout(delay, [this](Timer::TimerID) {
-        pending_timer_ = 0;
+    Timer::TimerID new_id = timer_.SetTimeout(delay, [this](Timer::TimerID) {
+        {
+            std::lock_guard<std::mutex> lk(timer_mu_);
+            pending_timer_ = 0;
+        }
         if (!stopped_ && enabled_ && reconnect_func_) {
             reconnect_func_();
         }
     });
+    {
+        std::lock_guard<std::mutex> lk(timer_mu_);
+        // 若并发的 Stop() 已将 stopped_ 置为 true，则不保存 id（让定时器 fire-and-discard）
+        if (!stopped_) {
+            pending_timer_ = new_id;
+        } else {
+            timer_.KillTimer(new_id);
+        }
+    }
 }
 
 uint32_t ReconnectManager::NextDelay() {
