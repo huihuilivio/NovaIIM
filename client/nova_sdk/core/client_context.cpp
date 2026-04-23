@@ -53,6 +53,9 @@ void ClientContext::Init() {
                     std::lock_guard lock(uid_mutex_);
                     uid_.clear();
                 }
+                // 清理所有 pending 请求：断线后旧回调再触发（超时/迟到响应）
+                // 逻辑上等同于"幽灵响应"，必须清除以避免业务层收到陈旧数据
+                if (request_mgr_) request_mgr_->CancelAll();
                 // 如果重连已被显式停止（如被踢），直接进入断开状态
                 // 否则如果重连已启用且之前不是断开状态，则进入重连状态
                 if (reconnect_mgr_->IsEnabled() && !reconnect_mgr_->IsStopped() &&

@@ -3,6 +3,7 @@
 #include <infra/logger.h>
 
 #include <algorithm>
+#include <random>
 
 namespace nova::client {
 
@@ -94,6 +95,22 @@ uint32_t ReconnectManager::NextDelay() {
     current_delay_ms_.store(std::min(
         static_cast<uint32_t>(delay * multiplier_),
         max_delay_ms_));
+
+    // 应用 ±25% 抖动（full jitter 变种）避免服务端重启时所有客户端同时重连雪崩
+    // 种子只初始化一次；每个实例使用独立的静态引擎避免锁竞争
+    static thread_local std::mt19937 rng{std::random_device{}()};
+    if (delay > 0) {
+        uint32_t jitter_range = delay / 4;  // ±25%
+        if (jitter_range > 0) {
+            std::uniform_int_distribution<int32_t> dist(
+                -static_cast<int32_t>(jitter_range),
+                static_cast<int32_t>(jitter_range));
+            int32_t offset = dist(rng);
+            int64_t jittered = static_cast<int64_t>(delay) + offset;
+            if (jittered < 0) jittered = 0;
+            delay = static_cast<uint32_t>(jittered);
+        }
+    }
     return delay;
 }
 

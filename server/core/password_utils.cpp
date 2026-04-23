@@ -4,6 +4,7 @@
 #include <mbedtls/md.h>
 #include <mbedtls/entropy.h>
 #include <mbedtls/ctr_drbg.h>
+#include <mbedtls/platform_util.h>
 
 #include <cstring>
 #include <sstream>
@@ -81,12 +82,19 @@ std::string PasswordUtils::Hash(std::string_view password) {
     ret = mbedtls_pkcs5_pbkdf2_hmac(&md_ctx, reinterpret_cast<const unsigned char*>(password.data()), password.size(),
                                     salt, kSaltLen, kIterations, kHashLen, hash);
     mbedtls_md_free(&md_ctx);
-    if (ret != 0)
+    if (ret != 0) {
+        mbedtls_platform_zeroize(hash, sizeof(hash));
+        mbedtls_platform_zeroize(salt, sizeof(salt));
         return {};
+    }
 
     // 格式: pbkdf2:sha256:<iterations>$<salt_hex>$<hash_hex>
     std::ostringstream oss;
     oss << "pbkdf2:sha256:" << kIterations << "$" << ToHex(salt, kSaltLen) << "$" << ToHex(hash, kHashLen);
+
+    // 对栈上敏感缓冲区做 secure wipe，防内存快照 / core dump 泄露
+    mbedtls_platform_zeroize(hash, sizeof(hash));
+    mbedtls_platform_zeroize(salt, sizeof(salt));
     return oss.str();
 }
 
@@ -136,14 +144,23 @@ bool PasswordUtils::Verify(std::string_view password, std::string_view stored_ha
     int ret = mbedtls_pkcs5_pbkdf2_hmac(&md_ctx, reinterpret_cast<const unsigned char*>(password.data()),
                                         password.size(), salt, kSaltLen, iterations, kHashLen, computed_hash);
     mbedtls_md_free(&md_ctx);
-    if (ret != 0)
+    if (ret != 0) {
+        mbedtls_platform_zeroize(computed_hash, sizeof(computed_hash));
+        mbedtls_platform_zeroize(expected_hash, sizeof(expected_hash));
+        mbedtls_platform_zeroize(salt, sizeof(salt));
         return false;
+    }
 
     // 常量时间比较，防止时序攻击
     int diff = 0;
     for (int i = 0; i < kHashLen; ++i) {
         diff |= computed_hash[i] ^ expected_hash[i];
     }
+
+    // secure wipe 所有栈上中间缓冲区
+    mbedtls_platform_zeroize(computed_hash, sizeof(computed_hash));
+    mbedtls_platform_zeroize(expected_hash, sizeof(expected_hash));
+    mbedtls_platform_zeroize(salt, sizeof(salt));
     return diff == 0;
 }
 

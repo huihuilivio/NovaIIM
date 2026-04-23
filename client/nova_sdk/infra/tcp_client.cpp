@@ -36,7 +36,7 @@ struct TcpClient::Impl {
     }
 };
 
-TcpClient::TcpClient() : impl_(std::make_unique<Impl>()) {}
+TcpClient::TcpClient() : impl_(std::make_shared<Impl>()) {}
 
 TcpClient::~TcpClient() {
     Disconnect();
@@ -78,22 +78,29 @@ void TcpClient::Connect(const std::string& host, uint16_t port) {
         impl_->client->setUnpack(&impl_->unpack);
     }
 
-    impl_->client->onConnection = [this, host, port](const hv::SocketChannelPtr& channel) {
+    // 使用 weak_ptr 捕获 impl，保护 libhv 网络线程上回调发生在 TcpClient 析构之后的情况
+    std::weak_ptr<Impl> weak_impl = impl_;
+
+    impl_->client->onConnection = [weak_impl, host, port](const hv::SocketChannelPtr& channel) {
+        auto impl = weak_impl.lock();
+        if (!impl) return;  // TcpClient 已销毁
         if (channel->isConnected()) {
             spdlog::info("[TcpClient] Connected to {}:{}", host, port);
-            impl_->SetState(ConnectionState::kConnected);
+            impl->SetState(ConnectionState::kConnected);
         } else {
             spdlog::warn("[TcpClient] Disconnected from server");
-            impl_->SetState(ConnectionState::kDisconnected);
+            impl->SetState(ConnectionState::kDisconnected);
         }
     };
 
-    impl_->client->onMessage = [this](const hv::SocketChannelPtr&, hv::Buffer* buf) {
+    impl_->client->onMessage = [weak_impl](const hv::SocketChannelPtr&, hv::Buffer* buf) {
         if (!buf || buf->size() == 0) return;
+        auto impl = weak_impl.lock();
+        if (!impl) return;
         DataCallback cb;
         {
-            std::lock_guard lock(impl_->cb_mutex);
-            cb = impl_->on_data;
+            std::lock_guard lock(impl->cb_mutex);
+            cb = impl->on_data;
         }
         if (cb) {
             cb(buf->data(), buf->size());

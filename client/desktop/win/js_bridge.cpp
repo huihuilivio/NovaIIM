@@ -137,13 +137,17 @@ void JsBridge::OnWebMessage(const std::wstring& raw) {
     auto utf8 = WideToUtf8(raw);
     NOVA_LOG_DEBUG("JsBridge recv: {}", utf8);
 
-    auto j = nlohmann::json::parse(utf8, nullptr, false);
-    if (j.is_discarded() || !j.contains("action")) {
-        NOVA_LOG_WARN("JsBridge: invalid message: {}", utf8);
-        return;
-    }
+    // 顶层 try/catch 包裹所有 JSON 解析与分发逻辑，防止任何来自 JS 端的
+    // 非法输入（类型不匹配、缺字段、非 UTF-8 等）向上穿透到 WebView2 线程
+    // 导致未定义行为/崩溃。
+    try {
+        auto j = nlohmann::json::parse(utf8, nullptr, false);
+        if (j.is_discarded() || !j.is_object() || !j.contains("action") || !j["action"].is_string()) {
+            NOVA_LOG_WARN("JsBridge: invalid message: {}", utf8);
+            return;
+        }
 
-    auto action = j["action"].get<std::string>();
+        auto action = j["action"].get<std::string>();
 
     // ---- 认证 ----
     if (action == "login") {
@@ -241,6 +245,11 @@ void JsBridge::OnWebMessage(const std::wstring& raw) {
     }
     else {
         NOVA_LOG_WARN("JsBridge: unknown action: {}", action);
+    }
+    } catch (const std::exception& e) {
+        NOVA_LOG_WARN("JsBridge: exception while handling message: {} — payload: {}", e.what(), utf8);
+    } catch (...) {
+        NOVA_LOG_WARN("JsBridge: unknown exception while handling message — payload: {}", utf8);
     }
 }
 

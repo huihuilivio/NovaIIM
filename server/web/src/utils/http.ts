@@ -42,10 +42,21 @@ http.interceptors.response.use(
   (response: AxiosResponse<ApiResponse>) => {
     return response
   },
-  (error) => {
+  async (error) => {
     if (error.response?.status === 401) {
-      removeToken()
-      router.push('/login')
+      // 使用动态 import 延迟获取 store，避免 pinia 初始化顺序 / 循环依赖问题
+      try {
+        const { useAuthStore } = await import('@/stores/auth')
+        const authStore = useAuthStore()
+        // 清理 Pinia 状态（token + adminInfo）并跳转到 /login
+        authStore.doLogout()
+      } catch {
+        // 退路：至少保证 token 被清除
+        removeToken()
+        if (router.currentRoute.value.path !== '/login') {
+          router.push('/login')
+        }
+      }
       ElMessage.error('登录已过期，请重新登录')
     } else if (error.response?.status === 403) {
       ElMessage.error('无权限执行此操作')

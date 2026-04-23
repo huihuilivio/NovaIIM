@@ -254,6 +254,13 @@ int AdminServer::AuthMiddleware(HttpRequest* req, HttpResponse* resp) {
         return 401;
     }
 
+    // 防御纵深：显式拒绝 admin_id == 0 的 token（即使下游 FindById(0) 会返回空，
+    // 提前拒绝避免审计日志打印无意义的 admin_id=0 记录，并防止未来代码误信任）
+    if (claims->admin_id <= 0) {
+        JsonError(resp, api_err::kTokenExpired);
+        return 401;
+    }
+
     // 查 admin_sessions 黑名单
     std::string token_hash = Sha256Hex(token_sv);
     if (ctx_.dao().AdminSession().IsRevoked(token_hash)) {

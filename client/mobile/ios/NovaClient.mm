@@ -8,6 +8,14 @@
 
 #include <dispatch/dispatch.h>
 #include <memory>
+#include <string>
+
+// 安全包装：若 c_str() 为 nullptr 或非法 UTF-8，返回 @""，避免 crash
+static inline NSString* NovaSafeNSString(const char* s) {
+    if (!s) return @"";
+    NSString* r = [NSString stringWithUTF8String:s];
+    return r ?: @"";
+}
 
 @implementation NovaLoginResult
 @end
@@ -47,7 +55,7 @@
 }
 
 - (void)configureWithPath:(NSString *)path {
-    _configPath = [path UTF8String];
+    _configPath = path ? [path UTF8String] : "";
 }
 
 - (void)connect {
@@ -75,8 +83,8 @@
             if (!strongSelf) return;
             NovaPushMessage *pushMsg = [[NovaPushMessage alloc] init];
             pushMsg.conversationId = msg.conversation_id;
-            pushMsg.senderUid = [NSString stringWithUTF8String:msg.sender_uid.c_str()];
-            pushMsg.content = [NSString stringWithUTF8String:msg.content.c_str()];
+            pushMsg.senderUid = NovaSafeNSString(msg.sender_uid.c_str());
+            pushMsg.content = NovaSafeNSString(msg.content.c_str());
             pushMsg.serverSeq = msg.server_seq;
             pushMsg.serverTime = msg.server_time;
             pushMsg.msgType = msg.msg_type;
@@ -99,8 +107,8 @@
 - (void)loginWithEmail:(NSString *)email password:(NSString *)password {
     if (!_client) return;
 
-    auto email_str = std::string([email UTF8String]);
-    auto pass_str  = std::string([password UTF8String]);
+    auto email_str = std::string(email ? [email UTF8String] : "");
+    auto pass_str  = std::string(password ? [password UTF8String] : "");
 
     __weak NovaClient *weakSelf = self;
     _client->Login()->Login(email_str, pass_str,
@@ -110,10 +118,10 @@
                 if (!strongSelf) return;
                 NovaLoginResult *result = [[NovaLoginResult alloc] init];
                 result.code = lr.success ? 0 : -1;
-                result.msg = [NSString stringWithUTF8String:lr.msg.c_str()];
-                result.uid = [NSString stringWithUTF8String:lr.uid.c_str()];
-                result.nickname = [NSString stringWithUTF8String:lr.nickname.c_str()];
-                result.avatar = [NSString stringWithUTF8String:lr.avatar.c_str()];
+                result.msg = NovaSafeNSString(lr.msg.c_str());
+                result.uid = NovaSafeNSString(lr.uid.c_str());
+                result.nickname = NovaSafeNSString(lr.nickname.c_str());
+                result.avatar = NovaSafeNSString(lr.avatar.c_str());
                 if ([strongSelf.delegate respondsToSelector:@selector(novaClient:didLoginWithResult:)]) {
                     [strongSelf.delegate novaClient:strongSelf didLoginWithResult:result];
                 }
@@ -128,6 +136,7 @@
 
 - (void)sendTextMessage:(NSString *)content conversationId:(int64_t)conversationId {
     if (!_client || !_client->Login()->LoggedIn().Get()) return;
+    if (!content) return;
     _client->Chat()->SendTextMessage(conversationId, std::string([content UTF8String]));
 }
 

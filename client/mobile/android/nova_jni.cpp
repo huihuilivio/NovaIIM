@@ -10,6 +10,7 @@
 
 #include <android/log.h>
 
+#include <atomic>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -36,16 +37,36 @@ std::string JStringToString(JNIEnv* env, jstring jstr) {
     return result;
 }
 
-JNIEnv* GetJNIEnv() {
+// RAII guard: attaches current thread to JVM if needed and detaches on scope exit.
+// Without Detach, worker threads that call back into Java leak JVM thread resources
+// (thread-local JNI env, reference table, etc.).
+struct JniAttachGuard {
     JNIEnv* env = nullptr;
-    if (g_jvm) {
-        g_jvm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6);
-        if (!env) {
-            g_jvm->AttachCurrentThread(&env, nullptr);
+    bool    detach = false;
+
+    JniAttachGuard() {
+        if (!g_jvm) return;
+        jint rc = g_jvm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6);
+        if (rc == JNI_EDETACHED) {
+            if (g_jvm->AttachCurrentThread(&env, nullptr) == JNI_OK) {
+                detach = true;
+            } else {
+                env = nullptr;
+            }
+        } else if (rc != JNI_OK) {
+            env = nullptr;
         }
     }
-    return env;
-}
+
+    ~JniAttachGuard() {
+        if (detach && g_jvm) {
+            g_jvm->DetachCurrentThread();
+        }
+    }
+
+    JniAttachGuard(const JniAttachGuard&)            = delete;
+    JniAttachGuard& operator=(const JniAttachGuard&) = delete;
+};
 
 }  // namespace
 
@@ -85,24 +106,29 @@ Java_com_nova_client_NovaClient_nativeConnect(JNIEnv* /*env*/, jobject /*thiz*/)
 
     g_client->App()->State().Observe([](nova::client::ClientState state) {
         if (g_shutdown) return;
-        auto* env = GetJNIEnv();
+        JniAttachGuard guard;
+        JNIEnv* env = guard.env;
         if (!env) return;
         std::lock_guard cb_lock(g_mutex);
         if (!g_callback_ref) return;
         jclass cls = env->GetObjectClass(g_callback_ref);
+        if (!cls) return;
         jmethodID mid = env->GetMethodID(cls, "onConnectionStateChanged", "(I)V");
         if (mid) {
             env->CallVoidMethod(g_callback_ref, mid, static_cast<jint>(state));
         }
+        env->DeleteLocalRef(cls);
     });
 
     g_client->Chat()->OnMessageReceived([](const nova::client::ReceivedMessage& msg) {
         if (g_shutdown) return;
-        auto* env = GetJNIEnv();
+        JniAttachGuard guard;
+        JNIEnv* env = guard.env;
         if (!env) return;
         std::lock_guard cb_lock(g_mutex);
         if (!g_callback_ref) return;
         jclass cls = env->GetObjectClass(g_callback_ref);
+        if (!cls) return;
         jmethodID mid = env->GetMethodID(cls, "onMessageReceived",
             "(JLjava/lang/String;Ljava/lang/String;JJI)V");
         if (mid) {
@@ -117,6 +143,7 @@ Java_com_nova_client_NovaClient_nativeConnect(JNIEnv* /*env*/, jobject /*thiz*/)
             env->DeleteLocalRef(senderUid);
             env->DeleteLocalRef(content);
         }
+        env->DeleteLocalRef(cls);
     });
 
     g_client->Connect();
@@ -147,11 +174,13 @@ Java_com_nova_client_NovaClient_nativeLogin(
     g_client->Login()->Login(email_str, password_str,
         [](const nova::client::LoginResult& result) {
             if (g_shutdown) return;
-            auto* env = GetJNIEnv();
+            JniAttachGuard guard;
+            JNIEnv* env = guard.env;
             if (!env) return;
             std::lock_guard cb_lock(g_mutex);
             if (!g_callback_ref) return;
             jclass cls = env->GetObjectClass(g_callback_ref);
+            if (!cls) return;
             jmethodID mid = env->GetMethodID(cls, "onLoginResult",
                 "(ILjava/lang/String;Ljava/lang/String;Ljava/lang/String;)V");
             if (mid) {
@@ -164,6 +193,7 @@ Java_com_nova_client_NovaClient_nativeLogin(
                 env->DeleteLocalRef(uid);
                 env->DeleteLocalRef(nickname);
             }
+            env->DeleteLocalRef(cls);
         });
 }
 
