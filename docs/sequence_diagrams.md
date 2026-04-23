@@ -134,7 +134,7 @@
 ## 1. 注册
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant C as Client
@@ -170,7 +170,7 @@ sequenceDiagram
 ## 2. 登录
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant C as Client
@@ -210,7 +210,7 @@ sequenceDiagram
 ## 3. 心跳
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant C as Client
@@ -235,7 +235,7 @@ sequenceDiagram
 ## 4. 自动重连（客户端）
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant App as 客户端业务
@@ -264,7 +264,7 @@ sequenceDiagram
 ## 5. 发送私聊消息（在线接收）
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant A as Client A
@@ -306,7 +306,7 @@ sequenceDiagram
 ## 6. 离线消息同步
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant C as Client
@@ -332,7 +332,7 @@ sequenceDiagram
 ## 7. 消息送达 / 已读
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant B as Receiver
@@ -359,7 +359,7 @@ sequenceDiagram
 ## 8. 消息撤回
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant A as 发送方
@@ -387,7 +387,7 @@ sequenceDiagram
 ## 9. 添加好友
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant A
@@ -416,7 +416,7 @@ sequenceDiagram
 ## 10. 处理好友申请（同意自动建私聊）
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant B as 申请接收方
@@ -449,7 +449,7 @@ sequenceDiagram
 ## 11. 创建群组
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant Owner
@@ -478,7 +478,7 @@ sequenceDiagram
 ## 12. 文件上传（小文件，HTTP）
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant C as Client
@@ -512,7 +512,7 @@ sequenceDiagram
 ## 13. 文件下载
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant C as Client
@@ -538,7 +538,7 @@ sequenceDiagram
 ## 14. Admin 登录 + 受保护接口
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant Admin as Admin Web
@@ -569,7 +569,7 @@ sequenceDiagram
 ## 15. Admin 踢人下线
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant Admin as Admin Web
@@ -596,7 +596,7 @@ sequenceDiagram
 ## 16. JS Bridge 端到端（桌面端单条消息发送）
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant UI as Vue 3
@@ -628,7 +628,7 @@ sequenceDiagram
 ## 17. 客户端缓存写入与读取
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant Net as 网络回调
@@ -661,7 +661,7 @@ sequenceDiagram
 ## 18. NovaClient 启动 / 关闭
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant App as 平台入口
@@ -697,7 +697,7 @@ sequenceDiagram
 ## 19. IM Server 启动（依赖注入 + 路由注册 + 监听）
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant Main as main()
@@ -732,7 +732,7 @@ sequenceDiagram
 ## 20. IM Server 优雅关闭
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant OS
@@ -764,7 +764,7 @@ sequenceDiagram
 ## 21. Gateway 收包流程（拆包→限流→鉴权→分发）
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant Sock as TCP Socket
@@ -801,7 +801,7 @@ sequenceDiagram
 ## 22. 多端互踢（同账号新设备登录）
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant New as 新设备
@@ -828,7 +828,7 @@ sequenceDiagram
 ## 23. 客户端修改密码
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant C as Client
@@ -861,7 +861,7 @@ sequenceDiagram
 ## 24. AdminServer 启动 + 中间件链装配
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant Main
@@ -887,7 +887,7 @@ sequenceDiagram
 ## 25. AdminServer 受保护请求中间件链路
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant Admin as Admin Web
@@ -935,7 +935,7 @@ sequenceDiagram
 ## 26. Admin Token 续期 / 登出（jti 黑名单）
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant Admin
@@ -965,7 +965,7 @@ sequenceDiagram
 ## 27. Admin RBAC 角色授予
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant Super as 超级管理员
@@ -994,7 +994,7 @@ sequenceDiagram
 ## 28. Admin 用户封禁 / 解封
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant Admin
@@ -1025,7 +1025,7 @@ sequenceDiagram
 ## 29. Admin 审计日志查询
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant Admin
@@ -1047,7 +1047,7 @@ sequenceDiagram
 ## 30. Admin 强制撤回消息
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant Admin
@@ -1074,7 +1074,7 @@ sequenceDiagram
 ## 31. Admin 群组解散 / 转让
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant Admin
@@ -1108,7 +1108,7 @@ sequenceDiagram
 ## 32. MsgBus 跨服务事件传播
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant Pub as Publisher (UserSvc / AS / ...)
@@ -1134,7 +1134,7 @@ sequenceDiagram
 ## 33. 群组成员邀请 / 退群 / 踢人
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant Op as 操作者
@@ -1180,7 +1180,7 @@ sequenceDiagram
 ## 34. 会话置顶 / 静音 / 删除
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant C as Client
@@ -1203,7 +1203,7 @@ sequenceDiagram
 ## 35. 黑名单 / 屏蔽
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant A as Client A
@@ -1232,7 +1232,7 @@ sequenceDiagram
 ## 36. 已读回执批量上报
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant C as Client
@@ -1258,7 +1258,7 @@ sequenceDiagram
 ## 37. 输入中（Typing）通知
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant A as 输入方
@@ -1279,7 +1279,7 @@ sequenceDiagram
 ## 38. 文件上传断点续传（分片）
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant C as Client
@@ -1322,7 +1322,7 @@ sequenceDiagram
 ## 39. 头像 / 群头像更新（带预签名）
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant C as Client
@@ -1350,7 +1350,7 @@ sequenceDiagram
 ## 40. 通知与免打扰处理
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant Push as 推送来源 (Msg/Friend/Group)
@@ -1374,7 +1374,7 @@ sequenceDiagram
 ## 41. 客户端首屏冷启动数据加载
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant App as 平台 UI
@@ -1414,7 +1414,7 @@ sequenceDiagram
 ## 42. 配置热加载
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant OS
@@ -1442,7 +1442,7 @@ sequenceDiagram
 ## 43. 数据库重连与连接池保活
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant Worker as 业务线程
@@ -1480,7 +1480,7 @@ sequenceDiagram
 ## 44. 健康检查 / 就绪探针
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant K8s as 探针 (k8s/LB)
@@ -1509,7 +1509,7 @@ sequenceDiagram
 ## 45. CI 构建 + 测试 + 覆盖率
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant Dev as 开发者
@@ -1541,7 +1541,7 @@ sequenceDiagram
 ## 46. 群公告 / 群信息修改
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant Op as 管理员/群主
@@ -1570,7 +1570,7 @@ sequenceDiagram
 ## 47. 群成员角色变更（设置/取消管理员）
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant Owner as 群主
@@ -1599,7 +1599,7 @@ sequenceDiagram
 ## 48. 群禁言 / 全员禁言
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant Op as 管理员
@@ -1635,7 +1635,7 @@ sequenceDiagram
 ## 49. 群消息 @ 提醒
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant A as 发送方
@@ -1666,7 +1666,7 @@ sequenceDiagram
 ## 50. 消息搜索（本地全文）
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant UI
@@ -1688,7 +1688,7 @@ sequenceDiagram
 ## 51. 客户端 Token 刷新（与 Server）
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant C as Client
@@ -1717,7 +1717,7 @@ sequenceDiagram
 ## 52. 客户端日志上报
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant App
@@ -1742,7 +1742,7 @@ sequenceDiagram
 ## 53. 推送通道兜底（在线优先 / 离线 APNs/FCM）
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant Msg as MsgSvc
@@ -1773,7 +1773,7 @@ sequenceDiagram
 ## 54. 群离线推送聚合
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant Msg as MsgSvc
@@ -1795,7 +1795,7 @@ sequenceDiagram
 ## 55. 消息存储分库 / 分表选择
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant Msg as MsgSvc
@@ -1820,7 +1820,7 @@ sequenceDiagram
 ## 56. 邮箱验证码 / 注册校验
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant C as Client
@@ -1855,7 +1855,7 @@ sequenceDiagram
 ## 57. 忘记密码（邮箱重置）
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant C as Client
@@ -1883,7 +1883,7 @@ sequenceDiagram
 ## 58. 扫码登录（已登录端授权新端）
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant New as 新端 (PC)
@@ -1916,7 +1916,7 @@ sequenceDiagram
 ## 59. 消息转发
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant A as 发送方
@@ -1947,7 +1947,7 @@ sequenceDiagram
 ## 60. 消息表情回应（Reaction）
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant U as 用户
@@ -1971,7 +1971,7 @@ sequenceDiagram
 ## 61. 消息编辑（仅文本，限时）
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant A
@@ -1999,7 +1999,7 @@ sequenceDiagram
 ## 62. 在线状态订阅 / 推送
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant C as Client
@@ -2028,7 +2028,7 @@ sequenceDiagram
 ## 63. 用户登录会话管理（列表 / 撤销）
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant C as Client
@@ -2056,7 +2056,7 @@ sequenceDiagram
 ## 64. 注销账号（GDPR / 数据删除）
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant C as Client
@@ -2087,7 +2087,7 @@ sequenceDiagram
 ## 65. WebSocket 客户端（Web 端 / 第三方接入）
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant Web as 浏览器
@@ -2118,7 +2118,7 @@ sequenceDiagram
 ## 66. Prometheus 指标抓取
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant Prom as Prometheus
@@ -2143,7 +2143,7 @@ sequenceDiagram
 ## 67. 分布式锁（Redis 单实例 SETNX）
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant Worker
@@ -2167,7 +2167,7 @@ sequenceDiagram
 ## 68. 批量数据导出（管理员）
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FFF3B0','primaryTextColor':'#1F2937','primaryBorderColor':'#F59E0B','lineColor':'#6366F1','actorBkg':'#DBEAFE','actorBorder':'#2563EB','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#0EA5E9','signalTextColor':'#0F172A','labelBoxBkgColor':'#FCE7F3','labelBoxBorderColor':'#DB2777','labelTextColor':'#831843','loopTextColor':'#6D28D9','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#059669','sequenceNumberColor':'#FFFFFF'}}}%%
+%%{init: {'theme':'base','themeVariables':{'background':'#FFFBF5','primaryColor':'#FFE4A8','primaryTextColor':'#1F2937','primaryBorderColor':'#D97706','lineColor':'#7C3AED','textColor':'#1F2937','actorBkg':'#BFDBFE','actorBorder':'#1D4ED8','actorTextColor':'#1E3A8A','actorLineColor':'#94A3B8','signalColor':'#7C3AED','signalTextColor':'#1F2937','labelBoxBkgColor':'#FBCFE8','labelBoxBorderColor':'#BE185D','labelTextColor':'#831843','loopTextColor':'#5B21B6','noteBkgColor':'#FEF3C7','noteTextColor':'#78350F','noteBorderColor':'#D97706','activationBkgColor':'#A7F3D0','activationBorderColor':'#047857','sequenceNumberColor':'#1F2937'}}}%%
 sequenceDiagram
     autonumber
     participant Admin
