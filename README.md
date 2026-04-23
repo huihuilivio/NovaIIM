@@ -235,6 +235,7 @@ curl "http://localhost:9091/api/v1/users?page=1&page_size=20" \
 | [admin API](docs/admin_server/api_design.md) | Admin REST API 设计 |
 | [protocol.md](docs/protocol.md) | IM 二进制协议 |
 | [architecture.md](docs/architecture.md) | 系统架构总览 |
+| [sequence_diagrams.md](docs/sequence_diagrams.md) | 各子功能时序图汇总 |
 | [server_arch.md](docs/server_arch.md) | 服务端架构详解 |
 | [software_design.md](docs/software_design.md) | 软件设计文档 |
 | [sdk/README.md](docs/sdk/README.md) | 客户端 SDK API 参考 |
