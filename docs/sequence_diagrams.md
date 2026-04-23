@@ -20,21 +20,30 @@
 
 > 提示：GitHub / VS Code 预览中点击即可跳转。
 
-### 一、账户与连接（1–4, 22–23）
+### 一、账户与连接（1–4, 22–23, 56–58, 63–64）
 - [1. 注册](#1-注册)
 - [2. 登录](#2-登录)
 - [3. 心跳](#3-心跳)
 - [4. 自动重连（客户端）](#4-自动重连客户端)
 - [22. 多端互踢（同账号新设备登录）](#22-多端互踢同账号新设备登录)
 - [23. 客户端修改密码](#23-客户端修改密码)
+- [56. 邮箱验证码 / 注册校验](#56-邮箱验证码--注册校验)
+- [57. 忘记密码（邮箱重置）](#57-忘记密码邮箱重置)
+- [58. 扫码登录（已登录端授权新端）](#58-扫码登录已登录端授权新端)
+- [63. 用户登录会话管理（列表 / 撤销）](#63-用户登录会话管理列表--撤销)
+- [64. 注销账号（GDPR / 数据删除）](#64-注销账号gdpr--数据删除)
 
-### 二、消息收发与同步（5–8, 36–37）
+### 二、消息收发与同步（5–8, 36–37, 59–62）
 - [5. 发送私聊消息（在线接收）](#5-发送私聊消息在线接收)
 - [6. 离线消息同步](#6-离线消息同步)
 - [7. 消息送达 / 已读](#7-消息送达--已读)
 - [8. 消息撤回](#8-消息撤回)
 - [36. 已读回执批量上报](#36-已读回执批量上报)
 - [37. 输入中（Typing）通知](#37-输入中typing通知)
+- [59. 消息转发](#59-消息转发)
+- [60. 消息表情回应（Reaction）](#60-消息表情回应reaction)
+- [61. 消息编辑（仅文本，限时）](#61-消息编辑仅文本限时)
+- [62. 在线状态订阅 / 推送](#62-在线状态订阅--推送)
 
 ### 三、好友与会话（9–10, 34–35）
 - [9. 添加好友](#9-添加好友)
@@ -52,7 +61,7 @@
 - [38. 文件上传断点续传（分片）](#38-文件上传断点续传分片)
 - [39. 头像 / 群头像更新（带预签名）](#39-头像--群头像更新带预签名)
 
-### 六、Admin 后台与 RBAC（14–15, 24–31）
+### 六、Admin 后台与 RBAC（14–15, 24–31, 68）
 - [14. Admin 登录 + 受保护接口](#14-admin-登录--受保护接口)
 - [15. Admin 踢人下线](#15-admin-踢人下线)
 - [24. AdminServer 启动 + 中间件链装配](#24-adminserver-启动--中间件链装配)
@@ -63,6 +72,7 @@
 - [29. Admin 审计日志查询](#29-admin-审计日志查询)
 - [30. Admin 强制撤回消息](#30-admin-强制撤回消息)
 - [31. Admin 群组解散 / 转让](#31-admin-群组解散--转让)
+- [68. 批量数据导出（管理员）](#68-批量数据导出管理员)
 
 ### 七、客户端 SDK 与桌面端（16–18, 40–41）
 - [16. JS Bridge 端到端（桌面端单条消息发送）](#16-js-bridge-端到端桌面端单条消息发送)
@@ -71,7 +81,7 @@
 - [40. 通知与免打扰处理](#40-通知与免打扰处理)
 - [41. 客户端首屏冷启动数据加载](#41-客户端首屏冷启动数据加载)
 
-### 八、IM Server 与基础设施（19–21, 32, 42–45, 55）
+### 八、IM Server 与基础设施（19–21, 32, 42–45, 55, 65–67）
 - [19. IM Server 启动（依赖注入 + 路由注册 + 监听）](#19-im-server-启动依赖注入--路由注册--监听)
 - [20. IM Server 优雅关闭](#20-im-server-优雅关闭)
 - [21. Gateway 收包流程（拆包→限流→鉴权→分发）](#21-gateway-收包流程拆包限流鉴权分发)
@@ -81,6 +91,9 @@
 - [44. 健康检查 / 就绪探针](#44-健康检查--就绪探针)
 - [45. CI 构建 + 测试 + 覆盖率](#45-ci-构建--测试--覆盖率)
 - [55. 消息存储分库 / 分表选择](#55-消息存储分库--分表选择)
+- [65. WebSocket 客户端（Web 端 / 第三方接入）](#65-websocket-客户端web-端--第三方接入)
+- [66. Prometheus 指标抓取](#66-prometheus-指标抓取)
+- [67. 分布式锁（Redis 单实例 SETNX）](#67-分布式锁redis-单实例-setnx)
 
 ### 九、群组进阶（46–49）
 - [46. 群公告 / 群信息修改](#46-群公告--群信息修改)
@@ -1728,5 +1741,371 @@ sequenceDiagram
         Msg->>DAO_B: Insert/Query
     end
     Note right of Router: 跨分片查询（全局搜索）<br/>需并行 fan-out + 合并排序
+```
+
+---
+
+## 56. 邮箱验证码 / 注册校验
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as Client
+    participant GW
+    participant Usr as UserSvc
+    participant Cache as VerifyCodeCache
+    participant Mail as MailGateway
+
+    C->>GW: kSendVerifyCode (email, scene=Register|ResetPwd)
+    GW->>Usr: HandleSendVerifyCode
+    Usr->>Usr: RateLimiter.Check(email + IP, 1/min)
+    Usr->>Usr: 生成 6 位随机码
+    Usr->>Cache: Put(scene+email, code, ttl=10min)
+    Usr->>Mail: SendAsync(email, template, code)
+    Mail-->>Usr: queued
+    Usr-->>C: kSendVerifyCodeAck { code=0, cooldown=60s }
+
+    Note over C: 用户输入验证码
+    C->>GW: kRegister/kResetPwd (email, code, ...)
+    GW->>Usr: Handle...
+    Usr->>Cache: Get(scene+email)
+    alt 不存在 / 错误 / 过期
+        Usr-->>C: { code=BadVerifyCode }
+    else
+        Usr->>Cache: Delete(scene+email)
+        Usr->>Usr: 后续业务流程
+    end
+```
+
+---
+
+## 57. 忘记密码（邮箱重置）
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as Client
+    participant GW
+    participant Usr as UserSvc
+    participant Cache as VerifyCodeCache
+    participant DAO
+    participant CM
+
+    C->>Usr: 56-步获取邮箱验证码 (scene=ResetPwd)
+    C->>GW: kResetPassword (email, code, new_pwd)
+    GW->>Usr: HandleResetPassword
+    Usr->>Cache: 校验 code
+    Usr->>DAO: User.FindByEmail(email)
+    Usr->>Usr: 校验新密码强度
+    Usr->>DAO: User.UpdatePassword(uid, new_hash, new_salt)
+    Usr->>DAO: Token.RevokeAllByUser(uid)
+    Usr->>CM: 广播踢出 uid 所有连接（reason=PasswordReset）
+    Usr-->>C: kResetPasswordAck { code=0 }
+    Note right of C: 客户端跳转登录页
+```
+
+---
+
+## 58. 扫码登录（已登录端授权新端）
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant New as 新端 (PC)
+    participant GW
+    participant Usr as UserSvc
+    participant Old as 已登录端 (Phone)
+
+    New->>GW: kRequestQrLogin (device_info)
+    GW->>Usr: HandleRequestQrLogin
+    Usr->>Usr: 生成 qr_token (uuid)，状态=Pending
+    Usr-->>New: { qr_token, expires_at }
+    New->>New: 渲染二维码（含 qr_token）
+
+    Note over Old: 用户用手机扫码
+    Old->>GW: kScanQrLogin (qr_token)
+    GW->>Usr: HandleScan
+    Usr->>Usr: qr_token.scanned_by = Old.uid，状态=Scanned
+    Usr-->>Old: { 用户名摘要，待确认 }
+    Old-->>GW: kConfirmQrLogin (qr_token, allow=true)
+    Usr->>Usr: 状态=Confirmed
+    Note over New: 长轮询 / 心跳 query
+    New->>GW: kQueryQrLogin (qr_token)
+    Usr->>Usr: 颁发 access/refresh token (uid=Old.uid)
+    Usr-->>New: { token, uid }
+    New->>New: 进入主界面（视为已登录）
+```
+
+---
+
+## 59. 消息转发
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant A as 发送方
+    participant GW
+    participant Msg as MsgSvc
+    participant DAO
+    participant CM
+    participant Targets as 目标会话成员
+
+    A->>GW: kForwardMsg (src_conv_id, src_seq, target_conv_ids[])
+    GW->>Msg: HandleForward
+    Msg->>DAO: Message.FindBySeq(src_conv_id, src_seq)
+    Msg->>DAO: ConvMember.Exists(src_conv_id, A) — 鉴权
+    alt 源消息已撤回 / A 不在源会话
+        Msg-->>A: { code=Forbidden }
+    else
+        loop 每个 target_conv_id
+            Msg->>DAO: ConvMember.Exists(target, A)
+            Msg->>Msg: NextSeq + Insert (extra.forward_from = src)
+            Msg->>CM: 推送目标会话成员 → kPushMsg
+        end
+        Msg-->>A: kForwardMsgAck { results: [...] }
+    end
+```
+
+---
+
+## 60. 消息表情回应（Reaction）
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as 用户
+    participant GW
+    participant Msg as MsgSvc
+    participant DAO
+    participant CM
+    participant Members
+
+    U->>GW: kReactMsg (conv_id, seq, emoji, action=Add|Remove)
+    GW->>Msg: HandleReact
+    Msg->>DAO: Message.Exists + 未撤回
+    Msg->>DAO: Reaction.UpsertOrDelete(seq, uid, emoji)
+    Msg-->>U: kReactMsgAck { code=0 }
+    Msg->>CM: 广播会话成员
+    Msg-->>Members: ReactionNotify { conv_id, seq, emoji, by=uid, action }
+```
+
+---
+
+## 61. 消息编辑（仅文本，限时）
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant A
+    participant GW
+    participant Msg
+    participant DAO
+    participant CM
+    participant Members
+
+    A->>GW: kEditMsg (conv_id, seq, new_content)
+    GW->>Msg: HandleEdit
+    Msg->>DAO: Message.FindBySeq
+    alt 非本人 / 已撤回 / 超过 5 分钟 / 非文本类型
+        Msg-->>A: { code=Forbidden }
+    else
+        Msg->>DAO: Message.UpdateContent(seq, new, edited_at)
+        Msg-->>A: { code=0 }
+        Msg->>CM: 广播 EditNotify
+        CM-->>Members: EditNotify (seq, new_content, edited_at)
+    end
+```
+
+---
+
+## 62. 在线状态订阅 / 推送
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as Client
+    participant GW
+    participant Pres as PresenceSvc
+    participant CM
+    participant DAO
+
+    C->>GW: kSubscribePresence (uids[])
+    GW->>Pres: HandleSubscribe
+    Pres->>Pres: subscriptions[C] += uids
+    loop 每个 uid
+        Pres->>CM: IsOnline(uid)
+        Pres->>DAO: User.LastSeen(uid) — 离线兜底
+    end
+    Pres-->>C: kSubscribePresenceAck { snapshots }
+
+    Note over CM: 后续 uid 上线/离线
+    CM->>Pres: publish(PresenceChanged uid, state)
+    Pres->>Pres: 反查订阅者
+    Pres->>C: PresenceNotify (uid, state, last_seen)
+```
+
+---
+
+## 63. 用户登录会话管理（列表 / 撤销）
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as Client
+    participant GW
+    participant Usr as UserSvc
+    participant DAO
+    participant CM as ConnManager
+    participant Target as 被撤销端
+
+    C->>GW: kListSessions
+    GW->>Usr: HandleListSessions
+    Usr->>DAO: Token.ListByUser(uid)
+    Usr-->>C: { sessions: [{device, ip, last_active, current?}] }
+
+    C->>GW: kRevokeSession (session_id)
+    GW->>Usr: HandleRevoke
+    Usr->>DAO: Token.Revoke(session_id) — 校验属于 uid
+    Usr->>CM: GetConnByDevice(uid, session.device_id)
+    CM->>Target: kKickNotify(reason=SessionRevoked) + Close
+    Usr-->>C: { code=0 }
+```
+
+---
+
+## 64. 注销账号（GDPR / 数据删除）
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as Client
+    participant GW
+    participant Usr as UserSvc
+    participant DAO
+    participant CM
+    participant Job as 后台清理任务
+
+    C->>GW: kDeleteAccount (password)
+    GW->>Usr: HandleDelete
+    Usr->>Usr: PBKDF2 校验密码
+    Usr->>DAO: User.UpdateStatus(uid, PendingDelete, delete_at=now+7d)
+    Usr->>DAO: Token.RevokeAllByUser(uid)
+    Usr->>CM: 踢出所有连接
+    Usr-->>C: { code=0, restorable_until=delete_at }
+
+    Note over Job: 7 天后定时
+    Job->>DAO: User.ListPendingDelete(now)
+    loop 每个 uid
+        Job->>DAO: 删除/匿名化 messages/files/friend/group_member
+        Job->>DAO: User.HardDelete(uid)
+    end
+```
+
+---
+
+## 65. WebSocket 客户端（Web 端 / 第三方接入）
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Web as 浏览器
+    participant WS as libhv WebSocketServer
+    participant Auth
+    participant GW as Gateway 内部
+    participant Svc
+
+    Web->>WS: WS Upgrade (?token=...)
+    WS->>Auth: 验签 token
+    alt 无效
+        Auth-->>Web: 401 Close
+    else
+        Auth->>GW: 创建虚拟 conn (user_id=uid)
+        loop 心跳/消息
+            Web->>WS: text/binary frame (json packet)
+            WS->>GW: dispatch(cmd, payload)
+            GW->>Svc: Handle
+            Svc-->>WS: 响应 frame
+            WS-->>Web: send
+        end
+        Note over Web,WS: 断开 → GW.OnDisconnect
+    end
+```
+
+---
+
+## 66. Prometheus 指标抓取
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Prom as Prometheus
+    participant AS as AdminServer
+    participant Reg as MetricsRegistry
+    participant Svc as 各 Service
+
+    loop 业务持续运行
+        Svc->>Reg: counter/gauge/histogram.observe(...)
+    end
+
+    loop 抓取间隔
+        Prom->>AS: GET /metrics
+        AS->>Reg: Collect()
+        Reg-->>AS: text/plain（OpenMetrics 格式）
+        AS-->>Prom: 200 metrics body
+    end
+```
+
+---
+
+## 67. 分布式锁（Redis 单实例 SETNX）
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Worker
+    participant Redis
+    participant Critical as 临界区资源
+
+    Worker->>Redis: SET lock:{key} {token} NX PX 5000
+    alt 抢到
+        Redis-->>Worker: OK
+        Worker->>Critical: 业务处理
+        Worker->>Redis: EVAL "if get==token then del" (原子释放)
+    else 已被占用
+        Redis-->>Worker: nil
+        Worker->>Worker: 退避重试 / 放弃
+    end
+    Note right of Worker: TTL 兜底防死锁<br/>token 防止误删别人锁
+```
+
+---
+
+## 68. 批量数据导出（管理员）
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Admin
+    participant AS as AdminServer
+    participant Job as ExportJob
+    participant DAO
+    participant FS as FileServer
+
+    Admin->>AS: POST /api/v1/exports { type=users, filter, format=csv }
+    AS->>AS: RequirePermission("data.export")
+    AS->>Job: Submit(task)
+    AS-->>Admin: 202 { job_id, status=Pending }
+
+    Note over Job: 异步执行
+    Job->>DAO: 流式 SELECT (cursor / keyset 分页)
+    loop 每页
+        Job->>FS: 追加写 export_{job_id}.csv
+    end
+    Job->>DAO: ExportJob.Update(Done, file_url, rows)
+
+    Admin->>AS: GET /api/v1/exports/:id
+    AS-->>Admin: { status=Done, download_url, expires_at }
+    Admin->>FS: GET download_url
+    FS-->>Admin: csv 内容
 ```
 
