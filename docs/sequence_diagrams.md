@@ -16,6 +16,91 @@
 
 ---
 
+## 目录索引
+
+> 提示：GitHub / VS Code 预览中点击即可跳转。
+
+### 一、账户与连接（1–4, 22–23）
+- [1. 注册](#1-注册)
+- [2. 登录](#2-登录)
+- [3. 心跳](#3-心跳)
+- [4. 自动重连（客户端）](#4-自动重连客户端)
+- [22. 多端互踢（同账号新设备登录）](#22-多端互踢同账号新设备登录)
+- [23. 客户端修改密码](#23-客户端修改密码)
+
+### 二、消息收发与同步（5–8, 36–37）
+- [5. 发送私聊消息（在线接收）](#5-发送私聊消息在线接收)
+- [6. 离线消息同步](#6-离线消息同步)
+- [7. 消息送达 / 已读](#7-消息送达--已读)
+- [8. 消息撤回](#8-消息撤回)
+- [36. 已读回执批量上报](#36-已读回执批量上报)
+- [37. 输入中（Typing）通知](#37-输入中typing通知)
+
+### 三、好友与会话（9–10, 34–35）
+- [9. 添加好友](#9-添加好友)
+- [10. 处理好友申请（同意自动建私聊）](#10-处理好友申请同意自动建私聊)
+- [34. 会话置顶 / 静音 / 删除](#34-会话置顶--静音--删除)
+- [35. 黑名单 / 屏蔽](#35-黑名单--屏蔽)
+
+### 四、群组（11, 33）
+- [11. 创建群组](#11-创建群组)
+- [33. 群组成员邀请 / 退群 / 踢人](#33-群组成员邀请--退群--踢人)
+
+### 五、文件与媒体（12–13, 38–39）
+- [12. 文件上传（小文件，HTTP）](#12-文件上传小文件http)
+- [13. 文件下载](#13-文件下载)
+- [38. 文件上传断点续传（分片）](#38-文件上传断点续传分片)
+- [39. 头像 / 群头像更新（带预签名）](#39-头像--群头像更新带预签名)
+
+### 六、Admin 后台与 RBAC（14–15, 24–31）
+- [14. Admin 登录 + 受保护接口](#14-admin-登录--受保护接口)
+- [15. Admin 踢人下线](#15-admin-踢人下线)
+- [24. AdminServer 启动 + 中间件链装配](#24-adminserver-启动--中间件链装配)
+- [25. AdminServer 受保护请求中间件链路](#25-adminserver-受保护请求中间件链路)
+- [26. Admin Token 续期 / 登出（jti 黑名单）](#26-admin-token-续期--登出jti-黑名单)
+- [27. Admin RBAC 角色授予](#27-admin-rbac-角色授予)
+- [28. Admin 用户封禁 / 解封](#28-admin-用户封禁--解封)
+- [29. Admin 审计日志查询](#29-admin-审计日志查询)
+- [30. Admin 强制撤回消息](#30-admin-强制撤回消息)
+- [31. Admin 群组解散 / 转让](#31-admin-群组解散--转让)
+
+### 七、客户端 SDK 与桌面端（16–18, 40–41）
+- [16. JS Bridge 端到端（桌面端单条消息发送）](#16-js-bridge-端到端桌面端单条消息发送)
+- [17. 客户端缓存写入与读取](#17-客户端缓存写入与读取)
+- [18. NovaClient 启动 / 关闭](#18-novaclient-启动--关闭)
+- [40. 通知与免打扰处理](#40-通知与免打扰处理)
+- [41. 客户端首屏冷启动数据加载](#41-客户端首屏冷启动数据加载)
+
+### 八、IM Server 与基础设施（19–21, 32, 42–45, 55）
+- [19. IM Server 启动（依赖注入 + 路由注册 + 监听）](#19-im-server-启动依赖注入--路由注册--监听)
+- [20. IM Server 优雅关闭](#20-im-server-优雅关闭)
+- [21. Gateway 收包流程（拆包→限流→鉴权→分发）](#21-gateway-收包流程拆包限流鉴权分发)
+- [32. MsgBus 跨服务事件传播](#32-msgbus-跨服务事件传播)
+- [42. 配置热加载](#42-配置热加载)
+- [43. 数据库重连与连接池保活](#43-数据库重连与连接池保活)
+- [44. 健康检查 / 就绪探针](#44-健康检查--就绪探针)
+- [45. CI 构建 + 测试 + 覆盖率](#45-ci-构建--测试--覆盖率)
+- [55. 消息存储分库 / 分表选择](#55-消息存储分库--分表选择)
+
+### 九、群组进阶（46–49）
+- [46. 群公告 / 群信息修改](#46-群公告--群信息修改)
+- [47. 群成员角色变更（设置/取消管理员）](#47-群成员角色变更设置取消管理员)
+- [48. 群禁言 / 全员禁言](#48-群禁言--全员禁言)
+- [49. 群消息 @ 提醒](#49-群消息--提醒)
+
+### 十、客户端进阶（50–52）
+- [50. 消息搜索（本地全文）](#50-消息搜索本地全文)
+- [51. 客户端 Token 刷新（与 Server）](#51-客户端-token-刷新与-server)
+- [52. 客户端日志上报](#52-客户端日志上报)
+
+### 十一、推送（53–54）
+- [53. 推送通道兜底（在线优先 / 离线 APNs/FCM）](#53-推送通道兜底在线优先--离线-apnsfcm)
+- [54. 群离线推送聚合](#54-群离线推送聚合)
+
+> 后续补充章节请同步追加到本索引对应分组。
+
+---
+
 ## 1. 注册
 
 ```mermaid
@@ -1374,5 +1459,274 @@ sequenceDiagram
         Cov-->>CI: 报告
         CI->>Git: status=success + artifacts
     end
+```
+
+---
+
+## 46. 群公告 / 群信息修改
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Op as 管理员/群主
+    participant GW as Gateway
+    participant Group as GroupSvc
+    participant DAO
+    participant CM
+    participant Members
+
+    Op->>GW: kUpdateGroupInfo (conv_id, name?, announcement?, avatar?)
+    GW->>Group: HandleUpdateGroupInfo
+    Group->>DAO: ConvMember.FindRole(conv_id, op)
+    alt 角色 < Admin
+        Group-->>Op: kUpdateGroupInfoAck { code=Forbidden }
+    else
+        Group->>Group: 长度/敏感词校验
+        Group->>DAO: Group.UpdatePartial(conv_id, fields)
+        Group-->>Op: kUpdateGroupInfoAck { code=0 }
+        Group->>CM: 广播 GroupNotify(type=InfoChanged, fields)
+        CM-->>Members: GroupNotify
+    end
+```
+
+---
+
+## 47. 群成员角色变更（设置/取消管理员）
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Owner as 群主
+    participant GW
+    participant Group as GroupSvc
+    participant DAO
+    participant CM
+    participant Target as 目标成员
+    participant Others as 其他成员
+
+    Owner->>GW: kSetMemberRole (conv_id, target_uid, role)
+    GW->>Group: HandleSetRole
+    Group->>DAO: Group.GetOwner(conv_id) == Owner
+    alt 非群主
+        Group-->>Owner: kSetMemberRoleAck { code=Forbidden }
+    else
+        Group->>DAO: ConvMember.UpdateRole(conv_id, target_uid, role)
+        Group-->>Owner: kSetMemberRoleAck { code=0 }
+        Group->>CM: 推送 Target → GroupNotify(type=RoleChanged, role)
+        Group->>CM: 广播 Others → GroupNotify(type=RoleChanged)
+    end
+```
+
+---
+
+## 48. 群禁言 / 全员禁言
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Op as 管理员
+    participant GW
+    participant Group as GroupSvc
+    participant Msg as MsgSvc
+    participant DAO
+    participant CM
+    participant Target
+
+    alt 单人禁言
+        Op->>GW: kMuteMember (conv_id, uid, until)
+        GW->>Group: HandleMuteMember
+        Group->>DAO: ConvMember.UpdateMuteUntil(conv_id, uid, until)
+        Group->>CM: 推送 Target → GroupNotify(type=Muted, until)
+    else 全员禁言
+        Op->>GW: kMuteAll (conv_id, enabled)
+        GW->>Group: HandleMuteAll
+        Group->>DAO: Group.UpdateMuteAll(conv_id, enabled)
+        Group->>CM: 广播 GroupNotify(type=MuteAllChanged, enabled)
+    end
+    Group-->>Op: kAck { code=0 }
+
+    Note over Msg: 后续 kSendMsg 流程
+    Msg->>DAO: 校验 mute_until / mute_all（管理员豁免）
+    alt 被禁言
+        Msg-->>Op: kSendMsgAck { code=Muted }
+    end
+```
+
+---
+
+## 49. 群消息 @ 提醒
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant A as 发送方
+    participant GW
+    participant Msg as MsgSvc
+    participant DAO
+    participant CM
+    participant Mentioned as 被 @ 成员
+    participant Others as 普通成员
+
+    A->>GW: kSendMsg (conv_id, content, mention_uids[])
+    GW->>Msg: HandleSendMsg
+    Msg->>DAO: 校验所有 mention_uids ∈ ConvMember
+    Msg->>DAO: Message.Insert(...) + extra.mentions
+    Msg-->>A: kSendMsgAck { server_seq }
+    par 推送被@
+        Msg->>CM: GetConns(mentioned)
+        Msg->>Mentioned: kPushMsg + flag.has_mention=true
+        Note right of Mentioned: 红点强提醒，免打扰失效
+    and 普通推送
+        Msg->>CM: GetConns(others)
+        Msg->>Others: kPushMsg
+    end
+```
+
+---
+
+## 50. 消息搜索（本地全文）
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant UI
+    participant VM as SearchVM
+    participant Cache as MessageCacheDao
+    participant FTS as SQLite FTS5
+
+    UI->>VM: Search(keyword, scope)
+    VM->>FTS: SELECT rowid FROM msg_fts WHERE content MATCH ?
+    FTS-->>VM: rowids
+    VM->>Cache: Message.FindByIds(rowids)
+    Cache-->>VM: messages[]
+    VM->>VM: 按 conv_id 分组 + 高亮 snippet
+    VM-->>UI: SearchResult { groups: [...] }
+```
+
+---
+
+## 51. 客户端 Token 刷新（与 Server）
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as Client
+    participant Net as TcpClient
+    participant GW
+    participant Usr as UserSvc
+    participant DAO
+
+    Note over C: access_token 即将过期
+    C->>GW: kRefreshToken (refresh_token)
+    GW->>Usr: HandleRefreshToken
+    Usr->>DAO: Token.FindByRefresh(refresh_token)
+    alt 无效 / 已撤销 / 过期
+        Usr-->>C: kRefreshTokenAck { code=AuthFailed }
+        C->>C: 跳转登录
+    else
+        Usr->>DAO: Token.Revoke(old)
+        Usr->>DAO: Token.Insert(new access + new refresh)
+        Usr-->>C: { access_token, refresh_token, expires_in }
+        C->>C: 更新本地凭证
+    end
+```
+
+---
+
+## 52. 客户端日志上报
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant App
+    participant Logger as NovaLogger
+    participant Buf as 滚动缓冲
+    participant FS as FileServer
+    participant AS as AdminServer
+
+    App->>Logger: NOVA_LOG_*
+    Logger->>Buf: 写本地文件 + 内存环
+    Note over App: 用户点 "反馈问题" 或崩溃自动触发
+    App->>Logger: PackageLogs(reason)
+    Logger->>Logger: 收集日志 + 设备信息 + 屏蔽敏感字段
+    App->>FS: POST /api/v1/feedback/upload (zip)
+    FS-->>App: { feedback_id }
+    App->>AS: POST /api/v1/feedback (uid, feedback_id, reason)
+    AS-->>App: { code=0 }
+```
+
+---
+
+## 53. 推送通道兜底（在线优先 / 离线 APNs/FCM）
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Msg as MsgSvc
+    participant CM as ConnManager
+    participant DAO
+    participant Push as PushGateway
+    participant Vendor as APNs / FCM
+
+    Msg->>CM: GetConns(target_uid)
+    alt 至少一个端在线
+        CM-->>Msg: conns
+        Msg->>CM: 投递 kPushMsg
+    else 全部离线
+        Msg->>DAO: Device.ListByUser(uid, with_push_token)
+        loop 每个带 push_token 的设备
+            Msg->>Push: Send(token, payload, badge)
+            Push->>Vendor: HTTP/2 推送
+            Vendor-->>Push: ack / 无效 token
+            alt 无效
+                Push->>DAO: Device.UnsetPushToken
+            end
+        end
+    end
+```
+
+---
+
+## 54. 群离线推送聚合
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Msg as MsgSvc
+    participant Agg as PushAggregator
+    participant Timer
+    participant Push as PushGateway
+
+    loop 群消息持续到达
+        Msg->>Agg: Enqueue(uid, conv_id, msg_summary)
+    end
+    Timer-->>Agg: flush(每 N 秒 or 队列满)
+    Agg->>Agg: 按 uid 合并：相同会话合并条数<br/>不同会话合并为 “3 个会话有 12 条新消息”
+    Agg->>Push: SendBatched(uid, payload)
+    Note right of Agg: 防止"消息轰炸"
+```
+
+---
+
+## 55. 消息存储分库 / 分表选择
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Msg as MsgSvc
+    participant Router as ShardRouter
+    participant DAO_A as MessageDao(shard_A)
+    participant DAO_B as MessageDao(shard_B)
+
+    Msg->>Router: Pick(conv_id)
+    Router->>Router: shard = hash(conv_id) % N
+    alt shard 0
+        Router-->>Msg: DAO_A
+        Msg->>DAO_A: Insert/Query
+    else shard 1
+        Router-->>Msg: DAO_B
+        Msg->>DAO_B: Insert/Query
+    end
+    Note right of Router: 跨分片查询（全局搜索）<br/>需并行 fan-out + 合并排序
 ```
 
