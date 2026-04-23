@@ -55,20 +55,14 @@ server/web/
 
 ## 2. 数据流
 
-```
-用户操作 → Vue 组件
-             ↓ dispatch
-         Pinia Store (auth / 业务状态)
-             ↓ call
-         API 层 (src/api/*.ts)
-             ↓ axios
-         HTTP 请求 → Vite Proxy → 后端 :9091
-             ↓
-         统一响应 { code, msg, data }
-             ↓
-         拦截器处理 (401 → 清 token → /login)
-             ↓
-         组件更新 UI
+```mermaid
+flowchart TD
+    A["用户操作 → Vue 组件"] -->|dispatch| B["Pinia Store（auth / 业务状态）"]
+    B -->|call| C["API 层（src/api/*.ts）"]
+    C -->|axios| D["HTTP 请求 → Vite Proxy → 后端 :9091"]
+    D --> E["统一响应 { code, msg, data }"]
+    E --> F["拦截器处理（401 → 清 token → /login）"]
+    F --> G["组件更新 UI"]
 ```
 
 ---

@@ -72,31 +72,36 @@ DELETE /api/v1/files/{filename}        删除文件
 
 ## 系统架构
 
-```
-                ┌──────────────────┐  ┌──────────────────┐
-                │  Admin HTTP API  │  │   FileServer     │
-                │  Port 9091       │  │   Port 9092      │
-                └────────┬─────────┘  └────────┬─────────┘
-                         │                     │
-              ┌──────────▼─────────────────────▼─────┐
-              │         NovaIIM Server               │
-              │         (C++20 / libhv)              │
-              └──────────┬───────────────────────────┘
-                         │
-        ┌────────────┬───┴────┬─────────────┐
-        │            │        │             │
-    ┌───▼───┐ ┌───┬──▼───┬─┐ ┌──┬──────────▼───┐
-    │ Admin │ │TCP│Thread│ │ │ORM │ Database    │
-    │ HTTP  │ │GW │ Pool │ │ │pp  │ SQLite/     │
-    │Handler│ │   │MPMC  │ │ │    │ MySQL       │
-    └───────┘ └───┴──────┴─┘ └────┴─────────────┘
-                         ▲
-        ┌────────────┬───┴────┬─────────────┐
-        │            │        │             │
-    ┌───▼───┐ ┌──────▼──┐ ┌──┴──────┐ ┌────▼────┐
-    │ CLI/  │ │ Mobile  │ │ Web/    │ │ Bot/    │
-    │ PC    │ │ App     │ │ Browser │ │ API     │
-    └───────┘ └─────────┘ └─────────┘ └─────────┘
+```mermaid
+flowchart TD
+    subgraph Clients["客户端"]
+        Desktop["桌面端<br/>WebView2 + Vue 3"]
+        Mobile["移动端<br/>iOS / Android"]
+        AdminWeb["Admin Web<br/>Vue 3"]
+    end
+
+    subgraph Server["NovaIIM Server (C++20 / libhv)"]
+        TCP["TCP 网关 :9090<br/>消息收发 / 心跳"]
+        Admin["Admin HTTP :9091<br/>REST + JWT"]
+        File["FileServer :9092<br/>上传 / 下载"]
+        Worker["Worker 线程池<br/>MPMC 队列"]
+        DAO["DAO 层<br/>ormpp"]
+    end
+
+    DB[("SQLite / MySQL")]
+    FS[("本地文件存储")]
+
+    Desktop -->|TCP| TCP
+    Mobile -->|TCP| TCP
+    Desktop -->|HTTP| File
+    Mobile -->|HTTP| File
+    AdminWeb -->|HTTP| Admin
+
+    TCP --> Worker
+    Admin --> DAO
+    Worker --> DAO
+    DAO --> DB
+    File --> FS
 ```
 
 ---

@@ -30,40 +30,40 @@
 
 ## 3. 整体架构
 
-```text
-     TCP :9090 / WS :ws_port        HTTP :9091            HTTP :9092
-         │                                  │                    │
-  ┌──────▼──────┐                   ┌───────▼───────┐   ┌───────▼───────┐
-  │   Gateway   │                   │  AdminServer  │   │  FileServer   │
-  │(TCP + WS)  │                   │ (libhv HTTP)  │   │ (libhv HTTP)  │
-  └──────┬──────┘                   └───────┬───────┘   └───────┬───────┘
-         │                                  │                    │
-  ┌──────▼──────┐                   ┌───────▼───────┐   REST endpoints:
-  │ MPMCQueue   │                   │ AuthMiddleware│   /api/v1/files/upload
-  │ (Vyukov)    │                   │  (JWT+RBAC)  │   /api/v1/files/upload/{name}
-  └──────┬──────┘                   └───────┬───────┘   /static/** (预览/下载)
-         │                                  │           DELETE /api/v1/files/{name}
-  ┌──────▼──────┐                   ┌───────▼───────┐          │
-  │ ThreadPool  │                   │   Handlers    │          │
-  │ (Worker)    │                   │ (auth/user/   │   ┌──────▼──────┐
-  └──────┬──────┘                   │  msg/audit)   │   │ 本地文件系统  │
-         │                          └───────┬───────┘   │ (root_dir)  │
-  ┌──────▼──────┐                           │           └─────────────┘
-  │   Router    │                    ┌──────▼──────┐
-  └──────┬──────┘                    │  DAO Layer  │
-         │                           │  (ormpp)    │
-  ┌──────┼──────────┐               └──────┬──────┘
-  │      │          │                      │
-┌─▼──┐ ┌─▼──┐ ┌────▼───┐          ┌───────▼───────┐
-│User│ │Msg │ │Sync    │          │   SQLite3     │
-│Svc │ │Svc │ │Svc     │          │   (WAL)       │
-└─┬──┘ └─┬──┘ └────┬───┘          └───────────────┘
-  │      │          │
-  └──────┼──────────┘
-         │
-  ┌──────▼──────┐
-  │ ConnManager │
-  └─────────────┘
+```mermaid
+flowchart TD
+    TCP(["TCP :9090 / WS :ws_port"])
+    HTTPA(["HTTP :9091"])
+    HTTPF(["HTTP :9092"])
+
+    Gateway["Gateway<br/>TCP + WS"]
+    AdminSrv["AdminServer<br/>libhv HTTP"]
+    FileSrv["FileServer<br/>libhv HTTP"]
+
+    Queue["MPMCQueue<br/>Vyukov"]
+    Pool["ThreadPool<br/>Worker"]
+    Router["Router"]
+
+    subgraph IM["业务服务"]
+        UserSvc["UserSvc"]
+        MsgSvc["MsgSvc"]
+        SyncSvc["SyncSvc"]
+    end
+
+    Auth["AuthMiddleware<br/>JWT + RBAC"]
+    Handlers["Handlers<br/>auth / user / msg / audit"]
+    DAO["DAO Layer<br/>ormpp"]
+    DB[("SQLite3 (WAL)")]
+
+    REST["REST endpoints<br/>upload / static / delete"]
+    FS[("本地文件系统<br/>root_dir")]
+
+    ConnMgr["ConnManager"]
+
+    TCP --> Gateway --> Queue --> Pool --> Router --> IM --> ConnMgr
+    IM --> DAO
+    HTTPA --> AdminSrv --> Auth --> Handlers --> DAO --> DB
+    HTTPF --> FileSrv --> REST --> FS
 ```
 
 **三条独立数据通路：**
@@ -319,14 +319,13 @@ int64_t seq = repo.GetMaxSeq(conv_id) + 1;  // SQLite 行锁
 
 ## 7. 线程模型
 
-```text
-IO线程 (libhv, N个)
-   ↓
-MPMCQueue (Vyukov 无锁有界队列, 容量必须为2的幂)
-   ↓
-Worker线程池 (ThreadPool, 可配置线程数)
-   ↓
-业务逻辑 (Router → Services → DAO)
+```mermaid
+flowchart TD
+    IO["IO 线程（libhv，N 个）"]
+    MPMC["MPMCQueue<br/>Vyukov 无锁有界队列，容量为 2 的幂"]
+    Pool["Worker 线程池<br/>ThreadPool，可配"]
+    Biz["业务逻辑<br/>Router → Services → DAO"]
+    IO --> MPMC --> Pool --> Biz
 ```
 
 **线程安全保障:**

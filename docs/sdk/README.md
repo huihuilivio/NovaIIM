@@ -10,27 +10,14 @@
 
 **架构分层：**
 
-```
-┌─────────────────────────────────────────────────┐
-│  Platform (Desktop / Android / iOS)             │
-├─────────────────────────────────────────────────┤
-│  viewmodel/   ← 公共 API 层 (导出符号)          │
-│  NovaClient · AppVM · LoginVM · ChatVM          │
-│  ContactsVM · ConversationsVM · GroupsVM        │
-│  Observable<T> · UIDispatcher · types.h          │
-├─────────────────────────────────────────────────┤
-│  service/     ← 业务逻辑层 (内部)               │
-│  AuthService · MessageService · FriendService    │
-│  ConvService · GroupService · SyncService        │
-├─────────────────────────────────────────────────┤
-│  core/        ← 核心基础设施 (内部)              │
-│  ClientContext · ClientConfig · RequestManager   │
-│  ReconnectManager · MsgBus                       │
-├─────────────────────────────────────────────────┤
-│  infra/       ← 底层封装 (内部)                  │
-│  TcpClient · HttpClient · WsClient · Logger      │
-│  DeviceInfo                                      │
-└─────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    Platform["Platform（Desktop / Android / iOS）"]
+    VM["viewmodel/ — 公共 API（导出符号）<br/>NovaClient · AppVM · LoginVM · ChatVM<br/>ContactsVM · ConversationsVM · GroupsVM<br/>Observable&lt;T&gt; · UIDispatcher · types.h"]
+    Svc["service/ — 业务逻辑层（内部）<br/>AuthService · MessageService · FriendService<br/>ConvService · GroupService · SyncService"]
+    Core["core/ — 核心基础设施（内部）<br/>ClientContext · ClientConfig · RequestManager<br/>ReconnectManager · MsgBus"]
+    Infra["infra/ — 底层封装（内部）<br/>TcpClient · HttpClient · WsClient · Logger · DeviceInfo"]
+    Platform --> VM --> Svc --> Core --> Infra
 ```
 
 ---

@@ -139,35 +139,25 @@ server/web/                   ← Vue 3 + TypeScript (Admin 前端)
 
 ### 分层设计
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                 View (平台原生 UI)                        │
-│  ┌──────────────┐  ┌──────────────┐  ┌───────────────┐  │
-│  │ Win32+WebView │  │ iOS          │  │ Android       │  │
-│  │ (Vue3+TS)    │  │ (ObjC++)     │  │ (JNI+Kotlin)  │  │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬────────┘  │
-│         │                 │                  │           │
-│  ═══════╪═════════════════╪══════════════════╪═════════  │
-│         │        nova_sdk (.dll/.so)         │           │
-│  ┌──────┴─────────────────┴──────────────────┴────────┐  │
-│  │  viewmodel/   ← 公共 API (导出符号)                 │  │
-│  │  NovaClient · AppVM · LoginVM · ChatVM             │  │
-│  │  ContactsVM · ConversationsVM · GroupsVM            │  │
-│  │  Observable<T> · UIDispatcher · types.h             │  │
-│  ├────────────────────────────────────────────────────┤  │
-│  │  service/     ← 业务逻辑 (内部)                     │  │
-│  │  AuthService · MessageService · FriendService       │  │
-│  │  ConvService · GroupService · SyncService           │  │
-│  ├────────────────────────────────────────────────────┤  │
-│  │  core/        ← 核心基础设施 (内部)                  │  │
-│  │  ClientContext · ClientConfig · RequestManager      │  │
-│  │  ReconnectManager · MsgBus                          │  │
-│  ├────────────────────────────────────────────────────┤  │
-│  │  infra/       ← 底层封装 (内部)                     │  │
-│  │  TcpClient · HttpClient · WsClient · Logger        │  │
-│  │  DeviceInfo (自动检测 + FNV-1a ID)                  │  │
-│  └────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph View["View（平台原生 UI）"]
+        Win["Win32 + WebView2<br/>Vue 3 + TS"]
+        IOS["iOS<br/>Objective-C++"]
+        Droid["Android<br/>JNI + Kotlin"]
+    end
+
+    subgraph SDK["nova_sdk (.dll / .so / .framework)"]
+        VM["viewmodel/ — 公共 API（导出符号）<br/>NovaClient · AppVM · LoginVM · ChatVM<br/>ContactsVM · ConversationsVM · GroupsVM<br/>Observable&lt;T&gt; · UIDispatcher · types.h"]
+        Svc["service/ — 业务逻辑（内部）<br/>AuthService · MessageService · FriendService<br/>ConvService · GroupService · SyncService"]
+        Core["core/ — 核心基础设施（内部）<br/>ClientContext · ClientConfig · RequestManager<br/>ReconnectManager · MsgBus"]
+        Infra["infra/ — 底层封装（内部）<br/>TcpClient · HttpClient · WsClient · Logger<br/>DeviceInfo"]
+    end
+
+    Win --> VM
+    IOS --> VM
+    Droid --> VM
+    VM --> Svc --> Core --> Infra
 ```
 
 ### 核心设计原则
@@ -199,18 +189,14 @@ client/
 
 ### 数据流
 
-```
-用户操作 → View → ViewModel::Action()
-                     ↓
-              Service (业务逻辑)
-                     ↓
-              ClientContext → TcpClient → Server
-                     ↓ (响应回调)
-              RequestManager → Service callback
-                     ↓
-              ViewModel (Observable::Set)
-                     ↓ (UIDispatcher::Post)
-              View (UI 刷新)
+```mermaid
+flowchart TD
+    User["用户操作"] --> View["View"] --> VM["ViewModel::Action()"]
+    VM --> Svc["Service（业务逻辑）"]
+    Svc --> Ctx["ClientContext"] --> Tcp["TcpClient"] --> Server["Server"]
+    Server -.响应.-> Req["RequestManager"]
+    Req --> SvcCb["Service callback"] --> VMSet["ViewModel.Observable.Set"]
+    VMSet -.UIDispatcher::Post.-> ViewUI["View（UI 刷新）"]
 ```
 
 详细 SDK 文档见 [sdk/README.md](sdk/README.md)，桌面端文档见 [desktop/README.md](desktop/README.md)。

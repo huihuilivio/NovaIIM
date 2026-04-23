@@ -979,28 +979,20 @@ GET /roles?page=1&page_size=50
 
 ## 9. 认证流程时序图
 
-```
-Client                          Server
-  │                               │
-  ├─── POST /auth/login ────────→ │
-  │      (uid, password)          │
-  │                               │ ✓ 查询 admins 表
-  │                               │ ✓ 验证密码 (PBKDF2)
-  │                               │ ✓ 签发 JWT token
-  │ ←── JWT + expires_in ────────┤
-  │                               │
-  │                               │ (在 admin_sessions 表写入记录)
-  │                               │
-  ├─── GET /users ──────────────→ │
-  │ Authorization: Bearer {JWT}   │
-  │                               │ ✓ 验证 JWT 签名
-  │                               │ ✓ 查询黑名单（revoked=0）
-  │                               │ ✓ 查询权限 (admin_roles JOIN...)
-  │                               │ ✓ 检查权限 (user.view)
-  │ ←── 用户列表 ───────────────┤
-  │                               │ ✓ 写入审计日志 
-  │                               │   (admin_id=1, action=user.view)
-  │                               │
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant S as Server
+
+    C->>S: POST /auth/login (uid, password)
+    Note right of S: 查询 admins 表<br/>验证密码 (PBKDF2)<br/>签发 JWT token
+    S-->>C: JWT + expires_in
+    Note right of S: 写入 admin_sessions
+
+    C->>S: GET /users<br/>Authorization: Bearer {JWT}
+    Note right of S: 验证 JWT 签名<br/>查询黑名单 (revoked=0)<br/>查询权限 (admin_roles JOIN ...)<br/>检查权限 (user.view)
+    S-->>C: 用户列表
+    Note right of S: 写入审计日志<br/>(admin_id=1, action=user.view)
 ```
 
 ---

@@ -56,26 +56,17 @@
 
 ### 1.2 运行流程
 
-```
-TCP 连接 → Gateway 接收
-    ↓
-连接建立: ConnManager 记录 (ConnectionPtr)
-    ↓
-收包: 二进制帧解析 (18字节头 + body)
-    ↓
-分发: 放入 ThreadPool 工作队列
-    ↓
-Worker 线程: Router.Dispatch(conn, pkt)
-    ↓
-Service 层处理 (UserService/FriendService/MsgService/ConvService/GroupService/FileService/SyncService)
-    ↓
-DAO 层数据操作
-    ↓
-数据库读写 (SQLite/MySQL)
-    ↓
-响应封装: 返回 Ack/Push 到客户端
-    ↓
-连接管理: 心跳、自动断服、重连
+```mermaid
+flowchart TD
+    A["TCP 连接 → Gateway 接收"] --> B["连接建立：ConnManager 记录"]
+    B --> C["收包：二进制帧解析（18 字节头 + body）"]
+    C --> D["分发：放入 ThreadPool 工作队列"]
+    D --> E["Worker 线程：Router.Dispatch(conn, pkt)"]
+    E --> F["Service 层处理"]
+    F --> G["DAO 层数据操作"]
+    G --> H["数据库读写（SQLite / MySQL）"]
+    H --> I["响应封装：Ack / Push 返回客户端"]
+    I --> J["连接管理：心跳 / 自动断服 / 重连"]
 ```
 
 ---
@@ -341,17 +332,22 @@ auto messages = ctx.dao().Message()
 
 ### 6.1 线程池架构
 
-```
-Main 线程
-    │
-    ├─ Gateway (接收 TCP 连接)
-    │   └─ ConnManager (连接管理)
-    │
-    └─ ThreadPool (Worker 线程)
-        ├─ Worker #1: 处理包分发
-        ├─ Worker #2: 处理包分发
-        ├─ Worker #3: 处理包分发
-        └─ ...
+```mermaid
+flowchart TD
+    Main["Main 线程"]
+    Gateway["Gateway（接收 TCP 连接）"]
+    ConnMgr["ConnManager（连接管理）"]
+    Pool["ThreadPool"]
+    W1["Worker #1"]
+    W2["Worker #2"]
+    W3["Worker #3"]
+    Wn["..."]
+    Main --> Gateway --> ConnMgr
+    Main --> Pool
+    Pool --> W1
+    Pool --> W2
+    Pool --> W3
+    Pool --> Wn
 ```
 
 ### 6.2 线程安全性
