@@ -558,3 +558,427 @@ sequenceDiagram
     Ctx->>Ctx: CancelAll pending requests
     Ctx->>Bus: stop()
 ```
+
+---
+
+## 19. IM Server 启动（依赖注入 + 路由注册 + 监听）
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Main as main()
+    participant Cfg as ConfigLoader
+    participant DI as ServiceContainer
+    participant DAO
+    participant DB
+    participant Bus as MsgBus
+    participant GW as Gateway
+    participant AS as AdminServer
+    participant FS as FileServer
+
+    Main->>Cfg: Load(configs/server.yaml)
+    Cfg-->>Main: ServerConfig
+    Main->>DI: Register<DbManager>(cfg.db)
+    Main->>DAO: Init(connection_pool)
+    DAO->>DB: 建池 + ping
+    Main->>DI: Register<MsgBus>() + start()
+    Main->>DI: Register<ConnManager / Snowflake / RateLimiter>
+    Main->>DI: Register<UserSvc / FriendSvc / GroupSvc / ConvSvc / MsgSvc / SyncSvc / FileSvc>
+    Main->>GW: Init(cfg.tcp_port) + RegisterHandlers(cmd→Svc)
+    Main->>AS: Init(cfg.admin_port) + RegisterRoutes
+    Main->>FS: Init(cfg.file_port) + 静态目录
+    Main->>GW: Start()
+    Main->>AS: Start()
+    Main->>FS: Start()
+    Main->>Main: SignalHandler(SIGINT/SIGTERM)
+```
+
+---
+
+## 20. IM Server 优雅关闭
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant OS
+    participant Main
+    participant GW as Gateway
+    participant CM as ConnManager
+    participant AS as AdminServer
+    participant FS as FileServer
+    participant Bus as MsgBus
+    participant DAO
+    participant DB
+
+    OS->>Main: SIGINT / SIGTERM
+    Main->>GW: Stop accept()
+    Main->>AS: Stop()
+    Main->>FS: Stop()
+    Main->>CM: BroadcastShutdownNotify
+    loop 在线连接
+        CM-->>CM: kServerShutdown + Close(graceful)
+    end
+    Main->>Bus: drain + stop
+    Main->>DAO: FlushPendingWrites
+    Main->>DB: Close pool
+    Main->>Main: 退出码 0
+```
+
+---
+
+## 21. Gateway 收包流程（拆包→限流→鉴权→分发）
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Sock as TCP Socket
+    participant Codec as PacketCodec
+    participant GW as Gateway
+    participant RL as RateLimiter
+    participant Disp as Handler 路由表
+    participant Svc as 目标 Service
+
+    Sock->>Codec: bytes
+    Codec->>Codec: 校验 magic + 长度<br/>解析 Header(cmd, seq, uid?)
+    alt 包错误
+        Codec->>GW: ProtocolError → Close
+    else
+        Codec->>GW: Packet
+        GW->>RL: Check(uid 或 IP, cmd)
+        alt 触发限流
+            GW-->>Sock: ErrorAck { code=RateLimited }
+        else
+            GW->>GW: 是否需要鉴权？
+            alt 需要 && conn.user_id() == 0
+                GW-->>Sock: ErrorAck { code=Unauthorized }
+            else
+                GW->>Disp: Lookup(cmd)
+                Disp->>Svc: Handle(conn, pkt)
+                Svc-->>Sock: Ack / Push
+            end
+        end
+    end
+```
+
+---
+
+## 22. 多端互踢（同账号新设备登录）
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant New as 新设备
+    participant GW as Gateway
+    participant Usr as UserSvc
+    participant CM as ConnManager
+    participant Old as 旧设备
+
+    New->>GW: kLogin (device_id=new)
+    GW->>Usr: HandleLogin
+    Usr->>Usr: 校验通过
+    Usr->>CM: GetConnByDevice(uid, device_type, device_id)
+    alt 同 device_type 已有连接 (single-instance per type)
+        CM-->>Usr: oldConn
+        Usr->>Old: kKickNotify { reason=AnotherDeviceLogin }
+        Usr->>CM: Remove(oldConn) + Close
+    end
+    Usr->>CM: Add(uid, newConn, new device)
+    Usr-->>New: kLoginAck { code=0 }
+```
+
+---
+
+## 23. 客户端修改密码
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as Client
+    participant GW
+    participant Usr as UserSvc
+    participant DAO
+    participant CM as ConnManager
+    participant Other as 同账号其他设备
+
+    C->>GW: kChangePassword (old_pwd, new_pwd)
+    GW->>Usr: HandleChangePassword
+    Usr->>DAO: User.FindById(uid)
+    Usr->>Usr: PBKDF2 校验 old_pwd
+    alt 旧密码错误
+        Usr-->>C: kChangePasswordAck { code=AuthFailed }
+    else
+        Usr->>Usr: 校验 new_pwd 强度<br/>派生新 hash + 新 salt
+        Usr->>DAO: User.UpdatePassword(uid, hash, salt)
+        Usr-->>C: kChangePasswordAck { code=0 }
+        Note over Usr: 安全策略：踢出其他端
+        Usr->>CM: GetConns(uid) - {当前 conn}
+        loop 其他端
+            Usr->>Other: kKickNotify { reason=PasswordChanged }
+        end
+    end
+```
+
+---
+
+## 24. AdminServer 启动 + 中间件链装配
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Main
+    participant AS as AdminServer
+    participant Hv as libhv HttpServer
+    participant Mw as MiddlewareChain
+
+    Main->>AS: Init(port, jwt_secret, cors_cfg)
+    AS->>Mw: Use(CORS)
+    AS->>Mw: Use(SecurityHeaders)
+    AS->>Mw: Use(RequestId + AccessLog)
+    AS->>Mw: Use(RateLimit)
+    AS->>Mw: Use(StripUntrustedHeaders) — 移除伪造的 X-Nova-*
+    AS->>Mw: Use(JwtAuth)（白名单：login / health）
+    AS->>Mw: Use(Permission)
+    AS->>AS: Routes.Register(/api/v1/*)
+    AS->>Hv: Listen(port)
+    AS-->>Main: Started
+```
+
+---
+
+## 25. AdminServer 受保护请求中间件链路
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Admin as Admin Web
+    participant Hv as libhv
+    participant CORS
+    participant RL as RateLimit
+    participant Strip as StripHeaders
+    participant Jwt as JwtAuth
+    participant Perm as Permission
+    participant H as Handler
+    participant Audit as AuditLog
+
+    Admin->>Hv: HTTP 请求 (Authorization: Bearer ...)
+    Hv->>CORS: 处理 OPTIONS / 写 CORS 头
+    CORS->>RL: next
+    RL->>RL: Check(IP + path)
+    alt 触发
+        RL-->>Admin: 429 Too Many Requests
+    else
+        RL->>Strip: next
+        Strip->>Strip: 删除 X-Nova-Admin-Id 等伪造头
+        Strip->>Jwt: next
+        Jwt->>Jwt: 解析 token + 验签 + exp + jti 黑名单
+        alt 无效
+            Jwt-->>Admin: 401 Unauthorized
+        else
+            Jwt->>Jwt: ctx.admin_id = claims.sub
+            Jwt->>Perm: next
+            Perm->>Perm: 反射路由所需权限码
+            Perm->>Perm: 查询 admin_id 的角色权限集
+            alt 无权限
+                Perm-->>Admin: 403 Forbidden
+            else
+                Perm->>H: next
+                H->>H: 业务处理
+                H->>Audit: Insert(admin_id, action, target, IP, UA)
+                H-->>Admin: { code=0, data }
+            end
+        end
+    end
+```
+
+---
+
+## 26. Admin Token 续期 / 登出（jti 黑名单）
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Admin
+    participant AS as AdminServer
+    participant DAO
+
+    Admin->>AS: POST /api/v1/auth/refresh<br/>Authorization: Bearer old_token
+    AS->>AS: JwtAuth 校验 old_token
+    AS->>DAO: AdminSession.IsRevoked(old_jti)?
+    alt 已撤销
+        AS-->>Admin: 401
+    else
+        AS->>DAO: AdminSession.Insert(new_jti, exp)
+        AS->>DAO: AdminSession.Revoke(old_jti)
+        AS-->>Admin: { token: new, expires_in }
+    end
+
+    Note over Admin: 用户登出
+    Admin->>AS: POST /api/v1/auth/logout
+    AS->>DAO: AdminSession.Revoke(jti)
+    AS-->>Admin: { code=0 }
+    Note right of AS: 后续携带该 jti 的请求<br/>会被 JwtAuth 拒绝
+```
+
+---
+
+## 27. Admin RBAC 角色授予
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Super as 超级管理员
+    participant AS as AdminServer
+    participant DAO
+    participant DB
+    participant Audit
+
+    Super->>AS: POST /api/v1/admins/:id/roles<br/>{ role_ids: [...] }
+    AS->>AS: RequirePermission("admin.role.assign")
+    AS->>DAO: Role.FindByIds(role_ids)
+    alt 含未知角色 / 含 superadmin 但当前非 super
+        AS-->>Super: 400 / 403
+    else
+        AS->>DB: BEGIN
+        AS->>DAO: AdminRole.DeleteByAdmin(id)
+        AS->>DAO: AdminRole.InsertBatch(id, role_ids)
+        AS->>DB: COMMIT
+        AS->>Audit: log("role.assign", target=id, diff)
+        AS-->>Super: { code=0 }
+    end
+```
+
+---
+
+## 28. Admin 用户封禁 / 解封
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Admin
+    participant AS as AdminServer
+    participant DAO
+    participant Bus as MsgBus
+    participant CM as ConnManager
+    participant Target as 目标用户连接
+
+    Admin->>AS: POST /api/v1/users/:uid/ban<br/>{ reason, until }
+    AS->>AS: RequirePermission("user.ban")
+    AS->>DAO: User.UpdateStatus(uid, Banned, until)
+    AS->>Bus: publish("user.kick", {uid, reason="banned"})
+    Bus-->>CM: 订阅回调
+    CM->>Target: kKickNotify + Close
+    AS->>DAO: AuditLog.Insert(...)
+    AS-->>Admin: { code=0 }
+
+    Note over AS: 解封路径
+    Admin->>AS: POST /api/v1/users/:uid/unban
+    AS->>DAO: User.UpdateStatus(uid, Active, NULL)
+    AS->>DAO: AuditLog.Insert(...)
+    AS-->>Admin: { code=0 }
+```
+
+---
+
+## 29. Admin 审计日志查询
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Admin
+    participant AS as AdminServer
+    participant DAO
+    participant DB
+
+    Admin->>AS: GET /api/v1/audit-logs?admin_id&action&from&to&page
+    AS->>AS: RequirePermission("audit.view")
+    AS->>AS: 校验时间范围 ≤ 90d，page ≤ MaxPage
+    AS->>DAO: AuditLog.Query(filter, page, size)
+    DAO->>DB: SELECT ... WHERE ...
+    DB-->>DAO: rows + total
+    AS-->>Admin: { code=0, data: [...], total }
+```
+
+---
+
+## 30. Admin 强制撤回消息
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Admin
+    participant AS as AdminServer
+    participant Bus as MsgBus
+    participant Msg as MsgSvc
+    participant DAO
+    participant CM
+    participant Conv as 会话成员
+
+    Admin->>AS: POST /api/v1/messages/recall<br/>{ conv_id, server_seq, reason }
+    AS->>AS: RequirePermission("message.recall")
+    AS->>Bus: publish("message.admin_recall", payload)
+    Bus-->>Msg: 订阅回调
+    Msg->>DAO: Message.MarkRecalled(seq, by=admin)
+    Msg->>CM: 广播 kRecallNotify(operator=Admin)
+    CM-->>Conv: kRecallNotify
+    AS->>DAO: AuditLog.Insert(...)
+    AS-->>Admin: { code=0 }
+```
+
+---
+
+## 31. Admin 群组解散 / 转让
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Admin
+    participant AS as AdminServer
+    participant Group as GroupSvc (via Bus or in-proc)
+    participant DAO
+    participant CM
+    participant Members
+
+    alt 解散
+        Admin->>AS: DELETE /api/v1/groups/:conv_id
+        AS->>AS: RequirePermission("group.delete")
+        AS->>Group: Dissolve(conv_id)
+        Group->>DAO: Group.UpdateStatus(Dissolved)
+        Group->>DAO: ConvMember.RemoveAll
+        Group->>CM: 广播 GroupNotify(type=Dissolved)
+        CM-->>Members: GroupNotify
+    else 转让群主
+        Admin->>AS: PATCH /api/v1/groups/:conv_id/owner<br/>{ new_owner_uid }
+        AS->>AS: RequirePermission("group.transfer")
+        AS->>DAO: ConvMember.Exists(conv_id, new_owner)
+        AS->>DAO: Group.UpdateOwner(conv_id, new_owner)
+        AS->>CM: 广播 GroupNotify(type=OwnerChanged)
+    end
+    AS->>DAO: AuditLog.Insert(...)
+    AS-->>Admin: { code=0 }
+```
+
+---
+
+## 32. MsgBus 跨服务事件传播
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Pub as Publisher (UserSvc / AS / ...)
+    participant Bus as MsgBus
+    participant S1 as 订阅者 1 (CM)
+    participant S2 as 订阅者 2 (StatsSvc)
+    participant S3 as 订阅者 3 (AuditSvc)
+
+    Pub->>Bus: publish<EventT>(payload)
+    Bus->>Bus: 锁内拷贝订阅者列表
+    Bus->>S1: callback(payload)（异步线程池）
+    Bus->>S2: callback(payload)
+    Bus->>S3: callback(payload)
+    Note over Bus: 任一回调异常被捕获并记录<br/>不影响其他订阅者
+
+    Note over S1: 取消订阅
+    S1->>Bus: unsubscribe(sub_id)
+    Bus->>Bus: 删除条目（受保护写）
+```
+
