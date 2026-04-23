@@ -22,6 +22,7 @@
 #include <algorithm>
 #include <cctype>
 #include <chrono>
+#include <ctime>
 #include <functional>
 #include <optional>
 #include <unordered_map>
@@ -146,14 +147,51 @@ int AdminServer::Start(const Options& opts) {
     }
 
     NOVA_NLOG_INFO(kLogTag, "HTTP admin server started on port {}", opts.port);
+
+    // 启动过期 session 清理线程
+    purger_stop_.store(false);
+    purger_thread_ = std::thread([this]() { SessionPurgerLoop(); });
     return 0;
 }
 
 void AdminServer::Stop() {
+    // 先停清理线程，再停 HTTP server。
+    if (purger_thread_.joinable()) {
+        {
+            std::lock_guard<std::mutex> lk(purger_mu_);
+            purger_stop_.store(true);
+        }
+        purger_cv_.notify_all();
+        purger_thread_.join();
+    }
     if (server_) {
         server_->stop();
         server_.reset();
         NOVA_NLOG_INFO(kLogTag, "stopped");
+    }
+}
+
+// 每 10 分钟扫一次，删除过期 session 记录。
+// 使用 condvar 而非 sleep 使 Stop() 能即时唤醒。
+void AdminServer::SessionPurgerLoop() {
+    constexpr auto kInterval = std::chrono::minutes(10);
+    while (!purger_stop_.load()) {
+        {
+            std::unique_lock<std::mutex> lk(purger_mu_);
+            purger_cv_.wait_for(lk, kInterval, [this] { return purger_stop_.load(); });
+            if (purger_stop_.load()) break;
+        }
+        try {
+            auto now_sec = static_cast<int64_t>(std::time(nullptr));
+            int rc = ctx_.dao().AdminSession().PurgeExpired(now_sec);
+            if (rc < 0) {
+                NOVA_NLOG_WARN(kLogTag, "admin_sessions purge failed");
+            } else {
+                NOVA_NLOG_INFO(kLogTag, "admin_sessions purge done");
+            }
+        } catch (const std::exception& e) {
+            NOVA_NLOG_ERROR(kLogTag, "admin_sessions purge exception: {}", e.what());
+        }
     }
 }
 
@@ -271,16 +309,41 @@ int AdminServer::AuthMiddleware(HttpRequest* req, HttpResponse* resp) {
     // 注入 admin_id
     req->SetHeader("X-Nova-Admin-Id", std::to_string(claims->admin_id));
 
+    // RBAC 缓存命中（30s TTL）：避免每请求 2 次 DB 查询（admin 状态 + permissions）
+    auto now_tp = std::chrono::steady_clock::now();
+    std::vector<std::string> perms;
+    int account_status = 0;
+    bool cache_hit = false;
+    {
+        std::lock_guard<std::mutex> lk(rbac_cache_mu_);
+        auto it = rbac_cache_.find(claims->admin_id);
+        if (it != rbac_cache_.end() && it->second.expires_at > now_tp) {
+            perms = it->second.perms;
+            account_status = it->second.account_status;
+            cache_hit = true;
+        }
+    }
+
+    if (!cache_hit) {
+        auto admin_account = ctx_.dao().AdminAccount().FindById(claims->admin_id);
+        if (!admin_account) {
+            JsonError(resp, api_err::kAccountDisabled);
+            return 403;
+        }
+        account_status = admin_account->status;
+        perms = ctx_.dao().Rbac().GetUserPermissions(claims->admin_id);
+        std::lock_guard<std::mutex> lk(rbac_cache_mu_);
+        rbac_cache_[claims->admin_id] = RbacCacheEntry{perms, account_status, now_tp + kRbacCacheTtl};
+    }
+
     // 检查管理员账户状态（禁止被封禁/删除的管理员使用有效 JWT）
-    auto admin_account = ctx_.dao().AdminAccount().FindById(claims->admin_id);
-    if (!admin_account || admin_account->status == static_cast<int>(AccountStatus::Banned) ||
-        admin_account->status == static_cast<int>(AccountStatus::Deleted)) {
+    if (account_status == static_cast<int>(AccountStatus::Banned) ||
+        account_status == static_cast<int>(AccountStatus::Deleted)) {
         JsonError(resp, api_err::kAccountDisabled);
         return 403;
     }
 
     // 注入 permissions（逗号分隔）
-    auto perms = ctx_.dao().Rbac().GetUserPermissions(claims->admin_id);
     std::string perms_str;
     for (size_t i = 0; i < perms.size(); ++i) {
         if (i > 0)
@@ -290,6 +353,16 @@ int AdminServer::AuthMiddleware(HttpRequest* req, HttpResponse* resp) {
     req->SetHeader("X-Nova-Permissions", perms_str);
 
     return HTTP_STATUS_NEXT;
+}
+
+void AdminServer::InvalidateRbacCache(int64_t admin_id) {
+    std::lock_guard<std::mutex> lk(rbac_cache_mu_);
+    rbac_cache_.erase(admin_id);
+}
+
+void AdminServer::InvalidateRbacCacheAll() {
+    std::lock_guard<std::mutex> lk(rbac_cache_mu_);
+    rbac_cache_.clear();
 }
 
 // ============================================================
@@ -1119,6 +1192,7 @@ int AdminServer::HandleDeleteAdmin(HttpRequest* req, HttpResponse* resp) {
         return JsonError(resp, api_err::kAdminNotFound);
     }
 
+    InvalidateRbacCache(id);
     WriteAuditLog(admin_id, "admin.delete", "admin", id, "{}", GetClientIp(req));
 
     return JsonOk(resp);
@@ -1190,6 +1264,7 @@ int AdminServer::HandleEnableAdmin(HttpRequest* req, HttpResponse* resp) {
     }
 
     int64_t admin_id = GetCurrentAdminId(req);
+    InvalidateRbacCache(id);
     WriteAuditLog(admin_id, "admin.enable", "admin", id, "{}", GetClientIp(req));
 
     return JsonOk(resp);
@@ -1222,6 +1297,7 @@ int AdminServer::HandleDisableAdmin(HttpRequest* req, HttpResponse* resp) {
         return JsonError(resp, api_err::kAdminNotFound);
     }
 
+    InvalidateRbacCache(id);
     WriteAuditLog(admin_id, "admin.disable", "admin", id, "{}", GetClientIp(req));
 
     return JsonOk(resp);
@@ -1275,6 +1351,7 @@ int AdminServer::HandleSetAdminRoles(HttpRequest* req, HttpResponse* resp) {
     }
 
     int64_t admin_id = GetCurrentAdminId(req);
+    InvalidateRbacCache(id);
     nlohmann::json detail_json;
     detail_json["role_ids"] = (*body_opt)["role_ids"];
     detail_json["role_names"] = new_role_names;
@@ -1394,6 +1471,7 @@ int AdminServer::HandleUpdateRole(HttpRequest* req, HttpResponse* resp) {
     }
 
     int64_t admin_id = GetCurrentAdminId(req);
+    InvalidateRbacCacheAll();
     WriteAuditLog(admin_id, "role.update", "role", id, "{}", GetClientIp(req));
 
     return JsonOk(resp);
@@ -1414,6 +1492,7 @@ int AdminServer::HandleDeleteRole(HttpRequest* req, HttpResponse* resp) {
     ctx_.dao().Rbac().DeleteRole(id);
 
     int64_t admin_id = GetCurrentAdminId(req);
+    InvalidateRbacCacheAll();
     WriteAuditLog(admin_id, "role.delete", "role", id, "{}", GetClientIp(req));
 
     return JsonOk(resp);

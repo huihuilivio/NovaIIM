@@ -119,13 +119,30 @@ const showCreate = ref(false)
 const creating = ref(false)
 const formRef = ref<FormInstance>()
 const createForm = reactive({ uid: '', password: '', nickname: '' })
+
+// 密码强度：>=8 且至少 3 类（大写/小写/数字/特殊）
+function validateStrongPassword(_: unknown, value: string, cb: (err?: Error) => void) {
+  if (!value) return cb(new Error('请输入密码'))
+  if (value.length < 8) return cb(new Error('密码至少 8 位'))
+  if (value.length > 128) return cb(new Error('密码最多 128 位'))
+  let classes = 0
+  if (/[a-z]/.test(value)) classes++
+  if (/[A-Z]/.test(value)) classes++
+  if (/\d/.test(value)) classes++
+  if (/[^A-Za-z0-9]/.test(value)) classes++
+  if (classes < 3) return cb(new Error('需包含大写/小写/数字/特殊字符中任意 3 类'))
+  cb()
+}
+
 const rules: FormRules = {
   uid: [{ required: true, message: '请输入账号', trigger: 'blur' }],
   password: [
-    { required: true, message: '请输入密码', trigger: 'blur' },
-    { min: 6, message: '密码至少 6 位', trigger: 'blur' },
+    { required: true, validator: validateStrongPassword, trigger: 'blur' },
   ],
 }
+
+// 按行操作 loading：防止重复点击触发多次删除/禁用
+const rowLoading = reactive<Record<number, boolean>>({})
 
 // 角色分配
 const showRoleDialog = ref(false)
@@ -211,40 +228,60 @@ async function handleSaveRoles() {
 }
 
 async function handleAction(cmd: string, row: Admin) {
+  if (rowLoading[row.id]) return  // 防抖：该行已有操作在执行
   if (cmd === 'resetPwd') {
-    const { value } = await ElMessageBox.prompt('请输入新密码（至少6位）', '重置密码', {
-      inputPattern: /^.{6,}$/,
-      inputErrorMessage: '密码至少 6 位',
+    const { value } = await ElMessageBox.prompt('请输入新密码（至少 8 位，含大/小写/数字/特殊中任意 3 类）', '重置密码', {
+      inputValidator: (v: string) => {
+        if (!v || v.length < 8) return '密码至少 8 位'
+        let c = 0
+        if (/[a-z]/.test(v)) c++
+        if (/[A-Z]/.test(v)) c++
+        if (/\d/.test(v)) c++
+        if (/[^A-Za-z0-9]/.test(v)) c++
+        return c >= 3 ? true : '需包含大写/小写/数字/特殊字符中任意 3 类'
+      },
     })
-    const res = await resetAdminPassword(row.id, value)
-    if (res.data.code === 0) ElMessage.success('密码已重置')
-    else ElMessage.error(res.data.msg)
+    rowLoading[row.id] = true
+    try {
+      const res = await resetAdminPassword(row.id, value)
+      if (res.data.code === 0) ElMessage.success('密码已重置')
+      else ElMessage.error(res.data.msg)
+    } finally { rowLoading[row.id] = false }
   } else if (cmd === 'enable') {
-    const res = await enableAdmin(row.id)
-    if (res.data.code === 0) {
-      ElMessage.success('已启用')
-      fetchData()
-    } else {
-      ElMessage.error(res.data.msg)
-    }
+    rowLoading[row.id] = true
+    try {
+      const res = await enableAdmin(row.id)
+      if (res.data.code === 0) {
+        ElMessage.success('已启用')
+        fetchData()
+      } else {
+        ElMessage.error(res.data.msg)
+      }
+    } finally { rowLoading[row.id] = false }
   } else if (cmd === 'disable') {
     await ElMessageBox.confirm(`确定禁用管理员 "${row.uid}"？禁用后该管理员将无法登录。`, '禁用确认', { type: 'warning' })
-    const res = await disableAdmin(row.id)
-    if (res.data.code === 0) {
-      ElMessage.success('已禁用')
-      fetchData()
-    } else {
-      ElMessage.error(res.data.msg)
-    }
+    rowLoading[row.id] = true
+    try {
+      const res = await disableAdmin(row.id)
+      if (res.data.code === 0) {
+        ElMessage.success('已禁用')
+        fetchData()
+      } else {
+        ElMessage.error(res.data.msg)
+      }
+    } finally { rowLoading[row.id] = false }
   } else if (cmd === 'delete') {
     await ElMessageBox.confirm(`确定删除管理员 "${row.uid}"？此操作不可恢复。`, '删除确认', { type: 'warning' })
-    const res = await deleteAdmin(row.id)
-    if (res.data.code === 0) {
-      ElMessage.success('已删除')
-      fetchData()
-    } else {
-      ElMessage.error(res.data.msg)
-    }
+    rowLoading[row.id] = true
+    try {
+      const res = await deleteAdmin(row.id)
+      if (res.data.code === 0) {
+        ElMessage.success('已删除')
+        fetchData()
+      } else {
+        ElMessage.error(res.data.msg)
+      }
+    } finally { rowLoading[row.id] = false }
   }
 }
 

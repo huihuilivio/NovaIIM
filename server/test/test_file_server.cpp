@@ -300,13 +300,13 @@ TEST_F(FileServerTest, UploadMultipartPathTraversalRejected) {
 TEST_F(FileServerTest, LargeUploadSuccess) {
     // 生成一段测试数据
     std::string body(4096, 'A');  // 4KB
-    auto url  = Url("/api/v1/files/upload/large_test.bin");
+    auto url  = Url("/api/v1/files/upload/large_test.zip");
     auto resp = requests::post(url.c_str(), body);
     ASSERT_NE(resp, nullptr);
     EXPECT_EQ(resp->status_code, 200);
 
     // 验证文件存在且大小正确
-    std::string filepath = tmp_dir_ + "/large_test.bin";
+    std::string filepath = tmp_dir_ + "/large_test.zip";
     EXPECT_TRUE(fs::exists(filepath));
     if (fs::exists(filepath)) {
         EXPECT_EQ(fs::file_size(filepath), body.size());

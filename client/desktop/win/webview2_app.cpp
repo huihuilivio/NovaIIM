@@ -199,6 +199,55 @@ void WebView2App::OnWebViewReady() {
     bridge_ = std::make_unique<JsBridge>(webview_.Get(), client_, this);
     bridge_->Init();
 
+    // 导航白名单：拒绝除 novaim.local（本地虚拟主机）与 about:blank 之外的任何导航，
+    // 防御 XSS / RCE 通过诱导导航到外部恶意页面注入钓鱼/木马。
+    EventRegistrationToken nav_token;
+    webview_->add_NavigationStarting(
+        Callback<ICoreWebView2NavigationStartingEventHandler>(
+            [](ICoreWebView2* sender, ICoreWebView2NavigationStartingEventArgs* args) -> HRESULT {
+                LPWSTR uri = nullptr;
+                if (FAILED(args->get_Uri(&uri)) || !uri) return S_OK;
+                std::wstring wuri(uri);
+                CoTaskMemFree(uri);
+                // 允许：https://novaim.local/..., about:blank, about:srcdoc
+                bool allowed =
+                    wuri.rfind(L"https://novaim.local/", 0) == 0 ||
+                    wuri == L"about:blank" ||
+                    wuri.rfind(L"about:srcdoc", 0) == 0;
+                if (!allowed) {
+                    NOVA_LOG_WARN("navigation blocked: non-whitelisted URI");
+                    args->put_Cancel(TRUE);
+                }
+                return S_OK;
+            }).Get(),
+        &nav_token);
+
+    // 新窗口拦截：禁止弹出窗口，防止页面逃逸
+    EventRegistrationToken newwin_token;
+    webview_->add_NewWindowRequested(
+        Callback<ICoreWebView2NewWindowRequestedEventHandler>(
+            [](ICoreWebView2* sender, ICoreWebView2NewWindowRequestedEventArgs* args) -> HRESULT {
+                args->put_Handled(TRUE);  // 吞掉请求，不打开新窗口
+                return S_OK;
+            }).Get(),
+        &newwin_token);
+
+    // 在文档解析前注入 CSP 元标签（纵深防御；真正的 CSP 应由服务端 header 下发，
+    // 这里作为对本地虚拟主机静态资源的兜底防御）。
+    static const wchar_t kCspInject[] =
+        L"(function(){try{var m=document.createElement('meta');"
+        L"m.httpEquiv='Content-Security-Policy';"
+        L"m.content=\"default-src 'self' https://novaim.local;"
+        L" script-src 'self' 'unsafe-inline' https://novaim.local;"
+        L" style-src 'self' 'unsafe-inline' https://novaim.local;"
+        L" img-src 'self' data: blob: https://novaim.local;"
+        L" connect-src 'self' https://novaim.local ws://localhost:* wss://novaim.local;"
+        L" frame-ancestors 'none';"
+        L" object-src 'none';"
+        L" base-uri 'self'\";"
+        L"(document.head||document.documentElement).appendChild(m);}catch(e){}})();";
+    webview_->AddScriptToExecuteOnDocumentCreated(kCspInject, nullptr);
+
     // 将本地 web/ 目录映射为虚拟主机
     ComPtr<ICoreWebView2_3> webview3;
     webview_->QueryInterface(IID_PPV_ARGS(&webview3));

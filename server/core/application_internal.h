@@ -12,7 +12,7 @@ namespace detail {
 
 size_t RoundUpPow2(size_t n);
 bool   InitDatabase(ServerContext& ctx, const DatabaseConfig& db_cfg);
-void   WarnJwtSecret(const AdminConfig& admin_cfg);
+bool   ValidateJwtSecret(const AdminConfig& admin_cfg);
 
 }  // namespace detail
 }  // namespace nova

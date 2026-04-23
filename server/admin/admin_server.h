@@ -1,7 +1,14 @@
 #pragma once
 
+#include <atomic>
+#include <chrono>
+#include <condition_variable>
 #include <memory>
+#include <mutex>
 #include <string>
+#include <thread>
+#include <unordered_map>
+#include <vector>
 
 #include <hv/HttpServer.h>
 #include <hv/HttpService.h>
@@ -94,6 +101,26 @@ private:
     hv::HttpService service_;
     std::unique_ptr<hv::HttpServer> server_;
     RateLimiter login_limiter_;
+
+    // 过期 session 定期清理线程（每 10 分钟执行一次 DELETE WHERE expires_at < now）
+    void SessionPurgerLoop();
+    std::thread            purger_thread_;
+    std::mutex             purger_mu_;
+    std::condition_variable purger_cv_;
+    std::atomic<bool>      purger_stop_{false};
+
+    // ── RBAC TTL 缓存：减少每请求查询 permissions + admin 账户状态 ──
+    struct RbacCacheEntry {
+        std::vector<std::string> perms;
+        int  account_status = 0;
+        std::chrono::steady_clock::time_point expires_at;
+    };
+    static constexpr std::chrono::seconds kRbacCacheTtl{30};
+    std::mutex rbac_cache_mu_;
+    std::unordered_map<int64_t, RbacCacheEntry> rbac_cache_;
+    // role/admin 状态变更时调用，发生在修改接口成功后。
+    void InvalidateRbacCache(int64_t admin_id);
+    void InvalidateRbacCacheAll();
 };
 
 }  // namespace nova

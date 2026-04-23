@@ -75,14 +75,23 @@ bool InitDatabase(ServerContext& ctx, const DatabaseConfig& db_cfg) {
     return true;
 }
 
-void WarnJwtSecret(const AdminConfig& admin_cfg) {
-    if (!admin_cfg.enabled || admin_cfg.jwt_secret.empty()) return;
+// Validate JWT secret strength. Returns false to abort startup when admin API is enabled with a weak secret.
+// Allows weak secrets only when admin_cfg.enabled == false (no JWT signing used).
+bool ValidateJwtSecret(const AdminConfig& admin_cfg) {
+    if (!admin_cfg.enabled) return true;
+    if (admin_cfg.jwt_secret.empty()) {
+        NOVA_NLOG_ERROR(kLogTag, "!!! JWT secret is empty while admin API is enabled. Refusing to start. !!!");
+        return false;
+    }
     if (admin_cfg.jwt_secret == "change-me-in-production") {
-        NOVA_NLOG_WARN(kLogTag, "!!! JWT secret is still the default value. Change it in production !!!");
+        NOVA_NLOG_ERROR(kLogTag, "!!! JWT secret is the default placeholder. Refusing to start. Set admin.jwt_secret to a strong value (>=32 chars). !!!");
+        return false;
     }
-    if (admin_cfg.jwt_secret.size() < 16) {
-        NOVA_NLOG_WARN(kLogTag, "JWT secret is shorter than 16 chars, consider using a stronger secret");
+    if (admin_cfg.jwt_secret.size() < 32) {
+        NOVA_NLOG_ERROR(kLogTag, "!!! JWT secret is shorter than 32 chars ({} chars). Refusing to start. !!!", admin_cfg.jwt_secret.size());
+        return false;
     }
+    return true;
 }
 
 void RegisterRoutes(Router& router, UserService& user_svc, MsgService& msg_svc, SyncService& sync_svc, FriendService& friend_svc, ConvService& conv_svc, GroupService& group_svc, FileService& file_svc) {
@@ -163,8 +172,8 @@ int Application::Run(const AppConfig& cfg) {
     ServerContext ctx(cfg);
     if (!detail::InitDatabase(ctx, cfg.db)) return 1;
 
-    // 3. JWT 安全检查
-    detail::WarnJwtSecret(cfg.admin);
+    // 3. JWT 安全检查（配置无效时 fail-fast，阻止使用弱/默认 secret 启动）
+    if (!detail::ValidateJwtSecret(cfg.admin)) return 2;
 
     // 4. 服务 + 路由
     UserService user_svc(ctx);

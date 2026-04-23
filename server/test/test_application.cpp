@@ -44,42 +44,42 @@ TEST(AppHelperTest, InitDatabaseUnsupportedType) {
 }
 
 // ================================================================
-// WarnJwtSecret (smoke: verifies each branch does not crash)
+// ValidateJwtSecret (fail-fast on weak/default secrets when admin enabled)
 // ================================================================
 
-TEST(AppHelperTest, WarnJwtSecretDisabledNoOp) {
+TEST(AppHelperTest, ValidateJwtSecretDisabledAllowsWeak) {
     AdminConfig a;
     a.enabled = false;
     a.jwt_secret = "change-me-in-production";
-    EXPECT_NO_THROW(detail::WarnJwtSecret(a));
+    EXPECT_TRUE(detail::ValidateJwtSecret(a));
 }
 
-TEST(AppHelperTest, WarnJwtSecretEmptyNoOp) {
+TEST(AppHelperTest, ValidateJwtSecretEmptyRejected) {
     AdminConfig a;
     a.enabled = true;
     a.jwt_secret.clear();
-    EXPECT_NO_THROW(detail::WarnJwtSecret(a));
+    EXPECT_FALSE(detail::ValidateJwtSecret(a));
 }
 
-TEST(AppHelperTest, WarnJwtSecretDefault) {
+TEST(AppHelperTest, ValidateJwtSecretDefaultRejected) {
     AdminConfig a;
     a.enabled = true;
     a.jwt_secret = "change-me-in-production";
-    EXPECT_NO_THROW(detail::WarnJwtSecret(a));
+    EXPECT_FALSE(detail::ValidateJwtSecret(a));
 }
 
-TEST(AppHelperTest, WarnJwtSecretShort) {
+TEST(AppHelperTest, ValidateJwtSecretShortRejected) {
     AdminConfig a;
     a.enabled = true;
     a.jwt_secret = "abc";
-    EXPECT_NO_THROW(detail::WarnJwtSecret(a));
+    EXPECT_FALSE(detail::ValidateJwtSecret(a));
 }
 
-TEST(AppHelperTest, WarnJwtSecretStrong) {
+TEST(AppHelperTest, ValidateJwtSecretStrongAccepted) {
     AdminConfig a;
     a.enabled = true;
-    a.jwt_secret = "a-very-strong-secret-key-32chars!";
-    EXPECT_NO_THROW(detail::WarnJwtSecret(a));
+    a.jwt_secret = "a-very-strong-secret-key-32chars!";  // 33 chars
+    EXPECT_TRUE(detail::ValidateJwtSecret(a));
 }
 
 // ================================================================

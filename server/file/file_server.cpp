@@ -6,8 +6,10 @@
 #include <hv/htime.h>
 
 #include <chrono>
+#include <cctype>
 #include <filesystem>
 #include <thread>
+#include <unordered_set>
 
 namespace nova {
 
@@ -96,6 +98,30 @@ bool FileServer::IsDestinationSafe(const std::string& filepath) const {
     return true;
 }
 
+// 纵深防御：仅允许白名单扩展名（小写比较），避免 .exe/.bat/.sh/.dll/.jsp/.php 等可执行/脚本被托管。
+// 若 root_dir 被配置为其他 web 服务的静态目录，这里阻止上传导致 RCE 的后缀。
+bool FileServer::IsExtensionAllowed(const std::string& filename) const {
+    auto pos = filename.find_last_of('.');
+    if (pos == std::string::npos) return false;  // 无扩展名：拒绝
+    std::string ext = filename.substr(pos + 1);
+    for (auto& c : ext) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    static const std::unordered_set<std::string> kAllowed = {
+        // 图片
+        "jpg", "jpeg", "png", "gif", "webp", "bmp", "svg", "ico",
+        // 文档
+        "pdf", "txt", "md", "csv", "log",
+        "doc", "docx", "xls", "xlsx", "ppt", "pptx",
+        // 音视频
+        "mp3", "wav", "ogg", "flac", "m4a",
+        "mp4", "webm", "mov", "avi", "mkv",
+        // 压缩
+        "zip", "rar", "7z", "tar", "gz", "bz2",
+        // 数据
+        "json", "xml", "yaml", "yml",
+    };
+    return kAllowed.count(ext) != 0;
+}
+
 // ============================================================
 // 下载线程追踪（counter + cv）
 // 设计：
@@ -120,18 +146,28 @@ bool FileServer::LaunchDownloadThread(std::function<void()> job) {
     } while (!downloads_inflight_.compare_exchange_weak(cur, cur + 1,
                                                         std::memory_order_acq_rel));
 
-    std::thread([this, job = std::move(job)]() {
-        try {
-            job();
-        } catch (...) {
-            NOVA_NLOG_ERROR(kLogTag, "download thread threw");
-        }
+    try {
+        std::thread([this, job = std::move(job)]() {
+            try {
+                job();
+            } catch (...) {
+                NOVA_NLOG_ERROR(kLogTag, "download thread threw");
+            }
+            if (downloads_inflight_.fetch_sub(1, std::memory_order_acq_rel) == 1) {
+                // 最后一个下载完成，售醒 Stop()
+                std::lock_guard<std::mutex> lk(downloads_mu_);
+                downloads_cv_.notify_all();
+            }
+        }).detach();
+    } catch (const std::system_error& e) {
+        // std::thread 构造失败（如系统线程资源耗尽）：回滚 inflight 计数，避免泄漏导致 Stop() 永久挂起
         if (downloads_inflight_.fetch_sub(1, std::memory_order_acq_rel) == 1) {
-            // 最后一个下载完成，售醒 Stop()
             std::lock_guard<std::mutex> lk(downloads_mu_);
             downloads_cv_.notify_all();
         }
-    }).detach();
+        NOVA_NLOG_ERROR(kLogTag, "failed to spawn download thread: {}", e.what());
+        return false;
+    }
     return true;
 }
 
@@ -330,6 +366,10 @@ void FileServer::RegisterRoutes() {
             if (filename.empty()) {
                 return response_status(ctx, HTTP_STATUS_BAD_REQUEST, "empty filename");
             }
+            if (!IsExtensionAllowed(filename)) {
+                NOVA_NLOG_WARN(kLogTag, "multipart upload rejected: extension not allowed '{}'", filename);
+                return response_status(ctx, HTTP_STATUS_UNSUPPORTED_MEDIA_TYPE, "file type not allowed");
+            }
             // 用安全文件名保存
             std::string filepath = save_path + filename;
             if (!IsDestinationSafe(filepath)) {
@@ -349,6 +389,10 @@ void FileServer::RegisterRoutes() {
             if (!IsPathSafe(filename)) {
                 NOVA_NLOG_WARN(kLogTag, "upload rejected: invalid filename '{}'", filename);
                 return response_status(ctx, HTTP_STATUS_BAD_REQUEST, "invalid filename");
+            }
+            if (!IsExtensionAllowed(filename)) {
+                NOVA_NLOG_WARN(kLogTag, "raw upload rejected: extension not allowed '{}'", filename);
+                return response_status(ctx, HTTP_STATUS_UNSUPPORTED_MEDIA_TYPE, "file type not allowed");
             }
             std::string filepath = save_path + filename;
             if (!IsDestinationSafe(filepath)) {
@@ -384,6 +428,11 @@ void FileServer::RegisterRoutes() {
                     NOVA_NLOG_WARN(kLogTag, "large upload rejected: unsafe filename '{}'", filename);
                     ctx->close();
                     return HTTP_STATUS_BAD_REQUEST;
+                }
+                if (!IsExtensionAllowed(filename)) {
+                    NOVA_NLOG_WARN(kLogTag, "large upload rejected: extension not allowed '{}'", filename);
+                    ctx->close();
+                    return HTTP_STATUS_UNSUPPORTED_MEDIA_TYPE;
                 }
                 // Content-Length 检查
                 int64_t content_len = ctx->request->ContentLength();

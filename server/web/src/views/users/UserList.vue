@@ -138,13 +138,30 @@ const showCreate = ref(false)
 const creating = ref(false)
 const createFormRef = ref<FormInstance>()
 const createForm = reactive({ email: '', password: '', nickname: '' })
+
+// 密码强度：>=8 且至少 3 类（大写/小写/数字/特殊）
+function validateStrongPassword(_: unknown, value: string, cb: (err?: Error) => void) {
+  if (!value) return cb(new Error('请输入密码'))
+  if (value.length < 8) return cb(new Error('密码至少 8 位'))
+  if (value.length > 128) return cb(new Error('密码最多 128 位'))
+  let classes = 0
+  if (/[a-z]/.test(value)) classes++
+  if (/[A-Z]/.test(value)) classes++
+  if (/\d/.test(value)) classes++
+  if (/[^A-Za-z0-9]/.test(value)) classes++
+  if (classes < 3) return cb(new Error('需包含大写/小写/数字/特殊字符中任意 3 类'))
+  cb()
+}
+
 const createRules: FormRules = {
   email: [{ required: true, message: '请输入邮箱', trigger: 'blur' }],
   password: [
-    { required: true, message: '请输入密码', trigger: 'blur' },
-    { min: 6, message: '密码至少 6 位', trigger: 'blur' },
+    { required: true, validator: validateStrongPassword, trigger: 'blur' },
   ],
 }
+
+// 按行 loading：防重复提交
+const rowLoading = reactive<Record<string, boolean>>({})
 
 // 详情
 const showDetail = ref(false)
@@ -212,40 +229,63 @@ async function viewDetail(uid: string) {
 }
 
 async function handleAction(cmd: string, row: User) {
+  if (rowLoading[row.uid]) return
   if (cmd === 'resetPwd') {
-    const { value } = await ElMessageBox.prompt('请输入新密码（至少6位）', '重置密码', {
-      inputPattern: /^.{6,}$/,
-      inputErrorMessage: '密码至少 6 位',
+    const { value } = await ElMessageBox.prompt('请输入新密码（至少 8 位，含大/小写/数字/特殊中任意 3 类）', '重置密码', {
+      inputValidator: (v: string) => {
+        if (!v || v.length < 8) return '密码至少 8 位'
+        let c = 0
+        if (/[a-z]/.test(v)) c++
+        if (/[A-Z]/.test(v)) c++
+        if (/\d/.test(v)) c++
+        if (/[^A-Za-z0-9]/.test(v)) c++
+        return c >= 3 ? true : '需包含大写/小写/数字/特殊字符中任意 3 类'
+      },
     })
-    const res = await resetPassword(row.uid, value)
-    if (res.data.code === 0) ElMessage.success('密码已重置')
-    else ElMessage.error(res.data.msg)
+    rowLoading[row.uid] = true
+    try {
+      const res = await resetPassword(row.uid, value)
+      if (res.data.code === 0) ElMessage.success('密码已重置')
+      else ElMessage.error(res.data.msg)
+    } finally { rowLoading[row.uid] = false }
   } else if (cmd === 'kick') {
-    const res = await kickUser(row.uid)
-    if (res.data.code === 0) {
-      ElMessage.success(`已踢出 ${res.data.data.kicked_devices} 个设备`)
-      fetchData()
-    }
+    rowLoading[row.uid] = true
+    try {
+      const res = await kickUser(row.uid)
+      if (res.data.code === 0) {
+        ElMessage.success(`已踢出 ${res.data.data.kicked_devices} 个设备`)
+        fetchData()
+      }
+    } finally { rowLoading[row.uid] = false }
   } else if (cmd === 'ban') {
     const { value } = await ElMessageBox.prompt('请输入封禁原因', '封禁用户')
-    const res = await banUser(row.uid, value)
-    if (res.data.code === 0) {
-      ElMessage.success('已封禁')
-      fetchData()
-    }
+    rowLoading[row.uid] = true
+    try {
+      const res = await banUser(row.uid, value)
+      if (res.data.code === 0) {
+        ElMessage.success('已封禁')
+        fetchData()
+      }
+    } finally { rowLoading[row.uid] = false }
   } else if (cmd === 'unban') {
-    const res = await unbanUser(row.uid)
-    if (res.data.code === 0) {
-      ElMessage.success('已解禁')
-      fetchData()
-    }
+    rowLoading[row.uid] = true
+    try {
+      const res = await unbanUser(row.uid)
+      if (res.data.code === 0) {
+        ElMessage.success('已解禁')
+        fetchData()
+      }
+    } finally { rowLoading[row.uid] = false }
   } else if (cmd === 'delete') {
     await ElMessageBox.confirm('确定删除该用户？此操作不可恢复。', '删除用户', { type: 'warning' })
-    const res = await deleteUser(row.uid)
-    if (res.data.code === 0) {
-      ElMessage.success('已删除')
-      fetchData()
-    }
+    rowLoading[row.uid] = true
+    try {
+      const res = await deleteUser(row.uid)
+      if (res.data.code === 0) {
+        ElMessage.success('已删除')
+        fetchData()
+      }
+    } finally { rowLoading[row.uid] = false }
   }
 }
 

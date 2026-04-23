@@ -40,6 +40,8 @@ private:
     bool IsPathSafe(const std::string& path) const;
     // 校验目标文件/其父目录不是符号链接，防止符号链接穿越写入/读取
     bool IsDestinationSafe(const std::string& filepath) const;
+    // 校验上传文件的扩展名是否在允许列表内（纵深防御，防止任意可执行/脚本文件托管）
+    bool IsExtensionAllowed(const std::string& filename) const;
 
     // 启动 detach 下载线程；inflight 计数使 Stop() 可等待全部完成避免数据丢失
     // 返回 false 表示被限流拒绝（调用方需向客户端返回错误）

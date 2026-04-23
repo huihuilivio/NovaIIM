@@ -36,6 +36,15 @@ bool AdminSessionDaoImplT<DbMgr>::RevokeByTokenHash(const std::string& token_has
     return conn.update_some<&AdminSession::revoked>(sessions[0]) == 1;
 }
 
+template <typename DbMgr>
+int AdminSessionDaoImplT<DbMgr>::PurgeExpired(int64_t now_sec) {
+    // 直接拼 SQL： expires_at 按约定存储为 epoch 秒，where 内只有数字常量，无注入风险。
+    std::string sql = "DELETE FROM admin_sessions WHERE expires_at < " + std::to_string(now_sec);
+    if (!db_.DB().execute(sql)) return -1;
+    // ormpp 不返回 affected rows；不关心具体数，返回 0 表示成功。
+    return 0;
+}
+
 // 显式实例化
 template class AdminSessionDaoImplT<SqliteDbManager>;
 #ifdef ORMPP_ENABLE_MYSQL
