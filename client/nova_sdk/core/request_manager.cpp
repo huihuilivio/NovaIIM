@@ -10,8 +10,24 @@ void RequestManager::AddPending(uint32_t seq, ResponseCallback on_resp,
                                 TimeoutCallback on_timeout) {
     auto deadline = std::chrono::steady_clock::now() +
                     std::chrono::milliseconds(default_timeout_ms_);
-    std::lock_guard lock(mutex_);
-    pending_[seq] = PendingRequest{std::move(on_resp), std::move(on_timeout), deadline};
+    PendingRequest evicted;
+    bool had_evicted = false;
+    {
+        std::lock_guard lock(mutex_);
+        auto it = pending_.find(seq);
+        if (it != pending_.end()) {
+            // seq_id 冲突（理论上仅在 ~2^32 次请求后回绕时可能出现）。
+            // 取出旧请求在锁外触发其 timeout 回调，避免静默丢失。
+            evicted = std::move(it->second);
+            had_evicted = true;
+            pending_.erase(it);
+        }
+        pending_[seq] = PendingRequest{std::move(on_resp), std::move(on_timeout), deadline};
+    }
+    if (had_evicted) {
+        NOVA_LOG_WARN("RequestManager: seq={} reused while still pending; evicting old request", seq);
+        if (evicted.on_timeout) evicted.on_timeout(seq);
+    }
 }
 
 bool RequestManager::HandleResponse(const nova::proto::Packet& resp) {
