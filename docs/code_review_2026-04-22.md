@@ -18,7 +18,7 @@
 
 ---
 
-## 🔴 严重问题 (Critical) — 必须修复
+## 严重问题（Critical）
 
 ### 后端
 1. **RBAC 路由级未实际强制** — [server/admin/admin_server.cpp](../server/admin/admin_server.cpp)  
@@ -46,7 +46,7 @@
 
 ---
 
-## 🟠 高优先级 (High)
+## 高优先级（High）
 
 ### 后端
 - **dedup 单 mutex 瓶颈** — [server/service/msg_service.h](../server/service/msg_service.h) L33，高 QPS 下严重竞争，应分片
@@ -69,7 +69,7 @@
 
 ---
 
-## 🟡 中等问题 (Medium)
+## 中等问题（Medium）
 
 ### 后端
 - `rate_limiter` purge 是 O(N) 每 1024 次写触发一次
@@ -93,7 +93,7 @@
 
 ---
 
-## 🔵 低优先级 (Low)
+## 低优先级（Low）
 
 - 无国际化 i18n
 - 错误消息中英文混用
@@ -104,7 +104,7 @@
 
 ---
 
-## ✅ 优点
+## 优点
 
 - ServerContext 依赖注入清晰
 - ormpp 全参数化查询，无 SQL 注入风险
