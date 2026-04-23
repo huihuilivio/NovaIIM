@@ -982,3 +982,397 @@ sequenceDiagram
     Bus->>Bus: 删除条目（受保护写）
 ```
 
+---
+
+## 33. 群组成员邀请 / 退群 / 踢人
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Op as 操作者
+    participant GW as Gateway
+    participant Group as GroupSvc
+    participant Conv as ConvSvc
+    participant DAO
+    participant CM
+    participant Members as 群成员
+
+    alt 邀请
+        Op->>GW: kInviteGroup (conv_id, invitee_ids)
+        GW->>Group: HandleInvite
+        Group->>DAO: ConvMember.Exists(conv_id, op) + 角色>=Member
+        Group->>DAO: User.FindByIds(invitees)
+        Group->>DAO: ConvMember.AddBatch
+        Group-->>Op: kInviteGroupAck { code=0 }
+        Group->>CM: 广播 GroupNotify(type=MembersJoined, list)
+        CM-->>Members: GroupNotify
+    else 退群
+        Op->>GW: kQuitGroup (conv_id)
+        GW->>Group: HandleQuit
+        Group->>DAO: ConvMember.FindRole(conv_id, op)
+        alt op == Owner
+            Group-->>Op: kQuitGroupAck { code=NeedTransferFirst }
+        else
+            Group->>DAO: ConvMember.Delete(conv_id, op)
+            Group-->>Op: kQuitGroupAck { code=0 }
+            Group->>CM: 广播 GroupNotify(type=MemberLeft, op)
+        end
+    else 踢人
+        Op->>GW: kKickMember (conv_id, target_uid)
+        GW->>Group: HandleKick
+        Group->>DAO: 校验 op.role > target.role
+        Group->>DAO: ConvMember.Delete(conv_id, target)
+        Group->>CM: 推送 target → kKickedFromGroup
+        Group->>CM: 广播 GroupNotify(type=MemberKicked)
+    end
+```
+
+---
+
+## 34. 会话置顶 / 静音 / 删除
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as Client
+    participant GW
+    participant Conv as ConvSvc
+    participant DAO
+    participant CM as ConnManager
+    participant Other as 同账号其他端
+
+    C->>GW: kUpdateConvSetting (conv_id, pin?, mute?, hide?)
+    GW->>Conv: HandleUpdateSetting
+    Conv->>DAO: ConvMember.UpdateSetting(uid, conv_id, fields)
+    Conv-->>C: kUpdateConvSettingAck { code=0 }
+    Conv->>CM: GetConns(uid) - {当前 conn}
+    Conv->>Other: ConvNotify(type=SettingChanged, fields) — 多端同步
+```
+
+---
+
+## 35. 黑名单 / 屏蔽
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant A as Client A
+    participant GW
+    participant Friend as FriendSvc
+    participant DAO
+    participant Msg as MsgSvc
+
+    A->>GW: kBlockUser (target_uid)
+    GW->>Friend: HandleBlock
+    Friend->>DAO: Block.Insert(A, target)
+    Friend->>DAO: Friendship.UpdateStatus(A, target, Blocked)
+    Friend-->>A: kBlockUserAck { code=0 }
+    Note right of Friend: 不通知被拉黑方
+
+    Note over Msg: 后续 target → A 的私聊消息
+    Msg->>DAO: Block.Exists(A, sender=target)?
+    alt 已拉黑
+        Msg-->>A: 不投递
+        Msg-->>Msg: 写信箱? 否（直接静默）
+    end
+```
+
+---
+
+## 36. 已读回执批量上报
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as Client
+    participant Timer
+    participant Buf as ReadAckBuffer
+    participant GW
+    participant Msg as MsgSvc
+    participant DAO
+
+    Note over C: 用户在会话页停留
+    C->>Buf: AddRead(conv_id, seq)
+    loop 每 500ms 或满 N 条
+        Timer-->>Buf: flush
+        Buf->>GW: kReadAckBatch [(conv_id, max_seq)...]
+        GW->>Msg: HandleReadAckBatch
+        Msg->>DAO: ConvMember.UpdateReadSeq 批量
+        Msg-->>C: kReadAckBatchAck
+    end
+```
+
+---
+
+## 37. 输入中（Typing）通知
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant A as 输入方
+    participant GW
+    participant Msg as MsgSvc
+    participant CM
+    participant Peers
+
+    A->>GW: kTyping (conv_id, state=Start|Stop)
+    GW->>Msg: HandleTyping (低优先级 / 不落库)
+    Msg->>CM: GetConns(会话其他成员)
+    Msg-->>Peers: kTypingNotify (from, conv_id, state)
+    Note over Msg: 触发节流（同一发送者 2s 内丢弃重复 Start）
+```
+
+---
+
+## 38. 文件上传断点续传（分片）
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as Client
+    participant GW
+    participant FileSvc
+    participant DAO
+    participant FS as FileServer
+    participant Disk
+
+    C->>GW: kUploadInit (filename, total_size, hash, chunk_size)
+    GW->>FileSvc: HandleInit
+    FileSvc->>DAO: UserFile.FindByHash(hash)
+    alt 命中（秒传）
+        FileSvc-->>C: { instant=true, file_id }
+    else
+        FileSvc->>DAO: UserFile.Insert(status=Uploading, total_chunks)
+        FileSvc-->>C: { upload_id, uploaded_chunks=[...] }
+        loop 缺失的分片
+            C->>FS: PUT /api/v1/files/chunks/{upload_id}/{idx}
+            FS->>Disk: 写临时块文件
+            FS->>DAO: UserFileChunk.Insert(upload_id, idx, sha256)
+            FS-->>C: 200 { received: idx }
+        end
+        C->>FS: POST /api/v1/files/chunks/{upload_id}/complete
+        FS->>Disk: 合并所有块 → 最终文件
+        FS->>FS: 校验整体 hash
+        alt hash 不匹配
+            FS->>Disk: 删合并文件
+            FS-->>C: 422 HashMismatch
+        else
+            FS->>DAO: UserFile.UpdateStatus(Done, url)
+            FS->>Disk: 清理分片
+            FS-->>C: 200 { url, file_id }
+        end
+    end
+```
+
+---
+
+## 39. 头像 / 群头像更新（带预签名）
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as Client
+    participant GW
+    participant Usr as UserSvc
+    participant FS as FileServer
+    participant DAO
+    participant CM
+
+    C->>GW: kRequestAvatarUpload (size, mime)
+    GW->>Usr: HandleAvatarUploadReq
+    Usr->>Usr: 校验 mime ∈ {image/*}, size ≤ 5MB
+    Usr-->>C: { upload_url, token, expires_at }
+    C->>FS: PUT upload_url (binary)
+    FS-->>C: 200 { url }
+    C->>GW: kSetAvatar (url)
+    GW->>Usr: HandleSetAvatar
+    Usr->>DAO: User.UpdateAvatar(uid, url)
+    Usr->>CM: 广播好友：UserProfileNotify(avatar)
+    Usr-->>C: kSetAvatarAck { code=0 }
+```
+
+---
+
+## 40. 通知与免打扰处理
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Push as 推送来源 (Msg/Friend/Group)
+    participant CM
+    participant C as Client
+    participant Local as 本地通知中心
+
+    Push->>CM: GetConns(target uid)
+    CM->>C: kPushXxx
+    C->>C: 查 ConvSetting.mute / 全局勿扰时段
+    alt 静音
+        C->>C: 仅角标 +1，不弹通知
+    else
+        C->>Local: ShowNotification(title, body)
+    end
+    C->>C: 更新本地未读
+```
+
+---
+
+## 41. 客户端首屏冷启动数据加载
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant App as 平台 UI
+    participant NC as NovaClient
+    participant Cache as 本地 SQLite
+    participant Net as TcpClient
+    participant Sync as SyncSvc
+    participant Server
+
+    App->>NC: Init + Connect (token / saved creds)
+    NC->>Cache: OpenCache(uid)
+    NC-->>App: 立即返回缓存中的会话/好友/最近消息（离线可用）
+    App->>App: 渲染首屏
+
+    par 同步会话
+        NC->>Net: kSyncConvList (last_update_ts)
+        Net->>Server: 请求
+        Server-->>Net: ConvList delta
+        Net->>Cache: Upsert
+        Net-->>App: ConvListChanged
+    and 同步好友
+        NC->>Net: kSyncFriendList (rev)
+        Server-->>Net: Friend delta
+        Net->>Cache: Upsert
+    and 拉未读
+        loop 每个会话
+            NC->>Net: kSyncMsg (conv_id, last_seq)
+            Server-->>Net: messages
+            Net->>Cache: InsertBatch
+            Net-->>App: ConvUnreadChanged
+        end
+    end
+```
+
+---
+
+## 42. 配置热加载
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant OS
+    participant Main
+    participant Cfg as ConfigLoader
+    participant Bus as MsgBus
+    participant Subs as 监听者 (RateLimit / Log / DbPool)
+
+    OS->>Main: SIGHUP
+    Main->>Cfg: Reload(configs/server.yaml)
+    Cfg->>Cfg: 解析 + 校验
+    alt 校验失败
+        Cfg-->>Main: error
+        Main->>Main: 保留旧配置 + 记录 ERROR
+    else
+        Cfg->>Bus: publish<ConfigChanged>(diff)
+        Bus-->>Subs: 回调
+        Subs->>Subs: 应用新阈值（不重启）
+        Note over Subs: 不可热改项（端口、数据库 DSN）<br/>仅记录 WARN，需重启生效
+    end
+```
+
+---
+
+## 43. 数据库重连与连接池保活
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Worker as 业务线程
+    participant Pool as DbConnectionPool
+    participant Conn
+    participant Health as HealthChecker (后台)
+    participant DB
+
+    Worker->>Pool: Acquire()
+    Pool->>Conn: 取空闲
+    Pool->>Conn: ping?（超过 idle_check_interval）
+    alt ping 失败
+        Pool->>Conn: dispose
+        Pool->>DB: 新建连接
+        DB-->>Pool: ok / fail
+        alt fail
+            Pool-->>Worker: throw / nullopt
+        end
+    end
+    Pool-->>Worker: Conn
+    Worker->>Conn: 执行 SQL
+    Worker->>Pool: Release(Conn)
+
+    loop 后台 health_check_interval
+        Health->>Pool: 遍历空闲连接
+        Health->>Conn: SELECT 1
+        alt 连不上
+            Health->>Pool: 标记并重建
+        end
+    end
+```
+
+---
+
+## 44. 健康检查 / 就绪探针
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant K8s as 探针 (k8s/LB)
+    participant AS as AdminServer
+    participant DB
+    participant CM as ConnManager
+    participant Bus
+
+    K8s->>AS: GET /healthz (liveness)
+    AS-->>K8s: 200 OK（进程存活即可）
+
+    K8s->>AS: GET /readyz (readiness)
+    AS->>DB: SELECT 1
+    AS->>Bus: is_running()?
+    AS->>CM: counters()
+    alt 全部健康
+        AS-->>K8s: 200 { db: ok, bus: ok, online: N }
+    else 任一异常
+        AS-->>K8s: 503 { failures: [...] }
+        Note over K8s: 暂停流量
+    end
+```
+
+---
+
+## 45. CI 构建 + 测试 + 覆盖率
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Dev as 开发者
+    participant Git as GitHub
+    participant CI as CI Runner
+    participant Build as cmake/ninja
+    participant Test as ctest
+    participant Cov as gcov/llvm-cov
+
+    Dev->>Git: push
+    Git->>CI: 触发 workflow
+    CI->>Build: configure (Release / Debug)
+    Build-->>CI: ok
+    CI->>Test: ctest --output-on-failure
+    Test->>Test: 执行 321 GoogleTest
+    alt 任一失败
+        Test-->>CI: non-zero
+        CI->>Git: status=failure + 上传日志
+    else
+        Test-->>CI: 全部通过
+        CI->>Cov: 收集覆盖率
+        Cov-->>CI: 报告
+        CI->>Git: status=success + artifacts
+    end
+```
+
