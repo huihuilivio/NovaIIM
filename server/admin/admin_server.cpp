@@ -333,6 +333,14 @@ int AdminServer::AuthMiddleware(HttpRequest* req, HttpResponse* resp) {
         account_status = admin_account->status;
         perms = ctx_.dao().Rbac().GetUserPermissions(claims->admin_id);
         std::lock_guard<std::mutex> lk(rbac_cache_mu_);
+        // 容量控制：如果达到上限，先除去过期项；仍然超限则整个清空。
+        if (rbac_cache_.size() >= kRbacCacheMaxSize) {
+            for (auto it = rbac_cache_.begin(); it != rbac_cache_.end();) {
+                if (it->second.expires_at <= now_tp) it = rbac_cache_.erase(it);
+                else ++it;
+            }
+            if (rbac_cache_.size() >= kRbacCacheMaxSize) rbac_cache_.clear();
+        }
         rbac_cache_[claims->admin_id] = RbacCacheEntry{perms, account_status, now_tp + kRbacCacheTtl};
     }
 

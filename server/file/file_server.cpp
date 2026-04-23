@@ -363,6 +363,8 @@ void FileServer::RegisterRoutes() {
             if (pos != std::string::npos) {
                 filename = filename.substr(pos + 1);
             }
+            // 统一小写：避免与后续后缀检查、与 windows 大小写不敏感文件系统冲突
+            for (auto& c : filename) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
             if (filename.empty()) {
                 return response_status(ctx, HTTP_STATUS_BAD_REQUEST, "empty filename");
             }

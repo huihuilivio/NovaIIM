@@ -181,6 +181,11 @@ async function fetchData() {
     if (res.data.code === 0) {
       tableData.value = res.data.data.items
       total.value = res.data.data.total
+      // 释放已不在当前页的行加载态，防止 reactive map 无限增长
+      const valid = new Set(tableData.value.map(r => r.uid))
+      Object.keys(rowLoading).forEach(k => {
+        if (!valid.has(k)) delete rowLoading[k]
+      })
     }
   } finally {
     loading.value = false

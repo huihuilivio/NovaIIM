@@ -116,6 +116,7 @@ private:
         std::chrono::steady_clock::time_point expires_at;
     };
     static constexpr std::chrono::seconds kRbacCacheTtl{30};
+    static constexpr size_t kRbacCacheMaxSize = 1024;  // 容量上限，超过则清理过期项（或全部）以防内存无限增长
     std::mutex rbac_cache_mu_;
     std::unordered_map<int64_t, RbacCacheEntry> rbac_cache_;
     // role/admin 状态变更时调用，发生在修改接口成功后。
